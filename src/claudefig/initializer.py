@@ -79,9 +79,6 @@ class Initializer:
                 template_name, "settings.json", claude_dir, force
             )
 
-        if self.config.get("init.create_gitignore_entries", True):
-            self._add_gitignore_entries(template_name, repo_path)
-
         # Create config file if it doesn't exist
         config_path = repo_path / ".claudefig.toml"
         if not config_path.exists():
@@ -136,32 +133,3 @@ class Initializer:
         except Exception as e:
             console.print(f"[red]✗[/red] Error creating {filename}: {e}")
             return False
-
-    def _add_gitignore_entries(self, template_name: str, repo_path: Path) -> None:
-        """Add gitignore entries from template.
-
-        Args:
-            template_name: Name of template set
-            repo_path: Path to repository
-        """
-        try:
-            gitignore_entries = self.template_manager.read_template_file(
-                template_name, "gitignore_entries.txt"
-            )
-            entries = [
-                line.strip()
-                for line in gitignore_entries.splitlines()
-                if line.strip() and not line.startswith("#")
-            ]
-
-            if entries:
-                append_to_gitignore(repo_path, entries)
-                console.print(
-                    f"[green]✓[/green] Updated .gitignore with {len(entries)} entries"
-                )
-        except FileNotFoundError:
-            console.print(
-                "[yellow]⚠[/yellow] No gitignore entries template found"
-            )
-        except Exception as e:
-            console.print(f"[red]✗[/red] Error updating .gitignore: {e}")

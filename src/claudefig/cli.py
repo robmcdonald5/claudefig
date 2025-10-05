@@ -89,7 +89,6 @@ def show():
         table.add_row("Create CLAUDE.md", str(config.get("init.create_claude_md")))
         table.add_row("Create CONTRIBUTING.md", str(config.get("init.create_contributing")))
         table.add_row("Create Settings", str(config.get("init.create_settings")))
-        table.add_row("Update .gitignore", str(config.get("init.create_gitignore_entries")))
 
         custom_dir = config.get("custom.template_dir")
         if custom_dir:
