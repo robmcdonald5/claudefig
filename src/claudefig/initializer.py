@@ -7,7 +7,7 @@ from rich.console import Console
 
 from claudefig.config import Config
 from claudefig.template_manager import TemplateManager
-from claudefig.utils import append_to_gitignore, ensure_directory, is_git_repository
+from claudefig.utils import ensure_directory, is_git_repository
 
 console = Console()
 
@@ -37,10 +37,10 @@ class Initializer:
         Returns:
             True if initialization successful, False otherwise.
         """
-        repo_path = repo_path.resolve()
-
-        if not repo_path.exists():
-            console.print(f"[red]Error:[/red] Path does not exist: {repo_path}")
+        try:
+            repo_path = repo_path.resolve()
+        except (OSError, RuntimeError) as e:
+            console.print(f"[red]Error:[/red] Cannot resolve path: {e}")
             return False
 
         # Check if it's a git repository
