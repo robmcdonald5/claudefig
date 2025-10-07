@@ -30,6 +30,8 @@ classifiers = [
 dependencies = [
     "click>=8.0,<9.0",
     "rich>=13.0,<14.0",
+    "textual>=0.47.0",
+    "jinja2>=3.0,<4.0",
     "tomli>=2.0; python_version < '3.11'",
     "tomli-w>=1.0",
 ]
@@ -72,7 +74,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/claudefig", "src/templates"]
+packages = ["src/claudefig", "src/templates", "src/claudefig_data"]
 
 # Black configuration
 [tool.black]
