@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -18,7 +17,9 @@ else:
 class TestComponentMetadata:
     """Test ComponentMetadata class."""
 
-    def test_parse_valid_component(self, create_test_component, sample_component_toml, temp_component_dir):
+    def test_parse_valid_component(
+        self, create_test_component, sample_component_toml, temp_component_dir
+    ):
         """Test parsing a valid component.toml with all fields."""
         component_path = create_test_component(
             "languages",
@@ -55,9 +56,7 @@ class TestComponentMetadata:
         minimal_toml = """[component]
 name = "minimal"
 """
-        component_path = create_test_component(
-            "general", "minimal", minimal_toml
-        )
+        component_path = create_test_component("general", "minimal", minimal_toml)
 
         with open(component_path / "component.toml", "rb") as f:
             toml_data = tomllib.load(f)
@@ -106,15 +105,15 @@ conflicts = ["languages/javascript"]
         """Test that malformed TOML raises appropriate error."""
         malformed_toml = "[component\nname = unclosed"
 
-        component_path = create_test_component(
-            "general", "malformed", malformed_toml
-        )
+        component_path = create_test_component("general", "malformed", malformed_toml)
 
         with pytest.raises(Exception):  # Should raise TOML parsing error
             with open(component_path / "component.toml", "rb") as f:
                 tomllib.load(f)
 
-    def test_get_file_paths_claude_md(self, create_test_component, sample_component_toml):
+    def test_get_file_paths_claude_md(
+        self, create_test_component, sample_component_toml
+    ):
         """Test get_file_paths for claude_md files."""
         component_path = create_test_component(
             "languages",
@@ -161,7 +160,9 @@ settings = ["settings.json", "config.yaml"]
         assert any(p.name == "settings.json" for p in settings_paths)
         assert any(p.name == "config.yaml" for p in settings_paths)
 
-    def test_get_file_paths_invalid_type(self, create_test_component, sample_component_toml):
+    def test_get_file_paths_invalid_type(
+        self, create_test_component, sample_component_toml
+    ):
         """Test get_file_paths with invalid file type returns empty list."""
         component_path = create_test_component(
             "languages",
@@ -188,7 +189,9 @@ class TestComponentLoader:
         """Create ComponentLoader with temp component directory."""
         return ComponentLoader(temp_component_dir)
 
-    def test_load_component_valid(self, loader, create_test_component, sample_component_toml):
+    def test_load_component_valid(
+        self, loader, create_test_component, sample_component_toml
+    ):
         """Test loading a valid component."""
         create_test_component(
             "languages",
@@ -207,7 +210,9 @@ class TestComponentLoader:
         metadata = loader.load_component("nonexistent/component")
         assert metadata is None
 
-    def test_list_all_components(self, loader, create_test_component, sample_component_toml):
+    def test_list_all_components(
+        self, loader, create_test_component, sample_component_toml
+    ):
         """Test listing all components."""
         create_test_component("general", "comp1", sample_component_toml)
         create_test_component("languages", "comp2", sample_component_toml)
@@ -220,7 +225,9 @@ class TestComponentLoader:
         assert "languages/comp2" in components
         assert "frameworks/comp3" in components
 
-    def test_list_components_by_category(self, loader, create_test_component, sample_component_toml):
+    def test_list_components_by_category(
+        self, loader, create_test_component, sample_component_toml
+    ):
         """Test listing components filtered by category."""
         create_test_component("general", "comp1", sample_component_toml)
         create_test_component("languages", "comp2", sample_component_toml)
@@ -259,9 +266,7 @@ name = "base"
 [component.insertion]
 priority = 10
 """
-        create_test_component(
-            "general", "base", base_toml, {"content.md": "# Base"}
-        )
+        create_test_component("general", "base", base_toml, {"content.md": "# Base"})
 
         # Create component that requires base
         requires_toml = """[component]
@@ -282,9 +287,7 @@ priority = 20
         assert resolved[0].name == "base"
         assert resolved[1].name == "requires-base"
 
-    def test_resolve_dependencies_missing_required(
-        self, loader, create_test_component
-    ):
+    def test_resolve_dependencies_missing_required(self, loader, create_test_component):
         """Test that missing required dependency raises ValueError."""
         requires_missing_toml = """[component]
 name = "requires-missing"
@@ -293,9 +296,7 @@ requires = ["nonexistent/component"]
 """
         create_test_component("general", "requires-missing", requires_missing_toml)
 
-        with pytest.raises(
-            ValueError, match="Component not found"
-        ):
+        with pytest.raises(ValueError, match="Component not found"):
             loader.resolve_dependencies(["general/requires-missing"])
 
     def test_resolve_dependencies_with_recommends(
@@ -331,9 +332,7 @@ name = "conflict2"
         create_test_component("general", "conflict2", conflict2_toml)
 
         with pytest.raises(ValueError, match="conflicts with"):
-            loader.resolve_dependencies(
-                ["general/conflict1", "general/conflict2"]
-            )
+            loader.resolve_dependencies(["general/conflict1", "general/conflict2"])
 
     def test_priority_based_sorting(self, loader, create_test_component):
         """Test that components are sorted by priority."""
@@ -363,10 +362,12 @@ priority = 50
 
         assert len(resolved) == 3
         assert resolved[0].name == "high"  # priority 10
-        assert resolved[1].name == "mid"   # priority 50
-        assert resolved[2].name == "low"   # priority 100
+        assert resolved[1].name == "mid"  # priority 50
+        assert resolved[2].name == "low"  # priority 100
 
-    def test_get_component_info(self, loader, create_test_component, sample_component_toml):
+    def test_get_component_info(
+        self, loader, create_test_component, sample_component_toml
+    ):
         """Test get_component_info returns correct metadata."""
         create_test_component(
             "languages",

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, Template
+from jinja2 import Environment
 
 
 class ComponentRenderer:
@@ -131,9 +131,7 @@ class MarkdownComposer:
             return ""
 
         # Sort sections by priority
-        sorted_sections = sorted(
-            self.sections.items(), key=lambda x: x[1]["priority"]
-        )
+        sorted_sections = sorted(self.sections.items(), key=lambda x: x[1]["priority"])
 
         # Build the document
         parts = []

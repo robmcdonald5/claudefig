@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from claudefig.user_config import (
     copy_default_components,
@@ -266,7 +263,9 @@ class TestComponentCopying:
         captured = capsys.readouterr()
         assert "Installed component: general/test-comp" in captured.out
 
-    def test_copy_default_components_missing_category(self, mock_user_home, tmp_path, capsys):
+    def test_copy_default_components_missing_category(
+        self, mock_user_home, tmp_path, capsys
+    ):
         """Test handling of missing category directories."""
         config_dir = get_user_config_dir()
         config_dir.mkdir(parents=True)
@@ -286,6 +285,7 @@ class TestComponentCopying:
                     class MockPath:
                         def iterdir(self):
                             raise FileNotFoundError()
+
                     return MockPath()
                 return result
 
@@ -297,7 +297,9 @@ class TestComponentCopying:
         captured = capsys.readouterr()
         assert "No default components found" in captured.out
 
-    def test_copy_default_components_overwrites_existing(self, mock_user_home, tmp_path):
+    def test_copy_default_components_overwrites_existing(
+        self, mock_user_home, tmp_path
+    ):
         """Test that copying components overwrites existing ones."""
         config_dir = get_user_config_dir()
         config_dir.mkdir(parents=True)
@@ -322,7 +324,9 @@ class TestComponentCopying:
         # Old file should still exist (dirs_exist_ok=True doesn't remove files)
         assert old_file.exists()
         # New file should also exist
-        assert (config_dir / "components" / "general" / "test-comp" / "component.toml").exists()
+        assert (
+            config_dir / "components" / "general" / "test-comp" / "component.toml"
+        ).exists()
 
 
 class TestConfigReset:

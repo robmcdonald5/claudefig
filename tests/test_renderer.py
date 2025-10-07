@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from jinja2 import TemplateSyntaxError
 
 from claudefig.renderer import ComponentRenderer, MarkdownComposer
 
@@ -42,7 +39,9 @@ class TestComponentRenderer:
 
     def test_render_with_conditional(self, renderer):
         """Test rendering with Jinja2 conditionals."""
-        template = "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}"
+        template = (
+            "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}"
+        )
 
         result_enabled = renderer.render_string(template, {"enabled": True})
         result_disabled = renderer.render_string(template, {"enabled": False})
@@ -65,10 +64,7 @@ class TestComponentRenderer:
         template_file = tmp_path / "template.md"
         template_file.write_text("# {{ title }}\n\n{{ content }}", encoding="utf-8")
 
-        variables = {
-            "title": "Test Document",
-            "content": "This is test content."
-        }
+        variables = {"title": "Test Document", "content": "This is test content."}
 
         result = renderer.render_file(template_file, variables)
 
@@ -93,10 +89,7 @@ class TestComponentRenderer:
         file1 = tmp_path / "content.md"
         file1.write_text("# {{ title }}", encoding="utf-8")
 
-        result = renderer.render_component_files(
-            [file1],
-            {"title": "Component 1"}
-        )
+        result = renderer.render_component_files([file1], {"title": "Component 1"})
 
         assert result == "# Component 1"
 
@@ -109,8 +102,7 @@ class TestComponentRenderer:
         file2.write_text("## {{ title2 }}", encoding="utf-8")
 
         result = renderer.render_component_files(
-            [file1, file2],
-            {"title1": "First", "title2": "Second"}
+            [file1, file2], {"title1": "First", "title2": "Second"}
         )
 
         assert result == "# First\n\n## Second"
@@ -148,7 +140,9 @@ class TestMarkdownComposer:
         composer.add_section("Introduction", "# Introduction\n\nWelcome!", 10)
 
         assert composer.has_section("Introduction")
-        assert composer.get_section_content("Introduction") == "# Introduction\n\nWelcome!"
+        assert (
+            composer.get_section_content("Introduction") == "# Introduction\n\nWelcome!"
+        )
 
     def test_add_multiple_sections(self, composer):
         """Test adding multiple sections."""

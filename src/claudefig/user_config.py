@@ -196,9 +196,7 @@ def copy_default_components(config_dir: Path, verbose: bool = True):
 
                         # Copy the entire component directory
                         shutil.copytree(
-                            str(component_dir),
-                            component_dest,
-                            dirs_exist_ok=True
+                            str(component_dir), component_dest, dirs_exist_ok=True
                         )
 
                         if verbose:

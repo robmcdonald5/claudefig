@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import pytest
 
 from claudefig.composer import ComponentComposer
 
 if sys.version_info >= (3, 11):
-    import tomllib
+    pass
 else:
-    import tomli as tomllib
+    pass
 
 
 class TestComponentComposer:
@@ -39,7 +38,7 @@ priority = 10
             "general",
             "simple",
             simple_toml,
-            {"content.md": "# Simple Component\n\nThis is simple."}
+            {"content.md": "# Simple Component\n\nThis is simple."},
         )
 
         # Create component with variables
@@ -58,7 +57,9 @@ priority = 20
             "languages",
             "with-vars",
             vars_toml,
-            {"content.md": "# {{ name }}\n\nEnabled: {% if enabled %}Yes{% else %}No{% endif %}"}
+            {
+                "content.md": "# {{ name }}\n\nEnabled: {% if enabled %}Yes{% else %}No{% endif %}"
+            },
         )
 
         # Create component with settings
@@ -74,7 +75,7 @@ priority = 30
             "frameworks",
             "with-settings",
             settings_toml,
-            {"settings.json": '{"framework": "test"}'}
+            {"settings.json": '{"framework": "test"}'},
         )
 
         # Create component with contributing
@@ -90,12 +91,10 @@ priority = 40
             "general",
             "with-contributing",
             contributing_toml,
-            {"contributing.md": "# How to Contribute\n\nPlease submit PRs."}
+            {"contributing.md": "# How to Contribute\n\nPlease submit PRs."},
         )
 
-    def test_compose_claude_md_single_component(
-        self, composer, create_test_component
-    ):
+    def test_compose_claude_md_single_component(self, composer, create_test_component):
         """Test composing CLAUDE.md with single component."""
         toml = """[component]
 name = "test"
@@ -105,9 +104,7 @@ claude_md = ["content.md"]
 section = "Test"
 priority = 10
 """
-        create_test_component(
-            "general", "test", toml, {"content.md": "# Test Content"}
-        )
+        create_test_component("general", "test", toml, {"content.md": "# Test Content"})
 
         result = composer.compose_claude_md(["general/test"])
 
@@ -117,35 +114,28 @@ priority = 10
         self, composer, setup_test_components
     ):
         """Test composing CLAUDE.md with multiple components."""
-        result = composer.compose_claude_md([
-            "general/simple",
-            "languages/with-vars"
-        ])
+        result = composer.compose_claude_md(["general/simple", "languages/with-vars"])
 
         # Should have both components in priority order
         assert "# Simple Component" in result
         assert "# DefaultName" in result  # Using default variable
-        assert result.index("# Simple Component") < result.index("# DefaultName")  # Priority order
+        assert result.index("# Simple Component") < result.index(
+            "# DefaultName"
+        )  # Priority order
 
-    def test_compose_claude_md_with_variables(
-        self, composer, setup_test_components
-    ):
+    def test_compose_claude_md_with_variables(self, composer, setup_test_components):
         """Test composing with variable overrides."""
         result = composer.compose_claude_md(
-            ["languages/with-vars"],
-            variables={"name": "CustomName", "enabled": False}
+            ["languages/with-vars"], variables={"name": "CustomName", "enabled": False}
         )
 
         assert "# CustomName" in result
         assert "Enabled: No" in result
 
-    def test_compose_claude_md_with_toc(
-        self, composer, setup_test_components
-    ):
+    def test_compose_claude_md_with_toc(self, composer, setup_test_components):
         """Test composing with table of contents."""
         result = composer.compose_claude_md(
-            ["general/simple", "languages/with-vars"],
-            include_toc=True
+            ["general/simple", "languages/with-vars"], include_toc=True
         )
 
         # Should have TOC
@@ -154,9 +144,7 @@ priority = 10
         assert "[Variables Section]" in result
         assert "---" in result
 
-    def test_compose_claude_md_with_dependencies(
-        self, composer, create_test_component
-    ):
+    def test_compose_claude_md_with_dependencies(self, composer, create_test_component):
         """Test composing with component dependencies."""
         # Create base component
         base_toml = """[component]
@@ -167,9 +155,7 @@ claude_md = ["content.md"]
 section = "Base"
 priority = 10
 """
-        create_test_component(
-            "general", "base", base_toml, {"content.md": "# Base"}
-        )
+        create_test_component("general", "base", base_toml, {"content.md": "# Base"})
 
         # Create dependent component
         dep_toml = """[component]
@@ -192,9 +178,7 @@ priority = 20
         assert "# Base" in result
         assert "# Dependent" in result
 
-    def test_compose_claude_md_dependency_error(
-        self, composer, create_test_component
-    ):
+    def test_compose_claude_md_dependency_error(self, composer, create_test_component):
         """Test that dependency resolution errors are raised."""
         # Create component with missing dependency
         toml = """[component]
@@ -214,17 +198,13 @@ claude_md = ["content.md"]
         result = composer.compose_claude_md([])
         assert result == ""
 
-    def test_compose_settings_json(
-        self, composer, setup_test_components
-    ):
+    def test_compose_settings_json(self, composer, setup_test_components):
         """Test composing settings.json."""
         result = composer.compose_settings_json(["frameworks/with-settings"])
 
         assert '{"framework": "test"}' in result
 
-    def test_compose_settings_json_no_settings(
-        self, composer, setup_test_components
-    ):
+    def test_compose_settings_json_no_settings(self, composer, setup_test_components):
         """Test composing settings with no settings files returns '{}'."""
         result = composer.compose_settings_json(["general/simple"])
 
@@ -241,21 +221,20 @@ name = "more-settings"
 settings = ["settings.json"]
 """
         create_test_component(
-            "general", "more-settings", toml,
-            {"settings.json": '{"another": "setting"}'}
+            "general",
+            "more-settings",
+            toml,
+            {"settings.json": '{"another": "setting"}'},
         )
 
-        result = composer.compose_settings_json([
-            "frameworks/with-settings",
-            "general/more-settings"
-        ])
+        result = composer.compose_settings_json(
+            ["frameworks/with-settings", "general/more-settings"]
+        )
 
         assert '{"framework": "test"}' in result
         assert '{"another": "setting"}' in result
 
-    def test_compose_contributing_md(
-        self, composer, setup_test_components
-    ):
+    def test_compose_contributing_md(self, composer, setup_test_components):
         """Test composing CONTRIBUTING.md."""
         result = composer.compose_contributing_md(["general/with-contributing"])
 
@@ -301,18 +280,14 @@ settings = ["settings.json"]
 
     def test_merge_variables_simple_values(self, composer):
         """Test _merge_variables handles simple (non-dict) values."""
-        component_vars = {
-            "simple_var": "simple_value"
-        }
+        component_vars = {"simple_var": "simple_value"}
         provided_vars = {}
 
         merged = composer._merge_variables(component_vars, provided_vars)
 
         assert merged["simple_var"] == "simple_value"
 
-    def test_get_available_components(
-        self, composer, setup_test_components
-    ):
+    def test_get_available_components(self, composer, setup_test_components):
         """Test getting list of available components."""
         components = composer.get_available_components()
 
@@ -332,9 +307,7 @@ settings = ["settings.json"]
         assert "languages/with-vars" not in general_comps
         assert "frameworks/with-settings" not in general_comps
 
-    def test_get_component_details(
-        self, composer, setup_test_components
-    ):
+    def test_get_component_details(self, composer, setup_test_components):
         """Test getting detailed component information."""
         details = composer.get_component_details("general/simple")
 
@@ -349,21 +322,16 @@ settings = ["settings.json"]
         details = composer.get_component_details("nonexistent/component")
         assert details is None
 
-    def test_validate_components_valid(
-        self, composer, setup_test_components
-    ):
+    def test_validate_components_valid(self, composer, setup_test_components):
         """Test validating valid component paths."""
-        is_valid, error = composer.validate_components([
-            "general/simple",
-            "languages/with-vars"
-        ])
+        is_valid, error = composer.validate_components(
+            ["general/simple", "languages/with-vars"]
+        )
 
         assert is_valid is True
         assert error == ""
 
-    def test_validate_components_invalid(
-        self, composer, create_test_component
-    ):
+    def test_validate_components_invalid(self, composer, create_test_component):
         """Test validating invalid component paths."""
         # Create component with missing dependency
         toml = """[component]
@@ -393,8 +361,7 @@ section = "Bad Template"
 priority = 10
 """
         create_test_component(
-            "general", "bad-template", toml,
-            {"content.md": "{{ unclosed_variable"}
+            "general", "bad-template", toml, {"content.md": "{{ unclosed_variable"}
         )
 
         # Should not crash, just warn

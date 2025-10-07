@@ -66,6 +66,7 @@ class TestInitializerInit:
         mock_tm_class.assert_called_once_with(Path("/custom/templates"))
         assert initializer.config is config
 
+
 class TestInitializeMethod:
     """Tests for Initializer.initialize method."""
 
@@ -194,19 +195,25 @@ class TestInitializeMethod:
 class TestCopyTemplateFile:
     """Tests for Initializer._copy_template_file method."""
 
-    def test_copy_template_file_success(self, tmp_path, mock_config, mock_template_manager):
+    def test_copy_template_file_success(
+        self, tmp_path, mock_config, mock_template_manager
+    ):
         """Test successful template file copy."""
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
 
-        result = initializer._copy_template_file("default", "TEST_TEMPLATE.md", tmp_path, False)
+        result = initializer._copy_template_file(
+            "default", "TEST_TEMPLATE.md", tmp_path, False
+        )
 
         assert result is True
         dest_file = tmp_path / "TEST_TEMPLATE.md"
         assert dest_file.exists()
         assert dest_file.read_text(encoding="utf-8") == "# Template content"
 
-    def test_copy_template_file_exists_no_force(self, tmp_path, mock_config, mock_template_manager):
+    def test_copy_template_file_exists_no_force(
+        self, tmp_path, mock_config, mock_template_manager
+    ):
         """Test copying when file exists without force flag."""
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
@@ -214,14 +221,18 @@ class TestCopyTemplateFile:
         existing_file = tmp_path / "TEST_TEMPLATE.md"
         existing_file.write_text("Old existing content", encoding="utf-8")
 
-        result = initializer._copy_template_file("default", "TEST_TEMPLATE.md", tmp_path, False)
+        result = initializer._copy_template_file(
+            "default", "TEST_TEMPLATE.md", tmp_path, False
+        )
 
         assert result is False
         dest_file = tmp_path / "TEST_TEMPLATE.md"
         assert dest_file.read_text(encoding="utf-8") == "Old existing content"
         mock_template_manager.read_template_file.assert_not_called()
 
-    def test_copy_template_file_exists_with_force(self, tmp_path, mock_config, mock_template_manager):
+    def test_copy_template_file_exists_with_force(
+        self, tmp_path, mock_config, mock_template_manager
+    ):
         """Test copying when file exists with force flag."""
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
@@ -229,37 +240,54 @@ class TestCopyTemplateFile:
         existing_file = tmp_path / "TEST_TEMPLATE.md"
         existing_file.write_text("Old existing content", encoding="utf-8")
 
-        result = initializer._copy_template_file("default", "TEST_TEMPLATE.md", tmp_path, True)
+        result = initializer._copy_template_file(
+            "default", "TEST_TEMPLATE.md", tmp_path, True
+        )
 
         assert result is True
         dest_file = tmp_path / "TEST_TEMPLATE.md"
         assert dest_file.read_text(encoding="utf-8") == "# Template content"
-        mock_template_manager.read_template_file.assert_called_once_with("default", "TEST_TEMPLATE.md")
+        mock_template_manager.read_template_file.assert_called_once_with(
+            "default", "TEST_TEMPLATE.md"
+        )
 
-    def test_copy_template_file_not_found(self, tmp_path, mock_config, mock_template_manager):
+    def test_copy_template_file_not_found(
+        self, tmp_path, mock_config, mock_template_manager
+    ):
         """Test copying when template file doesn't exist."""
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
 
         mock_template_manager.read_template_file.side_effect = FileNotFoundError()
 
-        result = initializer._copy_template_file("default", "NON_EXISTENT.md", tmp_path, False)
+        result = initializer._copy_template_file(
+            "default", "NON_EXISTENT.md", tmp_path, False
+        )
 
         assert result is False
         dest_file = tmp_path / "NON_EXISTENT.md"
         assert not dest_file.exists()
-        mock_template_manager.read_template_file.assert_called_once_with("default", "NON_EXISTENT.md")
+        mock_template_manager.read_template_file.assert_called_once_with(
+            "default", "NON_EXISTENT.md"
+        )
 
-    def test_copy_template_file_write_error(self, tmp_path, mock_config, mock_template_manager):
+    def test_copy_template_file_write_error(
+        self, tmp_path, mock_config, mock_template_manager
+    ):
         """Test handling of write errors during file copy."""
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
 
-        with patch.object(Path, "write_text", side_effect=PermissionError("Permission denied")):
-            result = initializer._copy_template_file("default", "UNWRITABLE_FILE.md", tmp_path, False)
+        with patch.object(
+            Path, "write_text", side_effect=PermissionError("Permission denied")
+        ):
+            result = initializer._copy_template_file(
+                "default", "UNWRITABLE_FILE.md", tmp_path, False
+            )
 
         assert result is False
         dest_file = tmp_path / "UNWRITABLE_FILE.md"
         assert not dest_file.exists()
-        mock_template_manager.read_template_file.assert_called_once_with("default", "UNWRITABLE_FILE.md")
-        
+        mock_template_manager.read_template_file.assert_called_once_with(
+            "default", "UNWRITABLE_FILE.md"
+        )

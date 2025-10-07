@@ -38,14 +38,14 @@ def main(ctx):
 @main.command()
 @click.option(
     "--path",
-    default = ".",
-    type = click.Path(exists=True, file_okay=False, dir_okay=True),
-    help = "Repository path to initialize (default: current directory)",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path to initialize (default: current directory)",
 )
 @click.option(
     "--force",
-    is_flag = True,
-    help = "Overwrite existing configuration files",
+    is_flag=True,
+    help="Overwrite existing configuration files",
 )
 def init(path, force):
     """Initialize Claude Code configuration in a repository.
@@ -63,7 +63,9 @@ def init(path, force):
     )
 
     if force:
-        console.print("[yellow]Force mode enabled - will overwrite existing files[/yellow]")
+        console.print(
+            "[yellow]Force mode enabled - will overwrite existing files[/yellow]"
+        )
 
     try:
         config = Config()
@@ -97,7 +99,9 @@ def show():
 
         table.add_row("Template Source", config.get("claudefig.template_source"))
         table.add_row("Create CLAUDE.md", str(config.get("init.create_claude_md")))
-        table.add_row("Create CONTRIBUTING.md", str(config.get("init.create_contributing")))
+        table.add_row(
+            "Create CONTRIBUTING.md", str(config.get("init.create_contributing"))
+        )
         table.add_row("Create Settings", str(config.get("init.create_settings")))
 
         custom_dir = config.get("custom.template_dir")
@@ -129,9 +133,7 @@ def list_templates():
     try:
         config = Config()
         custom_dir = config.get("custom.template_dir")
-        template_manager = TemplateManager(
-            Path(custom_dir) if custom_dir else None
-        )
+        template_manager = TemplateManager(Path(custom_dir) if custom_dir else None)
 
         templates = template_manager.list_templates()
 

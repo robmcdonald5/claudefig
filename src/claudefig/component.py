@@ -142,15 +142,16 @@ class ComponentLoader:
             prefix = category
         else:
             # Search all category directories
-            search_dirs = [
-                d for d in self.component_base_dir.iterdir() if d.is_dir()
-            ]
+            search_dirs = [d for d in self.component_base_dir.iterdir() if d.is_dir()]
             prefix = ""
 
         for category_dir in search_dirs:
             # Each subdirectory is a component
             for component_dir in category_dir.iterdir():
-                if component_dir.is_dir() and (component_dir / "component.toml").exists():
+                if (
+                    component_dir.is_dir()
+                    and (component_dir / "component.toml").exists()
+                ):
                     if prefix:
                         component_path = f"{prefix}/{component_dir.name}"
                     else:

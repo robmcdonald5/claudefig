@@ -91,9 +91,7 @@ class Initializer:
             console.print("\n[bold green]Initialization complete![/bold green]")
             console.print(f"\nClaude Code configuration initialized in: {repo_path}")
         else:
-            console.print(
-                "\n[yellow]Initialization completed with warnings[/yellow]"
-            )
+            console.print("\n[yellow]Initialization completed with warnings[/yellow]")
 
         return success
 
@@ -126,9 +124,7 @@ class Initializer:
             console.print(f"[green]+[/green] Created file: {dest_path}")
             return True
         except FileNotFoundError:
-            console.print(
-                f"[yellow]![/yellow] Template file not found: {filename}"
-            )
+            console.print(f"[yellow]![/yellow] Template file not found: {filename}")
             return False
         except Exception as e:
             console.print(f"[red]x[/red] Error creating {filename}: {e}")

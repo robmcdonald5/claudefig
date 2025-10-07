@@ -1,7 +1,7 @@
 """Interactive TUI (Text User Interface) for claudefig."""
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Vertical
+from textual.containers import Container
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Static
 

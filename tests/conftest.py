@@ -87,6 +87,7 @@ def create_test_component(temp_component_dir: Path):
     Returns:
         Function to create test components.
     """
+
     def _create_component(
         category: str,
         name: str,

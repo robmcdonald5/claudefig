@@ -69,17 +69,21 @@ class TemplateManager:
             if sys.version_info >= (3, 9):
                 template_path = Path(str(template_root))
                 if template_path.exists() and template_path.is_dir():
-                    templates.extend([
-                        d.name for d in template_path.iterdir()
-                        if d.is_dir() and not d.name.startswith("_")
-                    ])
+                    templates.extend(
+                        [
+                            d.name
+                            for d in template_path.iterdir()
+                            if d.is_dir() and not d.name.startswith("_")
+                        ]
+                    )
         except Exception:
             pass
 
         # List custom templates
         if self.custom_template_dir and self.custom_template_dir.exists():
             custom_templates = [
-                d.name for d in self.custom_template_dir.iterdir()
+                d.name
+                for d in self.custom_template_dir.iterdir()
                 if d.is_dir() and not d.name.startswith("_")
             ]
             templates.extend([f"{t} (custom)" for t in custom_templates])
@@ -101,7 +105,8 @@ class TemplateManager:
             return []
 
         return [
-            f for f in template_dir.iterdir()
+            f
+            for f in template_dir.iterdir()
             if f.is_file() and not f.name.startswith("_")
         ]
 
@@ -122,6 +127,8 @@ class TemplateManager:
         file_path = template_dir / filename
 
         if not file_path.exists():
-            raise FileNotFoundError(f"Template file '{filename}' not found in '{template_name}'")
+            raise FileNotFoundError(
+                f"Template file '{filename}' not found in '{template_name}'"
+            )
 
         return file_path.read_text(encoding="utf-8")
