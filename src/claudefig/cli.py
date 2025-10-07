@@ -14,15 +14,25 @@ from claudefig.template_manager import TemplateManager
 console = Console()
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.version_option(version=__version__, prog_name="claudefig")
-def main():
+@click.pass_context
+def main(ctx):
     """Universal config CLI tool for setting up Claude Code repositories.
 
     claudefig helps you initialize and manage Claude Code configurations
     with templates, settings, and best practices.
+
+    Run without arguments to launch interactive mode.
     """
-    pass
+    from claudefig.user_config import ensure_user_config
+
+    # Initialize user config on any command
+    ensure_user_config(verbose=False)
+
+    # If no subcommand provided, launch interactive mode
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(interactive)
 
 
 @main.command()
@@ -134,6 +144,25 @@ def list_templates():
 
     except Exception as e:
         console.print(f"[red]Error listing templates:[/red] {e}")
+
+
+@main.command()
+def interactive():
+    """Launch interactive TUI mode."""
+    try:
+        from claudefig.tui import ClaudefigApp
+
+        app = ClaudefigApp()
+        app.run()
+    except ImportError:
+        console.print(
+            "[red]Error:[/red] Textual not installed. "
+            "Run: pip install 'claudefig[tui]' or reinstall claudefig"
+        )
+        raise click.Abort()
+    except Exception as e:
+        console.print(f"[red]Error launching interactive mode:[/red] {e}")
+        raise click.Abort()
 
 
 if __name__ == "__main__":
