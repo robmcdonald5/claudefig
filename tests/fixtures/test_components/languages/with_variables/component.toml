@@ -1,0 +1,31 @@
+[component]
+name = "with_variables"
+type = "language"
+version = "1.0.0"
+description = "Component with Jinja2 variables for testing"
+
+[component.metadata]
+author = "Test Author"
+license = "MIT"
+tags = ["test", "variables", "jinja2"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+language_version = { type = "choice", options = ["3.11", "3.12", "3.13"], default = "3.12" }
+use_strict_mode = { type = "boolean", default = true }
+project_name = { type = "string", default = "MyProject" }
+max_line_length = { type = "integer", default = 88 }
+
+[component.insertion]
+section = "Language Configuration"
+priority = 100
+user_editable = true

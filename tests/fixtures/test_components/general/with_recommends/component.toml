@@ -1,0 +1,27 @@
+[component]
+name = "with_recommends"
+type = "general"
+version = "1.0.0"
+description = "Component with recommended dependency"
+
+[component.metadata]
+author = "Test Author"
+license = "MIT"
+tags = ["test", "recommendations"]
+
+[component.dependencies]
+requires = []
+recommends = ["general/simple"]
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+
+[component.insertion]
+section = "Component With Recommends"
+priority = 30
+user_editable = true

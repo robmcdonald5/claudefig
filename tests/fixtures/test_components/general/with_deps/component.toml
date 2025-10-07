@@ -1,0 +1,27 @@
+[component]
+name = "with_deps"
+type = "general"
+version = "1.0.0"
+description = "Component with required dependency"
+
+[component.metadata]
+author = "Test Author"
+license = "MIT"
+tags = ["test", "dependencies"]
+
+[component.dependencies]
+requires = ["general/base"]
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+
+[component.insertion]
+section = "Component With Dependencies"
+priority = 20
+user_editable = true
