@@ -4,13 +4,12 @@
 
 ### Code Style and Formatting
 
-{% if use_ruff %}
 **Primary Tool:** Ruff (combines formatting + linting)
 
-- **Formatter**: Ruff (replaces Black)
-- **Linter**: Ruff (replaces Flake8, isort, pyupgrade)
+- **Formatter**: Ruff format
+- **Linter**: Ruff check (replaces Flake8, isort, pyupgrade)
 - **Configuration**: `pyproject.toml` → `[tool.ruff]`
-- **Line length**: 88 characters (Black-compatible)
+- **Line length**: 88 characters
 - **Target version**: py{{ python_version | replace(".", "") }}
 
 **Key Rules:**
@@ -25,16 +24,6 @@
   [tool.ruff.lint]
   select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM"]
   ```
-{% else %}
-**Formatting Tools:**
-
-- **Formatter**: Black
-- **Import sorter**: isort
-- **Linter**: Flake8
-- **Line length**: 88 characters
-
-**Configuration**: Use `pyproject.toml` for all tools
-{% endif %}
 
 ### Type Hints
 
@@ -179,14 +168,8 @@ project/
 
 Before committing Python code:
 
-{% if use_ruff %}
 - [ ] Run `ruff format .` to format code
 - [ ] Run `ruff check --fix .` to fix linting issues
-{% else %}
-- [ ] Run `black .` to format code
-- [ ] Run `isort .` to sort imports
-- [ ] Run `flake8` to check for linting issues
-{% endif %}
 {% if use_mypy %}
 - [ ] Run `mypy .` to check types
 {% endif %}
