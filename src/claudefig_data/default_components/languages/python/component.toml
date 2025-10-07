@@ -1,0 +1,31 @@
+[component]
+name = "python"
+type = "language"
+version = "1.0.0"
+description = "Python coding standards and best practices"
+
+[component.metadata]
+author = "claudefig"
+license = "MIT"
+tags = ["python", "language", "coding-standards"]
+
+[component.dependencies]
+requires = []
+recommends = ["general/software-practices", "general/testing-principles"]
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+python_version = { type = "choice", options = ["3.9", "3.10", "3.11", "3.12", "3.13"], default = "3.12" }
+use_ruff = { type = "boolean", default = true }
+use_mypy = { type = "boolean", default = true }
+use_pytest = { type = "boolean", default = true }
+
+[component.insertion]
+section = "Python Coding Standards"
+priority = 100
+user_editable = false

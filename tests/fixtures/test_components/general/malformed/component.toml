@@ -1,0 +1,6 @@
+[component
+name = "malformed"
+this is invalid TOML syntax
+missing closing bracket and quotes
+[component.dependencies]
+requires = [unclosed bracket

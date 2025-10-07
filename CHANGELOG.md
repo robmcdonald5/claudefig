@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project structure with src-layout
 - Basic CLI framework using Click
 - Project documentation (README, CONTRIBUTING, CODE_OF_CONDUCT)
-- Development tooling (Black, Ruff, pytest, mypy)
+- Development tooling (Ruff, pytest, mypy)
 - CI/CD pipeline with GitHub Actions
 - Pre-commit hooks configuration
 

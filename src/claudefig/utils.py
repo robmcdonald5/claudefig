@@ -1,7 +1,6 @@
 """Utility functions for claudefig."""
 
 from pathlib import Path
-from typing import List
 
 
 def ensure_directory(path: Path) -> None:

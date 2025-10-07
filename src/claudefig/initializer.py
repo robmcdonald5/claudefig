@@ -56,7 +56,7 @@ class Initializer:
         # Create .claude directory
         claude_dir = repo_path / ".claude"
         ensure_directory(claude_dir)
-        console.print(f"[green]✓[/green] Created directory: {claude_dir}")
+        console.print(f"[green]+[/green] Created directory: {claude_dir}")
 
         # Get template source
         template_name = self.config.get("claudefig.template_source", "default")
@@ -83,17 +83,15 @@ class Initializer:
         config_path = repo_path / ".claudefig.toml"
         if not config_path.exists():
             Config.create_default(config_path)
-            console.print(f"[green]✓[/green] Created config: {config_path}")
+            console.print(f"[green]+[/green] Created config: {config_path}")
         else:
-            console.print(f"[blue]ℹ[/blue] Config already exists: {config_path}")
+            console.print(f"[blue]i[/blue] Config already exists: {config_path}")
 
         if success:
             console.print("\n[bold green]Initialization complete![/bold green]")
             console.print(f"\nClaude Code configuration initialized in: {repo_path}")
         else:
-            console.print(
-                "\n[yellow]Initialization completed with warnings[/yellow]"
-            )
+            console.print("\n[yellow]Initialization completed with warnings[/yellow]")
 
         return success
 
@@ -116,20 +114,18 @@ class Initializer:
         # Check if file already exists
         if dest_path.exists() and not force:
             console.print(
-                f"[yellow]⚠[/yellow] File already exists (use --force to overwrite): {dest_path}"
+                f"[yellow]![/yellow] File already exists (use --force to overwrite): {dest_path}"
             )
             return False
 
         try:
             content = self.template_manager.read_template_file(template_name, filename)
             dest_path.write_text(content, encoding="utf-8")
-            console.print(f"[green]✓[/green] Created file: {dest_path}")
+            console.print(f"[green]+[/green] Created file: {dest_path}")
             return True
         except FileNotFoundError:
-            console.print(
-                f"[yellow]⚠[/yellow] Template file not found: {filename}"
-            )
+            console.print(f"[yellow]![/yellow] Template file not found: {filename}")
             return False
         except Exception as e:
-            console.print(f"[red]✗[/red] Error creating {filename}: {e}")
+            console.print(f"[red]x[/red] Error creating {filename}: {e}")
             return False

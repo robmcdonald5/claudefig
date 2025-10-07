@@ -1,0 +1,27 @@
+[component]
+name = "base"
+type = "general"
+version = "1.0.0"
+description = "Base component used as dependency"
+
+[component.metadata]
+author = "Test Author"
+license = "MIT"
+tags = ["test", "base"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+
+[component.insertion]
+section = "Base Component"
+priority = 5
+user_editable = true

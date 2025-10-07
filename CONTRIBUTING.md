@@ -113,11 +113,11 @@ Pre-commit hooks will run automatically, but you can also run them manually:
 # Run all pre-commit hooks
 pre-commit run --all-files
 
-# Run Black formatter
-black src/ tests/
-
 # Run Ruff linter
 ruff check src/ tests/
+
+# Run Ruff formatter
+ruff format src/ tests/
 
 # Run mypy type checker
 mypy src/
@@ -127,7 +127,7 @@ mypy src/
 
 ### Python Style
 
-- **Formatter**: Black (line length: 88 characters)
+- **Formatter**: Ruff format (line length: 88 characters)
 - **Linter**: Ruff
 - **Type Hints**: Use type hints for function signatures
 - **Docstrings**: Use Google-style docstrings
@@ -160,7 +160,7 @@ def example_function(param1: str, param2: int) -> bool:
 
 ### Import Order
 
-Imports should be organized in the following order (handled by isort):
+Imports should be organized in the following order (handled by Ruff):
 
 1. Standard library imports
 2. Third-party imports
@@ -240,7 +240,7 @@ you chose this solution.
 
 ### Before Submitting
 
-- [ ] Code follows style guidelines (Black, Ruff)
+- [ ] Code follows style guidelines (formatted with Ruff)
 - [ ] Tests pass locally (`pytest`)
 - [ ] New tests added for new functionality
 - [ ] Documentation updated (README, docstrings)

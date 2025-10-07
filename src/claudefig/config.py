@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -58,7 +58,7 @@ class Config:
 
         return None
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load configuration from file or return defaults.
 
         Returns:

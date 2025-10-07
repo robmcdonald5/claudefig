@@ -14,28 +14,38 @@ from claudefig.template_manager import TemplateManager
 console = Console()
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.version_option(version=__version__, prog_name="claudefig")
-def main():
+@click.pass_context
+def main(ctx):
     """Universal config CLI tool for setting up Claude Code repositories.
 
     claudefig helps you initialize and manage Claude Code configurations
     with templates, settings, and best practices.
+
+    Run without arguments to launch interactive mode.
     """
-    pass
+    from claudefig.user_config import ensure_user_config
+
+    # Initialize user config on any command
+    ensure_user_config(verbose=False)
+
+    # If no subcommand provided, launch interactive mode
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(interactive)
 
 
 @main.command()
 @click.option(
     "--path",
-    default = ".",
-    type = click.Path(exists=True, file_okay=False, dir_okay=True),
-    help = "Repository path to initialize (default: current directory)",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path to initialize (default: current directory)",
 )
 @click.option(
     "--force",
-    is_flag = True,
-    help = "Overwrite existing configuration files",
+    is_flag=True,
+    help="Overwrite existing configuration files",
 )
 def init(path, force):
     """Initialize Claude Code configuration in a repository.
@@ -53,7 +63,9 @@ def init(path, force):
     )
 
     if force:
-        console.print("[yellow]Force mode enabled - will overwrite existing files[/yellow]")
+        console.print(
+            "[yellow]Force mode enabled - will overwrite existing files[/yellow]"
+        )
 
     try:
         config = Config()
@@ -64,7 +76,7 @@ def init(path, force):
             raise click.Abort()
     except Exception as e:
         console.print(f"[red]Error during initialization:[/red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @main.command()
@@ -87,7 +99,9 @@ def show():
 
         table.add_row("Template Source", config.get("claudefig.template_source"))
         table.add_row("Create CLAUDE.md", str(config.get("init.create_claude_md")))
-        table.add_row("Create CONTRIBUTING.md", str(config.get("init.create_contributing")))
+        table.add_row(
+            "Create CONTRIBUTING.md", str(config.get("init.create_contributing"))
+        )
         table.add_row("Create Settings", str(config.get("init.create_settings")))
 
         custom_dir = config.get("custom.template_dir")
@@ -119,9 +133,7 @@ def list_templates():
     try:
         config = Config()
         custom_dir = config.get("custom.template_dir")
-        template_manager = TemplateManager(
-            Path(custom_dir) if custom_dir else None
-        )
+        template_manager = TemplateManager(Path(custom_dir) if custom_dir else None)
 
         templates = template_manager.list_templates()
 
@@ -134,6 +146,25 @@ def list_templates():
 
     except Exception as e:
         console.print(f"[red]Error listing templates:[/red] {e}")
+
+
+@main.command()
+def interactive():
+    """Launch interactive TUI mode."""
+    try:
+        from claudefig.tui import ClaudefigApp
+
+        app = ClaudefigApp()
+        app.run()
+    except ImportError as e:
+        console.print(
+            "[red]Error:[/red] Textual not installed. "
+            "Run: pip install 'claudefig[tui]' or reinstall claudefig"
+        )
+        raise click.Abort() from e
+    except Exception as e:
+        console.print(f"[red]Error launching interactive mode:[/red] {e}")
+        raise click.Abort() from e
 
 
 if __name__ == "__main__":

@@ -24,9 +24,9 @@ pip install -e ".[dev]"
 # Run tests
 pytest
 
-# Run linting
+# Run linting and formatting check
 ruff check .
-black --check .
+ruff format --check .
 ```
 
 ## Code Style

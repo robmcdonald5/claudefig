@@ -1,0 +1,28 @@
+[component]
+name = "testing-principles"
+type = "general"
+version = "1.0.0"
+description = "Software testing principles and best practices"
+
+[component.metadata]
+author = "claudefig"
+license = "MIT"
+tags = ["general", "testing", "quality"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+# No variables
+
+[component.insertion]
+section = "Testing Principles"
+priority = 30
+user_editable = false

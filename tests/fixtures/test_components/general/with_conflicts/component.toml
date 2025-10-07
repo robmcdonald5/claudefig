@@ -1,0 +1,27 @@
+[component]
+name = "with_conflicts"
+type = "general"
+version = "1.0.0"
+description = "Component that conflicts with another"
+
+[component.metadata]
+author = "Test Author"
+license = "MIT"
+tags = ["test", "conflicts"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = ["conflicting"]
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+
+[component.insertion]
+section = "Component With Conflicts"
+priority = 40
+user_editable = true

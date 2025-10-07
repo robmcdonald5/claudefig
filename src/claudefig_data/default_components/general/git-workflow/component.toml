@@ -1,0 +1,28 @@
+[component]
+name = "git-workflow"
+type = "general"
+version = "1.0.0"
+description = "Git workflow conventions and branching strategy"
+
+[component.metadata]
+author = "claudefig"
+license = "MIT"
+tags = ["general", "git", "workflow", "branching"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+# No variables
+
+[component.insertion]
+section = "Git Workflow"
+priority = 20
+user_editable = false

@@ -1,0 +1,27 @@
+[component]
+name = "simple"
+type = "general"
+version = "1.0.0"
+description = "Simple test component with no dependencies"
+
+[component.metadata]
+author = "Test Author"
+license = "MIT"
+tags = ["test"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+
+[component.insertion]
+section = "Simple Component"
+priority = 10
+user_editable = true

@@ -1,0 +1,28 @@
+[component]
+name = "software-practices"
+type = "general"
+version = "1.0.0"
+description = "General software development best practices and principles"
+
+[component.metadata]
+author = "claudefig"
+license = "MIT"
+tags = ["general", "best-practices", "principles"]
+
+[component.dependencies]
+requires = []
+recommends = []
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+# No variables for this component
+
+[component.insertion]
+section = "General Software Practices"
+priority = 10
+user_editable = false
