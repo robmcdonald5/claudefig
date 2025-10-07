@@ -154,3 +154,6 @@ src/claudefig/_version.py
 # Claude
 .claude/
 CLAUDE.md
+
+# Test directories
+test-init-demo/
