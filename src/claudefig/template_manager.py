@@ -1,13 +1,8 @@
 """Template management for claudefig."""
 
-import sys
+from importlib.resources import files
 from pathlib import Path
-from typing import List, Optional
-
-if sys.version_info < (3, 9):
-    from importlib_resources import files
-else:
-    from importlib.resources import files
+from typing import Optional
 
 
 class TemplateManager:
@@ -44,18 +39,13 @@ class TemplateManager:
         try:
             # Use importlib.resources to access package data
             template_files = files("templates") / template_name
-            if sys.version_info >= (3, 9):
-                # For Python 3.9+, we can work with the path directly
-                return Path(str(template_files))
-            else:
-                # For Python 3.8, we need to handle it differently
-                return Path(str(template_files))
+            return Path(str(template_files))
         except (TypeError, FileNotFoundError) as e:
             raise FileNotFoundError(
                 f"Template '{template_name}' not found in built-in templates"
             ) from e
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """List available templates.
 
         Returns:
@@ -66,16 +56,15 @@ class TemplateManager:
         # List built-in templates
         try:
             template_root = files("claudefig.templates")
-            if sys.version_info >= (3, 9):
-                template_path = Path(str(template_root))
-                if template_path.exists() and template_path.is_dir():
-                    templates.extend(
-                        [
-                            d.name
-                            for d in template_path.iterdir()
-                            if d.is_dir() and not d.name.startswith("_")
-                        ]
-                    )
+            template_path = Path(str(template_root))
+            if template_path.exists() and template_path.is_dir():
+                templates.extend(
+                    [
+                        d.name
+                        for d in template_path.iterdir()
+                        if d.is_dir() and not d.name.startswith("_")
+                    ]
+                )
         except Exception:
             pass
 
@@ -90,7 +79,7 @@ class TemplateManager:
 
         return sorted(templates)
 
-    def get_template_files(self, template_name: str = "default") -> List[Path]:
+    def get_template_files(self, template_name: str = "default") -> list[Path]:
         """Get list of files in a template.
 
         Args:

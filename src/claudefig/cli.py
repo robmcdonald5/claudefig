@@ -76,7 +76,7 @@ def init(path, force):
             raise click.Abort()
     except Exception as e:
         console.print(f"[red]Error during initialization:[/red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @main.command()
@@ -156,15 +156,15 @@ def interactive():
 
         app = ClaudefigApp()
         app.run()
-    except ImportError:
+    except ImportError as e:
         console.print(
             "[red]Error:[/red] Textual not installed. "
             "Run: pip install 'claudefig[tui]' or reinstall claudefig"
         )
-        raise click.Abort()
+        raise click.Abort() from e
     except Exception as e:
         console.print(f"[red]Error launching interactive mode:[/red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 """Component system for modular configuration generation."""
 
+import contextlib
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -13,7 +14,7 @@ else:
 class ComponentMetadata:
     """Metadata for a single component."""
 
-    def __init__(self, component_dir: Path, metadata: Dict[str, Any]):
+    def __init__(self, component_dir: Path, metadata: dict[str, Any]):
         """Initialize component metadata.
 
         Args:
@@ -57,7 +58,7 @@ class ComponentMetadata:
         self.priority = insertion.get("priority", 100)
         self.user_editable = insertion.get("user_editable", False)
 
-    def get_file_paths(self, file_type: str = "claude_md") -> List[Path]:
+    def get_file_paths(self, file_type: str = "claude_md") -> list[Path]:
         """Get full paths to component files.
 
         Args:
@@ -119,7 +120,7 @@ class ComponentLoader:
             print(f"Error loading component {component_path}: {e}")
             return None
 
-    def list_components(self, category: Optional[str] = None) -> List[str]:
+    def list_components(self, category: Optional[str] = None) -> list[str]:
         """List all available components.
 
         Args:
@@ -161,8 +162,8 @@ class ComponentLoader:
         return sorted(components)
 
     def resolve_dependencies(
-        self, component_paths: List[str]
-    ) -> List[ComponentMetadata]:
+        self, component_paths: list[str]
+    ) -> list[ComponentMetadata]:
         """Resolve component dependencies and return sorted list.
 
         Args:
@@ -174,7 +175,7 @@ class ComponentLoader:
         Raises:
             ValueError: If there are dependency conflicts.
         """
-        resolved: List[ComponentMetadata] = []
+        resolved: list[ComponentMetadata] = []
         visited: set[str] = set()
 
         def resolve_recursive(path: str):
@@ -194,11 +195,9 @@ class ComponentLoader:
             # Add recommended dependencies (optional)
             for rec in component.recommends:
                 if rec not in visited:
-                    try:
+                    # Recommended dependencies are optional
+                    with contextlib.suppress(ValueError):
                         resolve_recursive(rec)
-                    except ValueError:
-                        # Recommended dependencies are optional
-                        pass
 
             resolved.append(component)
 
@@ -219,7 +218,7 @@ class ComponentLoader:
 
         return resolved
 
-    def get_component_info(self, component_path: str) -> Optional[Dict[str, Any]]:
+    def get_component_info(self, component_path: str) -> Optional[dict[str, Any]]:
         """Get detailed information about a component.
 
         Args:

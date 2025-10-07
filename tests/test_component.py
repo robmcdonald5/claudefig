@@ -107,9 +107,11 @@ conflicts = ["languages/javascript"]
 
         component_path = create_test_component("general", "malformed", malformed_toml)
 
-        with pytest.raises(Exception):  # Should raise TOML parsing error
-            with open(component_path / "component.toml", "rb") as f:
-                tomllib.load(f)
+        with (
+            pytest.raises((tomllib.TOMLDecodeError, ValueError)),
+            open(component_path / "component.toml", "rb") as f,
+        ):
+            tomllib.load(f)
 
     def test_get_file_paths_claude_md(
         self, create_test_component, sample_component_toml

@@ -106,9 +106,11 @@ class TestInitializeMethod:
         mock_copy.return_value = True
         initializer = Initializer(mock_config)
 
-        with patch("claudefig.initializer.console.input", return_value="y"):
-            with patch.object(Config, "create_default"):
-                result = initializer.initialize(git_repo)
+        with (
+            patch("claudefig.initializer.console.input", return_value="y"),
+            patch.object(Config, "create_default"),
+        ):
+            result = initializer.initialize(git_repo)
 
         assert result is True
         mock_ensure_dir.assert_called_once()

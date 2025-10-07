@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from jinja2 import TemplateSyntaxError
 
 from claudefig.renderer import ComponentRenderer, MarkdownComposer
 
@@ -81,7 +82,7 @@ class TestComponentRenderer:
         """Test that invalid Jinja2 syntax raises exception."""
         invalid_template = "{{ unclosed"
 
-        with pytest.raises(Exception):
+        with pytest.raises(TemplateSyntaxError):
             renderer.render_string(invalid_template, {})
 
     def test_render_component_files_single(self, renderer, tmp_path):

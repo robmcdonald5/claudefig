@@ -48,7 +48,7 @@ class ComponentRenderer:
             return rendered
 
         except Exception as e:
-            raise Exception(f"Error rendering {file_path}: {e}")
+            raise Exception(f"Error rendering {file_path}: {e}") from e
 
     def render_string(self, content: str, variables: dict[str, Any]) -> str:
         """Render a template string with variables.
@@ -143,7 +143,7 @@ class MarkdownComposer:
             parts.append("---\n")
 
         # Add each section
-        for section_name, section_data in sorted_sections:
+        for _section_name, section_data in sorted_sections:
             content = section_data["content"]
             parts.append(content)
 

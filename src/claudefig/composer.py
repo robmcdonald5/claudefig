@@ -1,7 +1,7 @@
 """High-level component composition orchestrator."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from rich.console import Console
 
@@ -25,8 +25,8 @@ class ComponentComposer:
 
     def compose_claude_md(
         self,
-        component_paths: List[str],
-        variables: Optional[Dict[str, Any]] = None,
+        component_paths: list[str],
+        variables: Optional[dict[str, Any]] = None,
         include_toc: bool = False,
     ) -> str:
         """Compose CLAUDE.md from selected components.
@@ -86,8 +86,8 @@ class ComponentComposer:
 
     def compose_settings_json(
         self,
-        component_paths: List[str],
-        variables: Optional[Dict[str, Any]] = None,
+        component_paths: list[str],
+        variables: Optional[dict[str, Any]] = None,
     ) -> str:
         """Compose .claude/settings.json from selected components.
 
@@ -130,8 +130,8 @@ class ComponentComposer:
 
     def compose_contributing_md(
         self,
-        component_paths: List[str],
-        variables: Optional[Dict[str, Any]] = None,
+        component_paths: list[str],
+        variables: Optional[dict[str, Any]] = None,
     ) -> str:
         """Compose CONTRIBUTING.md from selected components.
 
@@ -174,8 +174,8 @@ class ComponentComposer:
         return composer.compose(include_toc=False)
 
     def _merge_variables(
-        self, component_variables: Dict[str, Any], provided_variables: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, component_variables: dict[str, Any], provided_variables: dict[str, Any]
+    ) -> dict[str, Any]:
         """Merge component default variables with provided variables.
 
         Args:
@@ -199,7 +199,7 @@ class ComponentComposer:
 
         return merged
 
-    def get_available_components(self, category: Optional[str] = None) -> List[str]:
+    def get_available_components(self, category: Optional[str] = None) -> list[str]:
         """Get list of available components.
 
         Args:
@@ -210,7 +210,7 @@ class ComponentComposer:
         """
         return self.loader.list_components(category)
 
-    def get_component_details(self, component_path: str) -> Optional[Dict[str, Any]]:
+    def get_component_details(self, component_path: str) -> Optional[dict[str, Any]]:
         """Get detailed information about a component.
 
         Args:
@@ -221,7 +221,7 @@ class ComponentComposer:
         """
         return self.loader.get_component_info(component_path)
 
-    def validate_components(self, component_paths: List[str]) -> tuple[bool, str]:
+    def validate_components(self, component_paths: list[str]) -> tuple[bool, str]:
         """Validate that components can be resolved without errors.
 
         Args:
