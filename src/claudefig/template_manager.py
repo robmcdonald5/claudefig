@@ -43,7 +43,7 @@ class TemplateManager:
         # Fall back to built-in templates
         try:
             # Use importlib.resources to access package data
-            template_files = files("claudefig.templates") / template_name
+            template_files = files("templates") / template_name
             if sys.version_info >= (3, 9):
                 # For Python 3.9+, we can work with the path directly
                 return Path(str(template_files))
