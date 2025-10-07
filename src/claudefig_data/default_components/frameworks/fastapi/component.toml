@@ -1,0 +1,30 @@
+[component]
+name = "fastapi"
+type = "framework"
+version = "1.0.0"
+description = "FastAPI framework best practices and patterns"
+
+[component.metadata]
+author = "claudefig"
+license = "MIT"
+tags = ["fastapi", "framework", "api", "python"]
+
+[component.dependencies]
+requires = ["languages/python"]
+recommends = ["general/testing-principles"]
+conflicts = []
+
+[component.files]
+claude_md = ["content.md"]
+settings = []
+contributing = []
+
+[component.variables]
+use_async = { type = "boolean", default = true }
+use_sqlalchemy = { type = "boolean", default = true }
+use_pydantic_v2 = { type = "boolean", default = true }
+
+[component.insertion]
+section = "FastAPI Best Practices"
+priority = 200
+user_editable = false
