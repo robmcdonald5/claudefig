@@ -23,6 +23,7 @@ class Config:
         "init": {
             "create_claude_md": True,
             "create_gitignore_entries": True,
+            "overwrite_existing": False,
         },
         "claude": {
             # .claude/ directory features - all disabled by default
