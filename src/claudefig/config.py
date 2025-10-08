@@ -23,7 +23,17 @@ class Config:
         "init": {
             "create_claude_md": True,
             "create_gitignore_entries": True,
+        },
+        "claude": {
+            # .claude/ directory features - all disabled by default
             "create_settings": False,
+            "create_settings_local": False,
+            "create_commands": False,
+            "create_agents": False,
+            "create_hooks": False,
+            "create_output_styles": False,
+            "create_statusline": False,
+            "create_mcp": False,
         },
         "custom": {
             "template_dir": "",

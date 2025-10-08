@@ -69,10 +69,8 @@ class Initializer:
                 template_name, "CLAUDE.md", repo_path, force
             )
 
-        if self.config.get("init.create_settings", False):
-            success &= self._copy_template_file(
-                template_name, "settings.json", claude_dir, force
-            )
+        # .claude/ directory features
+        self._setup_claude_directory(claude_dir, template_name, force)
 
         # Update .gitignore with claudefig entries
         if self.config.get("init.create_gitignore_entries", True):
@@ -183,4 +181,255 @@ class Initializer:
             return False
         except Exception as e:
             console.print(f"[red]x[/red] Error updating .gitignore: {e}")
+            return False
+
+    def _setup_claude_directory(
+        self, claude_dir: Path, template_name: str, force: bool
+    ) -> None:
+        """Set up .claude/ directory with optional features.
+
+        Args:
+            claude_dir: Path to .claude directory
+            template_name: Name of template set
+            force: If True, overwrite existing files
+        """
+        # settings.json - team shared config
+        if self.config.get("claude.create_settings", False):
+            self._copy_claude_template_file(
+                template_name, "settings.json", claude_dir, force
+            )
+
+        # settings.local.json - personal project config
+        if self.config.get("claude.create_settings_local", False):
+            self._copy_claude_template_file(
+                template_name, "settings.local.json", claude_dir, force
+            )
+
+        # commands/ - custom slash commands
+        if self.config.get("claude.create_commands", False):
+            self._copy_template_directory(
+                template_name, "claude/commands", claude_dir / "commands", force
+            )
+
+        # agents/ - custom sub-agents
+        if self.config.get("claude.create_agents", False):
+            self._copy_template_directory(
+                template_name, "claude/agents", claude_dir / "agents", force
+            )
+
+        # hooks/ - custom hooks
+        if self.config.get("claude.create_hooks", False):
+            self._copy_template_directory(
+                template_name, "claude/hooks", claude_dir / "hooks", force
+            )
+
+        # output-styles/ - custom output styles
+        if self.config.get("claude.create_output_styles", False):
+            self._copy_template_directory(
+                template_name,
+                "claude/output-styles",
+                claude_dir / "output-styles",
+                force,
+            )
+
+        # statusline.sh - custom status line
+        if self.config.get("claude.create_statusline", False):
+            self._copy_claude_template_file(
+                template_name, "statusline.sh", claude_dir, force
+            )
+            # Make statusline.sh executable
+            statusline_path = claude_dir / "statusline.sh"
+            if statusline_path.exists():
+                statusline_path.chmod(0o755)
+
+        # mcp/ - MCP server configs
+        if self.config.get("claude.create_mcp", False):
+            self._copy_template_directory(
+                template_name, "claude/mcp", claude_dir / "mcp", force
+            )
+
+    def setup_mcp_servers(self, repo_path: Path) -> bool:
+        """Set up MCP servers from .claude/mcp/ directory.
+
+        Runs 'claude mcp add-json' for each JSON file in .claude/mcp/
+
+        Args:
+            repo_path: Path to repository
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        import subprocess
+        import json
+
+        mcp_dir = repo_path / ".claude" / "mcp"
+
+        if not mcp_dir.exists():
+            console.print("[yellow]![/yellow] No .claude/mcp/ directory found")
+            return False
+
+        # Find all JSON files
+        json_files = list(mcp_dir.glob("*.json"))
+
+        if not json_files:
+            console.print("[yellow]![/yellow] No MCP config files found in .claude/mcp/")
+            return False
+
+        console.print(f"\n[bold blue]Setting up MCP servers...[/bold blue]")
+
+        success_count = 0
+        for json_file in json_files:
+            # Extract server name from filename (remove example- prefix if present)
+            server_name = json_file.stem
+            if server_name.startswith("example-"):
+                server_name = server_name.replace("example-", "")
+
+            try:
+                # Read JSON content
+                with open(json_file, "r", encoding="utf-8") as f:
+                    json_content = f.read().strip()
+
+                # Validate JSON
+                json.loads(json_content)
+
+                # Build claude mcp add-json command
+                cmd = ["claude", "mcp", "add-json", server_name, json_content]
+
+                console.print(
+                    f"[dim]Running:[/dim] claude mcp add-json {server_name} ..."
+                )
+
+                # Run command
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=30
+                )
+
+                if result.returncode == 0:
+                    console.print(
+                        f"[green]+[/green] Added MCP server: {server_name}"
+                    )
+                    success_count += 1
+                else:
+                    console.print(
+                        f"[yellow]![/yellow] Failed to add {server_name}: {result.stderr.strip()}"
+                    )
+
+            except json.JSONDecodeError as e:
+                console.print(
+                    f"[red]x[/red] Invalid JSON in {json_file.name}: {e}"
+                )
+            except subprocess.TimeoutExpired:
+                console.print(
+                    f"[red]x[/red] Timeout adding {server_name}"
+                )
+            except FileNotFoundError:
+                console.print(
+                    "[red]x[/red] 'claude' command not found. Make sure Claude Code is installed."
+                )
+                return False
+            except Exception as e:
+                console.print(
+                    f"[red]x[/red] Error adding {server_name}: {e}"
+                )
+
+        if success_count > 0:
+            console.print(
+                f"\n[bold green]Added {success_count} MCP server(s)[/bold green]"
+            )
+            return True
+        else:
+            console.print("\n[yellow]No MCP servers were added[/yellow]")
+            return False
+
+    def _copy_claude_template_file(
+        self, template_name: str, filename: str, dest_dir: Path, force: bool
+    ) -> bool:
+        """Copy a file from claude/ template subdirectory to destination.
+
+        Args:
+            template_name: Name of template set
+            filename: Name of file in claude/ subdirectory
+            dest_dir: Destination directory (.claude/)
+            force: If True, overwrite existing files
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        from pathlib import Path as PathLib
+
+        # Source is claude/filename in template
+        source_path = f"claude/{filename}"
+        # Destination is dest_dir/filename (not dest_dir/claude/filename)
+        dest_path = dest_dir / filename
+
+        # Check if file already exists
+        if dest_path.exists() and not force:
+            console.print(
+                f"[yellow]![/yellow] File already exists (use --force to overwrite): {dest_path}"
+            )
+            return False
+
+        try:
+            content = self.template_manager.read_template_file(template_name, source_path)
+            dest_path.write_text(content, encoding="utf-8")
+            console.print(f"[green]+[/green] Created file: {dest_path}")
+            return True
+        except FileNotFoundError:
+            console.print(f"[yellow]![/yellow] Template file not found: {source_path}")
+            return False
+        except Exception as e:
+            console.print(f"[red]x[/red] Error creating {filename}: {e}")
+            return False
+
+    def _copy_template_directory(
+        self, template_name: str, source_dir: str, dest_dir: Path, force: bool
+    ) -> bool:
+        """Copy a template directory to destination.
+
+        Args:
+            template_name: Name of template set
+            source_dir: Source directory path relative to template
+            dest_dir: Destination directory path
+            force: If True, overwrite existing files
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        from importlib.resources import files
+        import shutil
+
+        try:
+            # Get template source directory
+            template_root = files("templates").joinpath(template_name)
+            source_path = template_root.joinpath(source_dir)
+
+            # Create destination directory
+            ensure_directory(dest_dir)
+
+            # Copy all files from source to destination
+            copied_count = 0
+            for item in source_path.iterdir():
+                if item.is_file():
+                    dest_file = dest_dir / item.name
+                    if dest_file.exists() and not force:
+                        console.print(
+                            f"[yellow]![/yellow] File already exists (use --force to overwrite): {dest_file}"
+                        )
+                        continue
+
+                    shutil.copy2(str(item), dest_file)
+                    copied_count += 1
+                    console.print(f"[green]+[/green] Created file: {dest_file}")
+
+            if copied_count > 0:
+                console.print(
+                    f"[green]+[/green] Created directory: {dest_dir} ({copied_count} files)"
+                )
+            return True
+
+        except FileNotFoundError:
+            console.print(f"[yellow]![/yellow] Template directory not found: {source_dir}")
+            return False
+        except Exception as e:
+            console.print(f"[red]x[/red] Error copying directory {source_dir}: {e}")
             return False
