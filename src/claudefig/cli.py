@@ -53,8 +53,8 @@ def init(path, force):
     Creates necessary files and directory structure for Claude Code integration:
     - .claude/ directory
     - CLAUDE.md configuration file
-    - Template files
-    - MCP server configurations
+    - Optional settings.json
+    - .claudefig.toml configuration
     """
     repo_path = Path(path).resolve()
 
@@ -99,9 +99,6 @@ def show():
 
         table.add_row("Template Source", config.get("claudefig.template_source"))
         table.add_row("Create CLAUDE.md", str(config.get("init.create_claude_md")))
-        table.add_row(
-            "Create CONTRIBUTING.md", str(config.get("init.create_contributing"))
-        )
         table.add_row("Create Settings", str(config.get("init.create_settings")))
 
         custom_dir = config.get("custom.template_dir")

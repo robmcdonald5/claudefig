@@ -69,11 +69,6 @@ class Initializer:
                 template_name, "CLAUDE.md", repo_path, force
             )
 
-        if self.config.get("init.create_contributing", True):
-            success &= self._copy_template_file(
-                template_name, "CONTRIBUTING.md", repo_path, force
-            )
-
         if self.config.get("init.create_settings", False):
             success &= self._copy_template_file(
                 template_name, "settings.json", claude_dir, force

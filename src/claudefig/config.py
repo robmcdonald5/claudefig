@@ -22,7 +22,6 @@ class Config:
         },
         "init": {
             "create_claude_md": True,
-            "create_contributing": True,
             "create_gitignore_entries": True,
             "create_settings": False,
         },
