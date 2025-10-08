@@ -74,6 +74,10 @@ class Initializer:
                 template_name, "settings.json", claude_dir, force
             )
 
+        # Update .gitignore with claudefig entries
+        if self.config.get("init.create_gitignore_entries", True):
+            success &= self._update_gitignore(repo_path, template_name)
+
         # Create config file if it doesn't exist
         config_path = repo_path / ".claudefig.toml"
         if not config_path.exists():
@@ -123,4 +127,60 @@ class Initializer:
             return False
         except Exception as e:
             console.print(f"[red]x[/red] Error creating {filename}: {e}")
+            return False
+
+    def _update_gitignore(self, repo_path: Path, template_name: str) -> bool:
+        """Add or update .gitignore with claudefig entries.
+
+        Args:
+            repo_path: Path to repository
+            template_name: Name of template set to use for gitignore entries
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        gitignore_path = repo_path / ".gitignore"
+
+        try:
+            # Read the gitignore entries template
+            entries = self.template_manager.read_template_file(
+                template_name, "gitignore_entries.txt"
+            )
+            entries = entries.strip()
+
+            # Check if .gitignore exists
+            if gitignore_path.exists():
+                # Read existing content
+                existing_content = gitignore_path.read_text(encoding="utf-8")
+
+                # Check if claudefig section already exists
+                if "# claudefig" in existing_content or ".claudefig.toml" in existing_content:
+                    console.print(
+                        "[blue]i[/blue] .gitignore already contains claudefig entries"
+                    )
+                    return True
+
+                # Append to existing gitignore
+                # Ensure there's a blank line before our section
+                separator = "\n\n" if existing_content.strip() else ""
+                new_content = existing_content.rstrip() + separator + entries + "\n"
+
+                gitignore_path.write_text(new_content, encoding="utf-8")
+                console.print(
+                    "[green]+[/green] Updated .gitignore with claudefig entries"
+                )
+            else:
+                # Create new .gitignore
+                gitignore_path.write_text(entries + "\n", encoding="utf-8")
+                console.print("[green]+[/green] Created .gitignore with claudefig entries")
+
+            return True
+
+        except FileNotFoundError:
+            console.print(
+                "[yellow]![/yellow] gitignore_entries.txt template not found"
+            )
+            return False
+        except Exception as e:
+            console.print(f"[red]x[/red] Error updating .gitignore: {e}")
             return False
