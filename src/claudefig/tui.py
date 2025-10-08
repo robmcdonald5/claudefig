@@ -1,19 +1,68 @@
 """Interactive TUI (Text User Interface) for claudefig."""
 
 from textual.app import App, ComposeResult
-from textual.containers import Container
-from textual.screen import Screen
+from textual.binding import Binding
+from textual.containers import Container, Horizontal, Vertical
+from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Static
 
 from claudefig import __version__
 
 
-class MainMenuScreen(Screen):
-    """Main menu screen with navigation options."""
+class ContentPanel(Static):
+    """Dynamic content panel that displays based on selection."""
+
+    def __init__(self, **kwargs) -> None:
+        """Initialize the content panel."""
+        super().__init__(**kwargs)
+        self.current_section: str | None = None
+
+    def show_section(self, section: str) -> None:
+        """Display content for the specified section."""
+        self.current_section = section
+
+        content_map = {
+            "init": ("Initialize Project", "Interactive project initialization wizard\n(Coming soon)"),
+            "components": ("Manage Components", "View, add, and remove components\n(Coming soon)"),
+            "config": ("View Configuration", "Display current claudefig configuration\n(Coming soon)"),
+            "settings": ("Settings", "Configure claudefig preferences\n(Coming soon)"),
+        }
+
+        if section in content_map:
+            title, description = content_map[section]
+            self.update(f"[bold cyan]{title}[/]\n\n[dim]{description}[/]")
+            self.display = True
+        else:
+            self.update("")
+            self.display = False
+
+    def clear(self) -> None:
+        """Clear the content panel."""
+        self.current_section = None
+        self.update("")
+        self.display = False
+
+
+class MainScreen(App):
+    """Main claudefig TUI application with side-by-side layout."""
+
+    TITLE = "claudefig"
+    SUB_TITLE = f"v{__version__}"
 
     CSS = """
-    MainMenuScreen {
-        align: left top;
+    Screen {
+        background: $surface;
+    }
+
+    #main-container {
+        width: 100%;
+        height: 100%;
+    }
+
+    #menu-panel {
+        width: 40;
+        height: 100%;
+        padding: 1 2;
     }
 
     #title {
@@ -21,22 +70,18 @@ class MainMenuScreen(Screen):
         color: $accent;
         margin-bottom: 0;
         margin-top: 1;
-        margin-left: 2;
     }
 
     #version {
         color: $text-muted;
-        margin-bottom: 1;
-        margin-left: 2;
+        margin-bottom: 2;
     }
 
-    Container {
-        width: 40;
+    #menu-buttons {
+        width: 100%;
         height: auto;
         border: round $primary;
         padding: 1;
-        margin-left: 2;
-        margin-top: 0;
     }
 
     Button {
@@ -44,36 +89,71 @@ class MainMenuScreen(Screen):
         margin: 0;
         min-height: 1;
         padding: 0 1;
+        background: $panel;
     }
 
-    /* Consistent focus styling for all buttons */
     Button:focus {
+        text-style: bold;
+        border: solid $accent;
+    }
+
+    Button.active {
+        background: $accent;
+        color: $text;
         text-style: bold;
     }
 
-    Button.-active {
-        background: $panel;
+    Button.active:focus {
+        background: $accent;
+        color: $text;
+        text-style: bold;
+        border: solid $accent;
+    }
+
+    #content-panel {
+        width: 1fr;
+        height: 100%;
+        border-left: solid $primary;
+        padding: 2 4;
+        display: none;
+    }
+
+    #content-panel.visible {
+        display: block;
     }
     """
 
     BINDINGS = [
         ("q", "quit", "Quit"),
-        ("escape", "quit", "Quit"),
-        ("up", "app.focus_previous", "Focus Previous"),
-        ("down", "app.focus_next", "Focus Next"),
+        ("ctrl+c", "quit", "Quit"),
+        Binding("escape", "clear_selection", "Back", key_display="esc/←"),
+        Binding("backspace", "clear_selection", "Back", show=False),
+        ("up", "focus_previous", "Focus Previous"),
+        ("down", "focus_next", "Focus Next"),
     ]
 
+    active_button: reactive[str | None] = reactive(None)
+
     def compose(self) -> ComposeResult:
-        """Compose the main menu screen."""
+        """Compose the application layout."""
         yield Header()
-        with Container():
-            yield Static("claudefig", id="title")
-            yield Static(f"v{__version__}", id="version")
-            yield Button("Initialize Project", id="init")
-            yield Button("Manage Components", id="components")
-            yield Button("View Configuration", id="config")
-            yield Button("Settings", id="settings")
-            yield Button("Exit", id="exit")
+
+        with Horizontal(id="main-container"):
+            # Left panel - Menu
+            with Vertical(id="menu-panel"):
+                yield Static("claudefig", id="title")
+                yield Static(f"v{__version__}", id="version")
+
+                with Container(id="menu-buttons"):
+                    yield Button("Initialize Project", id="init")
+                    yield Button("Manage Components", id="components")
+                    yield Button("View Configuration", id="config")
+                    yield Button("Settings", id="settings")
+                    yield Button("Exit", id="exit")
+
+            # Right panel - Content
+            yield ContentPanel(id="content-panel")
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -84,336 +164,55 @@ class MainMenuScreen(Screen):
         """Handle button press events."""
         button_id = event.button.id
 
-        if button_id == "init":
-            self.app.push_screen("init")
-        elif button_id == "components":
-            self.app.push_screen("components")
-        elif button_id == "config":
-            self.app.push_screen("config")
-        elif button_id == "settings":
-            self.app.push_screen("settings")
-        elif button_id == "exit":
-            self.app.exit()
+        if not button_id:
+            return
+
+        if button_id == "exit":
+            self.exit()
+            return
+
+        # Activate the section
+        self._activate_section(button_id)
+
+    def _activate_section(self, section_id: str) -> None:
+        """Activate a section and update UI accordingly."""
+        # Update active button state
+        self.active_button = section_id
+
+        # Update button styling
+        for button in self.query(Button):
+            if button.id == section_id:
+                button.add_class("active")
+            else:
+                button.remove_class("active")
+
+        # Show content panel
+        content_panel = self.query_one(ContentPanel)
+        content_panel.show_section(section_id)
+        content_panel.add_class("visible")
+
+    def action_clear_selection(self) -> None:
+        """Clear the active selection and hide content panel."""
+        # Clear active button styling
+        for button in self.query(Button):
+            button.remove_class("active")
+
+        # Hide content panel
+        content_panel = self.query_one(ContentPanel)
+        content_panel.clear()
+        content_panel.remove_class("visible")
+
+        self.active_button = None
+
+        # Refocus the first button
+        self.query_one("#init", Button).focus()
 
 
-class InitProjectScreen(Screen):
-    """Screen for initializing a new project."""
-
-    CSS = """
-    InitProjectScreen {
-        align: left top;
-    }
-
-    Container {
-        width: 60;
-        height: auto;
-        border: round $primary;
-        padding: 1;
-        margin-left: 2;
-        margin-top: 1;
-    }
-
-    #screen-title {
-        text-style: bold;
-        color: $accent;
-        margin-bottom: 1;
-    }
-
-    #placeholder {
-        height: 6;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
-    Button {
-        width: 100%;
-        margin-top: 0;
-        min-height: 1;
-        padding: 0 1;
-    }
-
-    Button:focus {
-        text-style: bold;
-    }
-    """
-
-    BINDINGS = [
-        ("escape", "back", "Back"),
-        ("backspace", "back", "Back"),
-        ("up", "app.focus_previous", "Focus Previous"),
-        ("down", "app.focus_next", "Focus Next"),
-    ]
-
-    def compose(self) -> ComposeResult:
-        """Compose the init project screen."""
-        yield Header()
-        with Container():
-            yield Static("Initialize Project", id="screen-title")
-            yield Static(
-                "Interactive project initialization wizard\n(Coming soon)",
-                id="placeholder",
-            )
-            yield Button("Back to Main Menu", id="back")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Set focus to back button on mount."""
-        self.query_one("#back", Button).focus()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button press events."""
-        if event.button.id == "back":
-            self.app.pop_screen()
-
-    def action_back(self) -> None:
-        """Navigate back to main menu."""
-        self.app.pop_screen()
-
-
-class ComponentsScreen(Screen):
-    """Screen for managing components."""
-
-    CSS = """
-    ComponentsScreen {
-        align: left top;
-    }
-
-    Container {
-        width: 60;
-        height: auto;
-        border: round $primary;
-        padding: 1;
-        margin-left: 2;
-        margin-top: 1;
-    }
-
-    #screen-title {
-        text-style: bold;
-        color: $accent;
-        margin-bottom: 1;
-    }
-
-    #placeholder {
-        height: 6;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
-    Button {
-        width: 100%;
-        margin-top: 0;
-        min-height: 1;
-        padding: 0 1;
-    }
-
-    Button:focus {
-        text-style: bold;
-    }
-    """
-
-    BINDINGS = [
-        ("escape", "back", "Back"),
-        ("backspace", "back", "Back"),
-        ("up", "app.focus_previous", "Focus Previous"),
-        ("down", "app.focus_next", "Focus Next"),
-    ]
-
-    def compose(self) -> ComposeResult:
-        """Compose the components management screen."""
-        yield Header()
-        with Container():
-            yield Static("Manage Components", id="screen-title")
-            yield Static(
-                "View, add, and remove components\n(Coming soon)", id="placeholder"
-            )
-            yield Button("Back to Main Menu", id="back")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Set focus to back button on mount."""
-        self.query_one("#back", Button).focus()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button press events."""
-        if event.button.id == "back":
-            self.app.pop_screen()
-
-    def action_back(self) -> None:
-        """Navigate back to main menu."""
-        self.app.pop_screen()
-
-
-class ConfigScreen(Screen):
-    """Screen for viewing configuration."""
-
-    CSS = """
-    ConfigScreen {
-        align: left top;
-    }
-
-    Container {
-        width: 60;
-        height: auto;
-        border: round $primary;
-        padding: 1;
-        margin-left: 2;
-        margin-top: 1;
-    }
-
-    #screen-title {
-        text-style: bold;
-        color: $accent;
-        margin-bottom: 1;
-    }
-
-    #placeholder {
-        height: 6;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
-    Button {
-        width: 100%;
-        margin-top: 0;
-        min-height: 1;
-        padding: 0 1;
-    }
-
-    Button:focus {
-        text-style: bold;
-    }
-    """
-
-    BINDINGS = [
-        ("escape", "back", "Back"),
-        ("backspace", "back", "Back"),
-        ("up", "app.focus_previous", "Focus Previous"),
-        ("down", "app.focus_next", "Focus Next"),
-    ]
-
-    def compose(self) -> ComposeResult:
-        """Compose the configuration viewer screen."""
-        yield Header()
-        with Container():
-            yield Static("View Configuration", id="screen-title")
-            yield Static(
-                "Display current claudefig configuration\n(Coming soon)",
-                id="placeholder",
-            )
-            yield Button("Back to Main Menu", id="back")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Set focus to back button on mount."""
-        self.query_one("#back", Button).focus()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button press events."""
-        if event.button.id == "back":
-            self.app.pop_screen()
-
-    def action_back(self) -> None:
-        """Navigate back to main menu."""
-        self.app.pop_screen()
-
-
-class SettingsScreen(Screen):
-    """Screen for application settings."""
-
-    CSS = """
-    SettingsScreen {
-        align: left top;
-    }
-
-    Container {
-        width: 60;
-        height: auto;
-        border: round $primary;
-        padding: 1;
-        margin-left: 2;
-        margin-top: 1;
-    }
-
-    #screen-title {
-        text-style: bold;
-        color: $accent;
-        margin-bottom: 1;
-    }
-
-    #placeholder {
-        height: 6;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
-    Button {
-        width: 100%;
-        margin-top: 0;
-        min-height: 1;
-        padding: 0 1;
-    }
-
-    Button:focus {
-        text-style: bold;
-    }
-    """
-
-    BINDINGS = [
-        ("escape", "back", "Back"),
-        ("backspace", "back", "Back"),
-        ("up", "app.focus_previous", "Focus Previous"),
-        ("down", "app.focus_next", "Focus Next"),
-    ]
-
-    def compose(self) -> ComposeResult:
-        """Compose the settings screen."""
-        yield Header()
-        with Container():
-            yield Static("Settings", id="screen-title")
-            yield Static(
-                "Configure claudefig preferences\n(Coming soon)", id="placeholder"
-            )
-            yield Button("Back to Main Menu", id="back")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Set focus to back button on mount."""
-        self.query_one("#back", Button).focus()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button press events."""
-        if event.button.id == "back":
-            self.app.pop_screen()
-
-    def action_back(self) -> None:
-        """Navigate back to main menu."""
-        self.app.pop_screen()
-
-
-class ClaudefigApp(App):
-    """Main claudefig TUI application."""
-
-    TITLE = "claudefig"
-    SUB_TITLE = f"v{__version__}"
-
-    SCREENS = {
-        "main": MainMenuScreen,
-        "init": InitProjectScreen,
-        "components": ComponentsScreen,
-        "config": ConfigScreen,
-        "settings": SettingsScreen,
-    }
-
-    BINDINGS = [
-        ("q", "quit", "Quit"),
-        ("ctrl+c", "quit", "Quit"),
-    ]
-
-    def on_mount(self) -> None:
-        """Initialize the application on mount."""
-        self.push_screen("main")
+class ClaudefigApp(MainScreen):
+    """Alias for backward compatibility."""
+    pass
 
 
 if __name__ == "__main__":
-    app = ClaudefigApp()
+    app = MainScreen()
     app.run()
