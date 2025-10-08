@@ -13,12 +13,31 @@ Universal config CLI tool for setting up Claude Code repositories in an organize
 
 ## Features
 
-- Initialize Claude Code configuration files (.md, .mcp)
-- Generate project documentation templates
-- Set up organized directory structures
-- Configure Claude Code settings
-- Manage MCP server configurations
-- Create custom scripts and workflows
+### Core Features
+- **Quick Initialization** - Set up Claude Code configuration in seconds
+- **Organized Structure** - Create `.claude/` directory with best practices
+- **Flexible Configuration** - Toggle features on/off via CLI or config file
+- **Auto-gitignore** - Automatically update `.gitignore` with Claude Code files
+- **Interactive TUI** - User-friendly text interface for configuration
+
+### .claude/ Directory Features (Optional)
+
+All features are **disabled by default** and can be enabled as needed:
+
+- **Team Settings** (`settings.json`) - Shared permissions, hooks, and environment variables
+- **Personal Settings** (`settings.local.json`) - Personal project-specific overrides
+- **Slash Commands** (`commands/`) - Custom slash command definitions
+- **Sub-Agents** (`agents/`) - Custom AI sub-agents for specialized tasks
+- **Hooks** (`hooks/`) - Pre/post tool execution scripts for automation
+- **Output Styles** (`output-styles/`) - Custom Claude Code behavior profiles
+- **Status Line** (`statusline.sh`) - Custom status bar display script
+- **MCP Servers** (`mcp/`) - Model Context Protocol server configurations
+
+### Advanced Features
+- **MCP Automation** - Auto-configure MCP servers with `claudefig setup-mcp`
+- **Template System** - Community-driven templates (coming soon)
+- **Config Management** - Get/set/list configuration via CLI
+- **Incremental Adoption** - Enable only the features you need
 
 ## Installation
 
@@ -57,19 +76,102 @@ This will create the necessary files and directory structure for Claude Code int
 
 ## Usage
 
+### Basic Commands
+
 ```bash
-# Initialize Claude Code configuration
+# Initialize a repository with default settings
 claudefig init
 
-# Show current configuration
-claudefig show
+# Initialize with custom path
+claudefig init --path /path/to/repo
 
-# Add a new template
-claudefig add-template <template-name>
+# Force overwrite existing files
+claudefig init --force
 
-# List available templates
-claudefig list-templates
+# Launch interactive TUI mode
+claudefig interactive
 ```
+
+### Configuration Management
+
+Claudefig uses `.claudefig.toml` for configuration. You can manage settings via CLI:
+
+```bash
+# List all configuration settings
+claudefig config list
+
+# Get a specific setting
+claudefig config get claude.create_settings
+
+# Set a configuration value
+claudefig config set claude.create_settings true
+claudefig config set claude.create_hooks false
+```
+
+### .claude/ Directory Features
+
+By default, claudefig creates an empty `.claude/` directory. You can enable optional features:
+
+```bash
+# Enable team-shared settings
+claudefig config set claude.create_settings true
+
+# Enable personal project settings
+claudefig config set claude.create_settings_local true
+
+# Enable custom slash commands
+claudefig config set claude.create_commands true
+
+# Enable custom sub-agents
+claudefig config set claude.create_agents true
+
+# Enable hook scripts
+claudefig config set claude.create_hooks true
+
+# Enable custom output styles
+claudefig config set claude.create_output_styles true
+
+# Enable custom status line
+claudefig config set claude.create_statusline true
+
+# Enable MCP server configs
+claudefig config set claude.create_mcp true
+```
+
+After enabling features, re-run `claudefig init --force` to generate the files.
+
+### MCP Server Setup
+
+If you enable MCP server configs, claudefig will create `.claude/mcp/` with example configurations. To automatically set up these servers with Claude Code:
+
+```bash
+# Set up all MCP servers from .claude/mcp/
+claudefig setup-mcp
+
+# This runs 'claude mcp add-json' for each JSON file in .claude/mcp/
+```
+
+**MCP Workflow:**
+
+1. Enable MCP feature:
+   ```bash
+   claudefig config set claude.create_mcp true
+   claudefig init --force
+   ```
+
+2. Edit MCP configs in `.claude/mcp/`:
+   ```bash
+   # Rename example files and update with your credentials
+   mv .claude/mcp/example-github.json .claude/mcp/github.json
+   # Edit github.json to add your GITHUB_TOKEN
+   ```
+
+3. Set up MCP servers:
+   ```bash
+   claudefig setup-mcp
+   ```
+
+**Note:** Requires Claude Code CLI to be installed and in your PATH.
 
 For detailed usage instructions, run:
 
