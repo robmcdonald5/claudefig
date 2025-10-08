@@ -28,7 +28,7 @@ def main(ctx):
     from claudefig.user_config import ensure_user_config
 
     # Initialize user config on any command
-    ensure_user_config(verbose=False)
+    ensure_user_config(verbose=True)
 
     # If no subcommand provided, launch interactive mode
     if ctx.invoked_subcommand is None:

@@ -158,6 +158,11 @@ class MainScreen(App):
 
     def on_mount(self) -> None:
         """Set focus to first button on mount."""
+        from claudefig.user_config import ensure_user_config
+
+        # Initialize user config on first launch
+        ensure_user_config(verbose=True)
+
         self.query_one("#init", Button).focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
