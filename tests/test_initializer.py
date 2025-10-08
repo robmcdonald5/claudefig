@@ -150,7 +150,6 @@ class TestInitializeMethod:
         # Verify template files were copied
         expected_calls = [
             ("default", "CLAUDE.md", git_repo, False),
-            ("default", "CONTRIBUTING.md", git_repo, False),
         ]
         actual_calls = [call[0] for call in mock_copy.call_args_list]
         assert actual_calls == expected_calls
