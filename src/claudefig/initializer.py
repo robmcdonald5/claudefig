@@ -6,6 +6,9 @@ from typing import Optional
 from rich.console import Console
 
 from claudefig.config import Config
+from claudefig.file_instance_manager import FileInstanceManager
+from claudefig.models import FileType
+from claudefig.preset_manager import PresetManager
 from claudefig.template_manager import TemplateManager
 from claudefig.utils import ensure_directory, is_git_repository
 
@@ -26,9 +29,13 @@ class Initializer:
         self.template_manager = TemplateManager(
             Path(custom_dir) if custom_dir else None
         )
+        self.preset_manager = PresetManager()
+        self.instance_manager: Optional[FileInstanceManager] = None
 
     def initialize(self, repo_path: Path, force: bool = False) -> bool:
         """Initialize Claude Code configuration in repository.
+
+        Uses the file instance system to generate files based on configuration.
 
         Args:
             repo_path: Path to repository to initialize
@@ -53,36 +60,54 @@ class Initializer:
                 console.print("[yellow]Initialization cancelled[/yellow]")
                 return False
 
+        # Initialize FileInstanceManager
+        self.instance_manager = FileInstanceManager(self.preset_manager, repo_path)
+
+        # Load file instances from config
+        instances_data = self.config.get_file_instances()
+
+        if not instances_data:
+            # No file instances configured - create default ones
+            console.print("[yellow]No file instances configured, using defaults[/yellow]")
+            instances_data = self._create_default_instances()
+            self.config.set_file_instances(instances_data)
+
+        self.instance_manager.load_instances(instances_data)
+
         # Create .claude directory
         claude_dir = repo_path / ".claude"
         ensure_directory(claude_dir)
         console.print(f"[green]+[/green] Created directory: {claude_dir}")
 
-        # Get template source
-        template_name = self.config.get("claudefig.template_source", "default")
-
-        # Copy template files based on config
+        # Generate files from file instances
         success = True
+        files_created = 0
 
-        if self.config.get("init.create_claude_md", True):
-            success &= self._copy_template_file(
-                template_name, "CLAUDE.md", repo_path, force
-            )
+        enabled_instances = self.instance_manager.list_instances(enabled_only=True)
 
-        # .claude/ directory features
-        self._setup_claude_directory(claude_dir, template_name, force)
+        if not enabled_instances:
+            console.print("[yellow]No enabled file instances to generate[/yellow]")
+        else:
+            console.print(f"\n[bold blue]Generating {len(enabled_instances)} file(s)...[/bold blue]\n")
 
-        # Update .gitignore with claudefig entries
-        if self.config.get("init.create_gitignore_entries", True):
-            success &= self._update_gitignore(repo_path, template_name)
+            for instance in enabled_instances:
+                result = self._generate_file_from_instance(instance, repo_path, force)
+                if result:
+                    files_created += 1
+                success &= result
 
         # Create config file if it doesn't exist
         config_path = repo_path / ".claudefig.toml"
         if not config_path.exists():
             Config.create_default(config_path)
-            console.print(f"[green]+[/green] Created config: {config_path}")
+            console.print(f"\n[green]+[/green] Created config: {config_path}")
         else:
-            console.print(f"[blue]i[/blue] Config already exists: {config_path}")
+            console.print(f"\n[blue]i[/blue] Config already exists: {config_path}")
+
+        # Summary
+        console.print("\n[bold]Summary:[/bold]")
+        console.print(f"  Files created: {files_created}")
+        console.print(f"  Enabled instances: {len(enabled_instances)}")
 
         if success:
             console.print("\n[bold green]Initialization complete![/bold green]")
@@ -91,6 +116,220 @@ class Initializer:
             console.print("\n[yellow]Initialization completed with warnings[/yellow]")
 
         return success
+
+    def _create_default_instances(self) -> list[dict]:
+        """Create default file instances when none are configured.
+
+        Returns:
+            List of default file instance dictionaries
+        """
+        from claudefig.models import FileInstance
+
+        defaults = [
+            FileInstance.create_default(FileType.CLAUDE_MD).to_dict(),
+            FileInstance.create_default(FileType.GITIGNORE).to_dict(),
+        ]
+
+        return defaults
+
+    def _generate_file_from_instance(
+        self, instance, repo_path: Path, force: bool
+    ) -> bool:
+        """Generate a file from a file instance.
+
+        Args:
+            instance: FileInstance to generate
+            repo_path: Repository root path
+            force: Whether to overwrite existing files
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # Get the preset
+        preset = self.preset_manager.get_preset(instance.preset)
+        if not preset:
+            console.print(
+                f"[red]x[/red] Preset not found for instance '{instance.id}': {instance.preset}"
+            )
+            return False
+
+        # Determine full path
+        dest_path = repo_path / instance.path
+
+        # Check if file/directory already exists
+        if dest_path.exists() and not force and not instance.type.append_mode:
+            console.print(
+                f"[yellow]![/yellow] Already exists (use --force to overwrite): {dest_path}"
+            )
+            return False
+
+        try:
+            if instance.type.is_directory:
+                # Handle directory-based file types (commands, agents, hooks, etc.)
+                return self._generate_directory_from_instance(
+                    instance, preset, dest_path, force
+                )
+            elif instance.type.append_mode:
+                # Handle append mode (gitignore)
+                return self._append_file_from_instance(
+                    instance, preset, dest_path
+                )
+            else:
+                # Handle single file types
+                return self._generate_single_file_from_instance(
+                    instance, preset, dest_path
+                )
+
+        except Exception as e:
+            console.print(f"[red]x[/red] Error generating {instance.path}: {e}")
+            return False
+
+    def _generate_single_file_from_instance(
+        self, instance, preset, dest_path: Path
+    ) -> bool:
+        """Generate a single file from an instance.
+
+        Args:
+            instance: FileInstance
+            preset: Preset to use
+            dest_path: Destination file path
+
+        Returns:
+            True if successful
+        """
+        # Get template content
+        template_name = self.config.get("claudefig.template_source", "default")
+
+        try:
+            # Try to read template file
+            content = self.template_manager.read_template_file(
+                template_name, instance.path
+            )
+        except FileNotFoundError:
+            # Fallback: Try preset-specific path
+            try:
+                # For CLAUDE.md, try different paths
+                if instance.type == FileType.CLAUDE_MD:
+                    content = self.template_manager.read_template_file(
+                        template_name, "CLAUDE.md"
+                    )
+                elif instance.type == FileType.SETTINGS_JSON:
+                    content = self.template_manager.read_template_file(
+                        template_name, "claude/settings.json"
+                    )
+                elif instance.type == FileType.SETTINGS_LOCAL_JSON:
+                    content = self.template_manager.read_template_file(
+                        template_name, "claude/settings.local.json"
+                    )
+                elif instance.type == FileType.STATUSLINE:
+                    content = self.template_manager.read_template_file(
+                        template_name, "claude/statusline.sh"
+                    )
+                else:
+                    console.print(
+                        f"[yellow]![/yellow] No template found for {instance.type.value}"
+                    )
+                    return False
+            except FileNotFoundError:
+                console.print(
+                    f"[yellow]![/yellow] Template file not found for {instance.type.value}"
+                )
+                return False
+
+        # Create parent directory if needed
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write content
+        dest_path.write_text(content, encoding="utf-8")
+        console.print(f"[green]+[/green] Created: {dest_path}")
+
+        # Make statusline executable
+        if instance.type == FileType.STATUSLINE:
+            dest_path.chmod(0o755)
+
+        return True
+
+    def _append_file_from_instance(
+        self, instance, preset, dest_path: Path
+    ) -> bool:
+        """Append content to a file (for gitignore).
+
+        Args:
+            instance: FileInstance
+            preset: Preset to use
+            dest_path: Destination file path
+
+        Returns:
+            True if successful
+        """
+        template_name = self.config.get("claudefig.template_source", "default")
+
+        try:
+            # Read gitignore entries template
+            entries = self.template_manager.read_template_file(
+                template_name, "gitignore_entries.txt"
+            )
+            entries = entries.strip()
+
+            # Check if .gitignore exists
+            if dest_path.exists():
+                existing_content = dest_path.read_text(encoding="utf-8")
+
+                # Check if claudefig section already exists
+                if "# claudefig" in existing_content or ".claudefig.toml" in existing_content:
+                    console.print(f"[blue]i[/blue] Already contains entries: {dest_path}")
+                    return True
+
+                # Append to existing
+                separator = "\n\n" if existing_content.strip() else ""
+                new_content = existing_content.rstrip() + separator + entries + "\n"
+                dest_path.write_text(new_content, encoding="utf-8")
+                console.print(f"[green]+[/green] Updated: {dest_path}")
+            else:
+                # Create new
+                dest_path.write_text(entries + "\n", encoding="utf-8")
+                console.print(f"[green]+[/green] Created: {dest_path}")
+
+            return True
+
+        except FileNotFoundError:
+            console.print("[yellow]![/yellow] Template not found for gitignore entries")
+            return False
+
+    def _generate_directory_from_instance(
+        self, instance, preset, dest_path: Path, force: bool
+    ) -> bool:
+        """Generate a directory with template files from an instance.
+
+        Args:
+            instance: FileInstance
+            preset: Preset to use
+            dest_path: Destination directory path
+            force: Whether to overwrite existing files
+
+        Returns:
+            True if successful
+        """
+        template_name = self.config.get("claudefig.template_source", "default")
+
+        # Map file types to template paths
+        template_dir_map = {
+            FileType.COMMANDS: "claude/commands",
+            FileType.AGENTS: "claude/agents",
+            FileType.HOOKS: "claude/hooks",
+            FileType.OUTPUT_STYLES: "claude/output-styles",
+            FileType.MCP: "claude/mcp",
+        }
+
+        source_dir = template_dir_map.get(instance.type)
+        if not source_dir:
+            console.print(f"[yellow]![/yellow] No template directory for {instance.type.value}")
+            return False
+
+        # Copy directory
+        return self._copy_template_directory(
+            template_name, source_dir, dest_path, force
+        )
 
     def _copy_template_file(
         self, template_name: str, filename: str, dest_dir: Path, force: bool
@@ -183,71 +422,6 @@ class Initializer:
             console.print(f"[red]x[/red] Error updating .gitignore: {e}")
             return False
 
-    def _setup_claude_directory(
-        self, claude_dir: Path, template_name: str, force: bool
-    ) -> None:
-        """Set up .claude/ directory with optional features.
-
-        Args:
-            claude_dir: Path to .claude directory
-            template_name: Name of template set
-            force: If True, overwrite existing files
-        """
-        # settings.json - team shared config
-        if self.config.get("claude.create_settings", False):
-            self._copy_claude_template_file(
-                template_name, "settings.json", claude_dir, force
-            )
-
-        # settings.local.json - personal project config
-        if self.config.get("claude.create_settings_local", False):
-            self._copy_claude_template_file(
-                template_name, "settings.local.json", claude_dir, force
-            )
-
-        # commands/ - custom slash commands
-        if self.config.get("claude.create_commands", False):
-            self._copy_template_directory(
-                template_name, "claude/commands", claude_dir / "commands", force
-            )
-
-        # agents/ - custom sub-agents
-        if self.config.get("claude.create_agents", False):
-            self._copy_template_directory(
-                template_name, "claude/agents", claude_dir / "agents", force
-            )
-
-        # hooks/ - custom hooks
-        if self.config.get("claude.create_hooks", False):
-            self._copy_template_directory(
-                template_name, "claude/hooks", claude_dir / "hooks", force
-            )
-
-        # output-styles/ - custom output styles
-        if self.config.get("claude.create_output_styles", False):
-            self._copy_template_directory(
-                template_name,
-                "claude/output-styles",
-                claude_dir / "output-styles",
-                force,
-            )
-
-        # statusline.sh - custom status line
-        if self.config.get("claude.create_statusline", False):
-            self._copy_claude_template_file(
-                template_name, "statusline.sh", claude_dir, force
-            )
-            # Make statusline.sh executable
-            statusline_path = claude_dir / "statusline.sh"
-            if statusline_path.exists():
-                statusline_path.chmod(0o755)
-
-        # mcp/ - MCP server configs
-        if self.config.get("claude.create_mcp", False):
-            self._copy_template_directory(
-                template_name, "claude/mcp", claude_dir / "mcp", force
-            )
-
     def setup_mcp_servers(self, repo_path: Path) -> bool:
         """Set up MCP servers from .claude/mcp/ directory.
 
@@ -259,8 +433,8 @@ class Initializer:
         Returns:
             True if successful, False otherwise.
         """
-        import subprocess
         import json
+        import subprocess
 
         mcp_dir = repo_path / ".claude" / "mcp"
 
@@ -275,7 +449,7 @@ class Initializer:
             console.print("[yellow]![/yellow] No MCP config files found in .claude/mcp/")
             return False
 
-        console.print(f"\n[bold blue]Setting up MCP servers...[/bold blue]")
+        console.print("\n[bold blue]Setting up MCP servers...[/bold blue]")
 
         success_count = 0
         for json_file in json_files:
@@ -286,7 +460,7 @@ class Initializer:
 
             try:
                 # Read JSON content
-                with open(json_file, "r", encoding="utf-8") as f:
+                with open(json_file, encoding="utf-8") as f:
                     json_content = f.read().strip()
 
                 # Validate JSON
@@ -355,7 +529,6 @@ class Initializer:
         Returns:
             True if successful, False otherwise.
         """
-        from pathlib import Path as PathLib
 
         # Source is claude/filename in template
         source_path = f"claude/{filename}"
@@ -395,8 +568,8 @@ class Initializer:
         Returns:
             True if successful, False otherwise.
         """
-        from importlib.resources import files
         import shutil
+        from importlib.resources import files
 
         try:
             # Get template source directory
