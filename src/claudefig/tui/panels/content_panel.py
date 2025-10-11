@@ -39,8 +39,6 @@ class ContentPanel(Container):
         elif section == "config":
             self.mount(ConfigPanel(self.config, id="config-panel"))
 
-        self.display = True
-
     def _switch_to_presets(self) -> None:
         """Switch to presets section."""
         # This will be called from InitializePanel
@@ -54,4 +52,3 @@ class ContentPanel(Container):
         """Clear the content panel."""
         self.current_section = None
         self.remove_children()
-        self.display = False

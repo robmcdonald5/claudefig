@@ -59,11 +59,11 @@ Button.active:focus {
 }
 
 #content-panel {
+    display: none;
     width: 1fr;
     height: 100%;
     border-left: solid $primary;
     padding: 2 4;
-    display: none;
 }
 
 #content-panel.visible {

@@ -132,14 +132,9 @@ class MainScreen(App):
         for button in self.query("#menu-buttons Button"):
             button.remove_class("active")
 
-        # Hide content panel
-        content_panel = self.query_one("#content-panel", ContentPanel)
-        content_panel.clear()
-        content_panel.remove_class("visible")
-
         self.active_button = None
 
-        # Refocus the previously active button, or default to init
+        # FOCUS FIRST - set focus on target button
         if previously_active:
             try:
                 self.query_one(f"#{previously_active}", Button).focus()
@@ -147,6 +142,16 @@ class MainScreen(App):
                 self.query_one("#init", Button).focus()
         else:
             self.query_one("#init", Button).focus()
+
+        # CRITICAL: Use call_after_refresh to ensure focus has settled before removing widgets
+        # Removing focused widgets causes Textual to temporarily focus Exit button
+        self.call_after_refresh(self._clear_content_panel)
+
+    def _clear_content_panel(self) -> None:
+        """Clear content panel after focus has settled."""
+        content_panel = self.query_one("#content-panel", ContentPanel)
+        content_panel.clear()
+        content_panel.remove_class("visible")
 
     def _is_descendant_of(self, widget, ancestor) -> bool:
         """Check if widget is a descendant of ancestor."""
