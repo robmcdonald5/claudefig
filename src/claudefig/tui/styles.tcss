@@ -1,0 +1,368 @@
+Screen {
+    background: $surface;
+}
+
+#main-container {
+    width: 100%;
+    height: 100%;
+}
+
+#menu-panel {
+    width: 40;
+    height: 100%;
+    padding: 1 2;
+}
+
+#title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 0;
+    margin-top: 1;
+}
+
+#version {
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+#menu-buttons {
+    width: 100%;
+    height: auto;
+    border: round $primary;
+    padding: 1;
+}
+
+Button {
+    width: 100%;
+    margin: 0;
+    min-height: 1;
+    padding: 0 1;
+    background: $panel;
+}
+
+Button:focus {
+    text-style: bold;
+    border: solid $accent;
+}
+
+Button.active {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+Button.active:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+    border: solid $accent;
+}
+
+#content-panel {
+    width: 1fr;
+    height: 100%;
+    border-left: solid $primary;
+    padding: 2 4;
+    display: none;
+}
+
+#content-panel.visible {
+    display: block;
+}
+
+/* Settings Panel Styles */
+#settings-container {
+    width: 100%;
+    height: 100%;
+}
+
+#settings-categories {
+    width: 30;
+    height: auto;
+    border: round $primary;
+    padding: 1;
+    margin: 4 1 0 2;
+}
+
+.category-button {
+    width: 100%;
+    margin-bottom: 0;
+    text-align: left;
+}
+
+.category-button.active {
+    background: $accent-darken-1;
+    color: $text;
+}
+
+#settings-content {
+    width: 1fr;
+    height: 100%;
+    padding: 0 2;
+    overflow-y: auto;
+}
+
+.section-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 0;
+    margin-top: 1;
+}
+
+.section-subtitle {
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+SettingItem {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    layout: vertical;
+}
+
+.setting-label {
+    text-style: bold;
+    color: $text;
+}
+
+.setting-description {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+#save-notification {
+    dock: bottom;
+    align: right top;
+    padding: 1 2;
+    background: $success;
+    color: $text;
+    border: solid $success-darken-1;
+    display: none;
+    width: auto;
+    height: auto;
+    margin-right: 2;
+}
+
+/* Initialize Panel Styles */
+.panel-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+    margin-top: 1;
+}
+
+.panel-info {
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+.config-summary-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.config-summary {
+    color: $text-muted;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: solid $primary-lighten-1;
+}
+
+.button-row {
+    width: 100%;
+    height: auto;
+    margin-top: 2;
+}
+
+.button-row Button {
+    width: auto;
+    margin-right: 2;
+}
+
+.placeholder {
+    color: $text-muted;
+    text-align: center;
+    margin-top: 4;
+}
+
+#view-claude {
+    display: none;
+}
+
+/* Presets Panel Styles */
+.preset-card {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 1;
+    border: round $primary;
+    background: $panel;
+}
+
+.preset-name {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 0;
+}
+
+.preset-description {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+.preset-file-count {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+.preset-actions {
+    width: 100%;
+    height: auto;
+}
+
+.preset-button {
+    width: auto;
+    margin-right: 1;
+}
+
+/* Config Panel Styles */
+.file-type-section {
+    width: 100%;
+    height: auto;
+    margin-bottom: 3;
+}
+
+.section-header {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+.instance-item {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.instance-path {
+    text-style: bold;
+    color: $text;
+}
+
+.instance-preset {
+    color: $text-muted;
+}
+
+.instance-status {
+    margin-bottom: 1;
+}
+
+.instance-enabled {
+    color: $success;
+}
+
+.instance-disabled {
+    color: $text-muted;
+}
+
+.instance-actions {
+    width: 100%;
+    height: auto;
+}
+
+.instance-button {
+    width: auto;
+    margin-right: 1;
+}
+
+.add-instance-button {
+    width: 100%;
+    margin-top: 1;
+}
+
+.panel-subtitle {
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+/* Dialog/Modal Styles */
+#dialog-container {
+    width: 80;
+    height: auto;
+    max-height: 90%;
+    border: thick $primary;
+    background: $surface;
+    padding: 2;
+}
+
+.dialog-header {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 2;
+}
+
+#dialog-content {
+    height: auto;
+    max-height: 30;
+    margin-bottom: 2;
+}
+
+.dialog-text {
+    color: $text;
+    margin-bottom: 1;
+}
+
+.dialog-section-title {
+    text-style: bold;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.dialog-label {
+    text-style: bold;
+    margin-bottom: 1;
+    margin-top: 1;
+}
+
+.dialog-warning {
+    color: $warning;
+    text-style: bold;
+}
+
+.dialog-error {
+    color: $error;
+    text-style: bold;
+}
+
+.dialog-actions {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+.dialog-actions Button {
+    width: auto;
+    margin: 0 1;
+}
+
+Input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+Select {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#validation-feedback {
+    margin-top: 2;
+    padding: 1;
+    border: round $primary-lighten-1;
+    min-height: 3;
+}
