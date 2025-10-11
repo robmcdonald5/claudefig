@@ -55,7 +55,7 @@ class TemplateManager:
 
         # List built-in templates
         try:
-            template_root = files("claudefig.templates")
+            template_root = files("templates")
             template_path = Path(str(template_root))
             if template_path.exists() and template_path.is_dir():
                 templates.extend(

@@ -138,9 +138,11 @@ omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/site-packages/*",
+    "*/tui/*",  # Exclude TUI from coverage (complex UI testing, manual QA preferred)
 ]
 
 [tool.coverage.report]
+fail_under = 55.0  # Realistic threshold for core business logic (excluding TUI/CLI)
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

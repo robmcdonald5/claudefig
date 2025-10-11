@@ -154,6 +154,9 @@ src/claudefig/_version.py
 # Claude
 .claude/
 CLAUDE.md
+# Exception: Include template CLAUDE.md file
+!src/templates/default/CLAUDE.md
 
 # Test directories
 test-init-demo/
+sandbox/

@@ -1,2 +1,4 @@
-# Claude Code
+# claudefig - Claude Code configuration files
 .claude/
+CLAUDE.md
+.claudefig.toml
