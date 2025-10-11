@@ -225,6 +225,184 @@ class TestConfigGet:
         assert result == "default"
 
 
+class TestConfigSet:
+    """Tests for Config.set() method."""
+
+    def test_set_top_level_key(self):
+        """Test setting a top-level key."""
+        config = Config()
+
+        config.set("new_key", "new_value")
+
+        assert config.data["new_key"] == "new_value"
+
+    def test_set_nested_key(self):
+        """Test setting a nested key."""
+        config = Config()
+
+        config.set("level1.level2.level3", "deep_value")
+
+        assert config.data["level1"]["level2"]["level3"] == "deep_value"
+
+    def test_set_creates_missing_parent_keys(self):
+        """Test that set() creates missing intermediate keys."""
+        config = Config()
+
+        # Set a deeply nested key - all parents should be created
+        config.set("a.b.c.d.e", "value")
+
+        # Verify all levels were created
+        assert "a" in config.data
+        assert "b" in config.data["a"]
+        assert "c" in config.data["a"]["b"]
+        assert "d" in config.data["a"]["b"]["c"]
+        assert "e" in config.data["a"]["b"]["c"]["d"]
+        assert config.data["a"]["b"]["c"]["d"]["e"] == "value"
+
+    def test_set_overwrites_existing_value(self):
+        """Test that set() overwrites existing values."""
+        config = Config()
+        config.data = {"existing": "old_value"}
+
+        config.set("existing", "new_value")
+
+        assert config.data["existing"] == "new_value"
+
+    def test_set_nested_in_existing_structure(self):
+        """Test setting nested value in existing structure."""
+        config = Config()
+        config.data = {"level1": {"existing": "value"}}
+
+        config.set("level1.new_key", "new_value")
+
+        assert config.data["level1"]["existing"] == "value"
+        assert config.data["level1"]["new_key"] == "new_value"
+
+    def test_set_with_different_data_types(self):
+        """Test setting values of different types."""
+        config = Config()
+
+        config.set("string_key", "string_value")
+        config.set("int_key", 42)
+        config.set("bool_key", True)
+        config.set("list_key", [1, 2, 3])
+        config.set("dict_key", {"nested": "dict"})
+
+        assert config.data["string_key"] == "string_value"
+        assert config.data["int_key"] == 42
+        assert config.data["bool_key"] is True
+        assert config.data["list_key"] == [1, 2, 3]
+        assert config.data["dict_key"] == {"nested": "dict"}
+
+
+class TestConfigRemoveFileInstance:
+    """Tests for Config.remove_file_instance() method."""
+
+    def test_remove_existing_instance(self):
+        """Test removing an existing file instance."""
+        config = Config()
+        config.data = {
+            "files": [
+                {"id": "instance1", "path": "file1.md"},
+                {"id": "instance2", "path": "file2.md"},
+                {"id": "instance3", "path": "file3.md"},
+            ]
+        }
+
+        result = config.remove_file_instance("instance2")
+
+        assert result is True
+        assert len(config.data["files"]) == 2
+        assert config.data["files"][0]["id"] == "instance1"
+        assert config.data["files"][1]["id"] == "instance3"
+        # instance2 should be gone
+        assert not any(f["id"] == "instance2" for f in config.data["files"])
+
+    def test_remove_nonexistent_instance_returns_false(self):
+        """Test removing non-existent instance returns False."""
+        config = Config()
+        config.data = {
+            "files": [
+                {"id": "instance1", "path": "file1.md"},
+            ]
+        }
+
+        result = config.remove_file_instance("nonexistent")
+
+        assert result is False
+        # Original data should be unchanged
+        assert len(config.data["files"]) == 1
+        assert config.data["files"][0]["id"] == "instance1"
+
+    def test_remove_when_no_files_key(self):
+        """Test removing instance when 'files' key doesn't exist."""
+        config = Config()
+        config.data = {}
+
+        result = config.remove_file_instance("any_id")
+
+        assert result is False
+        # Should not create 'files' key
+        assert "files" not in config.data
+
+    def test_remove_from_empty_files_array(self):
+        """Test removing from empty files array."""
+        config = Config()
+        config.data = {"files": []}
+
+        result = config.remove_file_instance("any_id")
+
+        assert result is False
+        # Array should still be empty
+        assert config.data["files"] == []
+
+    def test_remove_first_instance(self):
+        """Test removing the first instance in the list."""
+        config = Config()
+        config.data = {
+            "files": [
+                {"id": "first", "path": "file1.md"},
+                {"id": "second", "path": "file2.md"},
+            ]
+        }
+
+        result = config.remove_file_instance("first")
+
+        assert result is True
+        assert len(config.data["files"]) == 1
+        assert config.data["files"][0]["id"] == "second"
+
+    def test_remove_last_instance(self):
+        """Test removing the last instance in the list."""
+        config = Config()
+        config.data = {
+            "files": [
+                {"id": "first", "path": "file1.md"},
+                {"id": "last", "path": "file2.md"},
+            ]
+        }
+
+        result = config.remove_file_instance("last")
+
+        assert result is True
+        assert len(config.data["files"]) == 1
+        assert config.data["files"][0]["id"] == "first"
+
+    def test_remove_only_instance(self):
+        """Test removing the only instance in the list."""
+        config = Config()
+        config.data = {
+            "files": [
+                {"id": "only", "path": "file.md"},
+            ]
+        }
+
+        result = config.remove_file_instance("only")
+
+        assert result is True
+        assert config.data["files"] == []
+
+
 class TestConfigFileInstances:
     """Tests for file instance operations with error handling."""
 
