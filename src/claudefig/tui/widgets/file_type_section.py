@@ -11,7 +11,9 @@ from claudefig.tui.widgets.file_instance_item import FileInstanceItem
 class FileTypeSection(Container):
     """Group file instances by type."""
 
-    def __init__(self, file_type: FileType, instances: list[FileInstance], **kwargs) -> None:
+    def __init__(
+        self, file_type: FileType, instances: list[FileInstance], **kwargs
+    ) -> None:
         """Initialize file type section.
 
         Args:
@@ -26,7 +28,7 @@ class FileTypeSection(Container):
         """Compose the file type section."""
         yield Label(
             f"{self.file_type.display_name} ({len(self.instances)} instances)",
-            classes="section-header"
+            classes="section-header",
         )
 
         for instance in self.instances:
@@ -35,5 +37,5 @@ class FileTypeSection(Container):
         yield Button(
             f"+ Add {self.file_type.display_name} Instance",
             id=f"add-{self.file_type.value}",
-            classes="add-instance-button"
+            classes="add-instance-button",
         )

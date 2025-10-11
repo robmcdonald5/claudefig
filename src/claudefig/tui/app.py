@@ -115,7 +115,9 @@ class MainScreen(App):
         """Focus the first focusable widget in the content panel."""
         try:
             content_panel = self.query_one("#content-panel", ContentPanel)
-            focusables = [w for w in content_panel.query("Button, Switch") if w.focusable]
+            focusables = [
+                w for w in content_panel.query("Button, Switch") if w.focusable
+            ]
             if focusables:
                 focusables[0].focus()
         except Exception:
@@ -186,7 +188,9 @@ class MainScreen(App):
             if self.active_button:
                 content_panel = self.query_one("#content-panel", ContentPanel)
                 # Try to focus the first focusable widget in content
-                focusables = [w for w in content_panel.query("Button, Switch") if w.focusable]
+                focusables = [
+                    w for w in content_panel.query("Button, Switch") if w.focusable
+                ]
                 if focusables:
                     focusables[0].focus()
             # Don't activate section with right arrow - require Enter
@@ -198,7 +202,9 @@ class MainScreen(App):
             if self._is_descendant_of(focused, settings_categories):
                 # Move to settings content
                 settings_content = self.query_one("#settings-content")
-                focusables = [w for w in settings_content.query("Switch") if w.focusable]
+                focusables = [
+                    w for w in settings_content.query("Switch") if w.focusable
+                ]
                 if focusables:
                     focusables[0].focus()
         except Exception:
@@ -234,7 +240,9 @@ class MainScreen(App):
             if self._is_descendant_of(focused, settings_content):
                 # Move to settings categories
                 settings_categories = self.query_one("#settings-categories")
-                focusables = [w for w in settings_categories.query("Button") if w.focusable]
+                focusables = [
+                    w for w in settings_categories.query("Button") if w.focusable
+                ]
                 if focusables:
                     focusables[0].focus()
                 return
@@ -251,7 +259,12 @@ class MainScreen(App):
     def _get_focus_scope(self, widget):
         """Get the container that defines the focus scope for a widget."""
         # Define scope containers (independent vertical navigation trees)
-        scope_ids = ["menu-buttons", "settings-categories", "settings-content", "init-panel"]
+        scope_ids = [
+            "menu-buttons",
+            "settings-categories",
+            "settings-content",
+            "init-panel",
+        ]
 
         for scope_id in scope_ids:
             try:

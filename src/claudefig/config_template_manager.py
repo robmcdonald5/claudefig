@@ -75,11 +75,9 @@ class ConfigTemplateManager:
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": "Default Claude Code configuration with recommended settings"
+                "description": "Default Claude Code configuration with recommended settings",
             },
-            "init": {
-                "overwrite_existing": False
-            },
+            "init": {"overwrite_existing": False},
             "files": [
                 {
                     "id": "default-claude-md",
@@ -87,7 +85,7 @@ class ConfigTemplateManager:
                     "preset": "claude_md:default",
                     "path": "CLAUDE.md",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "default-gitignore",
@@ -95,7 +93,7 @@ class ConfigTemplateManager:
                     "preset": "gitignore:standard",
                     "path": ".gitignore",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "default-settings",
@@ -103,7 +101,7 @@ class ConfigTemplateManager:
                     "preset": "settings_json:default",
                     "path": ".claude/settings.json",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "default-commands",
@@ -111,13 +109,10 @@ class ConfigTemplateManager:
                     "preset": "commands:default",
                     "path": ".claude/commands/",
                     "enabled": True,
-                    "variables": {}
-                }
+                    "variables": {},
+                },
             ],
-            "custom": {
-                "template_dir": "",
-                "presets_dir": ""
-            }
+            "custom": {"template_dir": "", "presets_dir": ""},
         }
 
     def _create_minimal_preset_config(self) -> dict:
@@ -130,11 +125,9 @@ class ConfigTemplateManager:
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": "Minimal Claude Code setup - just CLAUDE.md"
+                "description": "Minimal Claude Code setup - just CLAUDE.md",
             },
-            "init": {
-                "overwrite_existing": False
-            },
+            "init": {"overwrite_existing": False},
             "files": [
                 {
                     "id": "minimal-claude-md",
@@ -142,13 +135,10 @@ class ConfigTemplateManager:
                     "preset": "claude_md:minimal",
                     "path": "CLAUDE.md",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 }
             ],
-            "custom": {
-                "template_dir": "",
-                "presets_dir": ""
-            }
+            "custom": {"template_dir": "", "presets_dir": ""},
         }
 
     def _create_full_preset_config(self) -> dict:
@@ -161,11 +151,9 @@ class ConfigTemplateManager:
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": "Full Claude Code setup with all features enabled"
+                "description": "Full Claude Code setup with all features enabled",
             },
-            "init": {
-                "overwrite_existing": False
-            },
+            "init": {"overwrite_existing": False},
             "files": [
                 {
                     "id": "full-claude-md",
@@ -173,7 +161,7 @@ class ConfigTemplateManager:
                     "preset": "claude_md:default",
                     "path": "CLAUDE.md",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-gitignore",
@@ -181,7 +169,7 @@ class ConfigTemplateManager:
                     "preset": "gitignore:standard",
                     "path": ".gitignore",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-settings",
@@ -189,7 +177,7 @@ class ConfigTemplateManager:
                     "preset": "settings_json:default",
                     "path": ".claude/settings.json",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-settings-local",
@@ -197,7 +185,7 @@ class ConfigTemplateManager:
                     "preset": "settings_local_json:default",
                     "path": ".claude/settings.local.json",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-commands",
@@ -205,7 +193,7 @@ class ConfigTemplateManager:
                     "preset": "commands:default",
                     "path": ".claude/commands/",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-agents",
@@ -213,7 +201,7 @@ class ConfigTemplateManager:
                     "preset": "agents:default",
                     "path": ".claude/agents/",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-hooks",
@@ -221,7 +209,7 @@ class ConfigTemplateManager:
                     "preset": "hooks:default",
                     "path": ".claude/hooks/",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-output-styles",
@@ -229,7 +217,7 @@ class ConfigTemplateManager:
                     "preset": "output_styles:default",
                     "path": ".claude/output-styles/",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-statusline",
@@ -237,7 +225,7 @@ class ConfigTemplateManager:
                     "preset": "statusline:default",
                     "path": ".claude/statusline.sh",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "full-mcp",
@@ -245,13 +233,10 @@ class ConfigTemplateManager:
                     "preset": "mcp:default",
                     "path": ".claude/mcp/",
                     "enabled": True,
-                    "variables": {}
-                }
+                    "variables": {},
+                },
             ],
-            "custom": {
-                "template_dir": "",
-                "presets_dir": ""
-            }
+            "custom": {"template_dir": "", "presets_dir": ""},
         }
 
     def _create_backend_preset_config(self) -> dict:
@@ -264,11 +249,9 @@ class ConfigTemplateManager:
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": "Backend development focused setup with API and database helpers"
+                "description": "Backend development focused setup with API and database helpers",
             },
-            "init": {
-                "overwrite_existing": False
-            },
+            "init": {"overwrite_existing": False},
             "files": [
                 {
                     "id": "backend-claude-md",
@@ -276,7 +259,7 @@ class ConfigTemplateManager:
                     "preset": "claude_md:backend",
                     "path": "CLAUDE.md",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "backend-gitignore",
@@ -284,7 +267,7 @@ class ConfigTemplateManager:
                     "preset": "gitignore:standard",
                     "path": ".gitignore",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "backend-settings",
@@ -292,7 +275,7 @@ class ConfigTemplateManager:
                     "preset": "settings_json:default",
                     "path": ".claude/settings.json",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "backend-commands",
@@ -300,7 +283,7 @@ class ConfigTemplateManager:
                     "preset": "commands:default",
                     "path": ".claude/commands/",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "backend-agents",
@@ -308,13 +291,10 @@ class ConfigTemplateManager:
                     "preset": "agents:default",
                     "path": ".claude/agents/",
                     "enabled": True,
-                    "variables": {}
-                }
+                    "variables": {},
+                },
             ],
-            "custom": {
-                "template_dir": "",
-                "presets_dir": ""
-            }
+            "custom": {"template_dir": "", "presets_dir": ""},
         }
 
     def _create_frontend_preset_config(self) -> dict:
@@ -327,11 +307,9 @@ class ConfigTemplateManager:
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": "Frontend development focused setup with UI/UX helpers"
+                "description": "Frontend development focused setup with UI/UX helpers",
             },
-            "init": {
-                "overwrite_existing": False
-            },
+            "init": {"overwrite_existing": False},
             "files": [
                 {
                     "id": "frontend-claude-md",
@@ -339,7 +317,7 @@ class ConfigTemplateManager:
                     "preset": "claude_md:frontend",
                     "path": "CLAUDE.md",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "frontend-gitignore",
@@ -347,7 +325,7 @@ class ConfigTemplateManager:
                     "preset": "gitignore:standard",
                     "path": ".gitignore",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "frontend-settings",
@@ -355,7 +333,7 @@ class ConfigTemplateManager:
                     "preset": "settings_json:default",
                     "path": ".claude/settings.json",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "frontend-commands",
@@ -363,7 +341,7 @@ class ConfigTemplateManager:
                     "preset": "commands:default",
                     "path": ".claude/commands/",
                     "enabled": True,
-                    "variables": {}
+                    "variables": {},
                 },
                 {
                     "id": "frontend-output-styles",
@@ -371,13 +349,10 @@ class ConfigTemplateManager:
                     "preset": "output_styles:default",
                     "path": ".claude/output-styles/",
                     "enabled": True,
-                    "variables": {}
-                }
+                    "variables": {},
+                },
             ],
-            "custom": {
-                "template_dir": "",
-                "presets_dir": ""
-            }
+            "custom": {"template_dir": "", "presets_dir": ""},
         }
 
     def list_global_presets(self, include_validation: bool = False) -> list[dict]:
@@ -401,8 +376,10 @@ class ConfigTemplateManager:
                 preset_info = {
                     "name": preset_file.stem,
                     "path": preset_file,
-                    "description": preset_data.get("claudefig", {}).get("description", ""),
-                    "file_count": len(preset_data.get("files", []))
+                    "description": preset_data.get("claudefig", {}).get(
+                        "description", ""
+                    ),
+                    "file_count": len(preset_data.get("files", [])),
                 }
 
                 # Add validation if requested
@@ -411,7 +388,7 @@ class ConfigTemplateManager:
                     preset_info["validation"] = {
                         "valid": validation.valid,
                         "errors": validation.errors,
-                        "warnings": validation.warnings
+                        "warnings": validation.warnings,
                     }
 
                 presets.append(preset_info)
@@ -422,13 +399,13 @@ class ConfigTemplateManager:
                     "name": preset_file.stem,
                     "path": preset_file,
                     "description": "ERROR: Invalid TOML syntax",
-                    "file_count": 0
+                    "file_count": 0,
                 }
                 if include_validation:
                     preset_info["validation"] = {
                         "valid": False,
                         "errors": [f"Invalid TOML syntax: {e}"],
-                        "warnings": []
+                        "warnings": [],
                     }
                 presets.append(preset_info)
             except Exception as e:
@@ -437,13 +414,13 @@ class ConfigTemplateManager:
                     "name": preset_file.stem,
                     "path": preset_file,
                     "description": f"ERROR: {str(e)}",
-                    "file_count": 0
+                    "file_count": 0,
                 }
                 if include_validation:
                     preset_info["validation"] = {
                         "valid": False,
                         "errors": [str(e)],
-                        "warnings": []
+                        "warnings": [],
                     }
                 presets.append(preset_info)
 

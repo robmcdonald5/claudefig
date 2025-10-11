@@ -68,7 +68,9 @@ class Initializer:
 
         if not instances_data:
             # No file instances configured - create default ones
-            console.print("[yellow]No file instances configured, using defaults[/yellow]")
+            console.print(
+                "[yellow]No file instances configured, using defaults[/yellow]"
+            )
             instances_data = self._create_default_instances()
             self.config.set_file_instances(instances_data)
 
@@ -88,7 +90,9 @@ class Initializer:
         if not enabled_instances:
             console.print("[yellow]No enabled file instances to generate[/yellow]")
         else:
-            console.print(f"\n[bold blue]Generating {len(enabled_instances)} file(s)...[/bold blue]\n")
+            console.print(
+                f"\n[bold blue]Generating {len(enabled_instances)} file(s)...[/bold blue]\n"
+            )
 
             for instance in enabled_instances:
                 result = self._generate_file_from_instance(instance, repo_path, force)
@@ -171,9 +175,7 @@ class Initializer:
                 )
             elif instance.type.append_mode:
                 # Handle append mode (gitignore)
-                return self._append_file_from_instance(
-                    instance, preset, dest_path
-                )
+                return self._append_file_from_instance(instance, preset, dest_path)
             else:
                 # Handle single file types
                 return self._generate_single_file_from_instance(
@@ -249,9 +251,7 @@ class Initializer:
 
         return True
 
-    def _append_file_from_instance(
-        self, instance, preset, dest_path: Path
-    ) -> bool:
+    def _append_file_from_instance(self, instance, preset, dest_path: Path) -> bool:
         """Append content to a file (for gitignore).
 
         Args:
@@ -276,8 +276,13 @@ class Initializer:
                 existing_content = dest_path.read_text(encoding="utf-8")
 
                 # Check if claudefig section already exists
-                if "# claudefig" in existing_content or ".claudefig.toml" in existing_content:
-                    console.print(f"[blue]i[/blue] Already contains entries: {dest_path}")
+                if (
+                    "# claudefig" in existing_content
+                    or ".claudefig.toml" in existing_content
+                ):
+                    console.print(
+                        f"[blue]i[/blue] Already contains entries: {dest_path}"
+                    )
                     return True
 
                 # Append to existing
@@ -323,7 +328,9 @@ class Initializer:
 
         source_dir = template_dir_map.get(instance.type)
         if not source_dir:
-            console.print(f"[yellow]![/yellow] No template directory for {instance.type.value}")
+            console.print(
+                f"[yellow]![/yellow] No template directory for {instance.type.value}"
+            )
             return False
 
         # Copy directory
@@ -391,7 +398,10 @@ class Initializer:
                 existing_content = gitignore_path.read_text(encoding="utf-8")
 
                 # Check if claudefig section already exists
-                if "# claudefig" in existing_content or ".claudefig.toml" in existing_content:
+                if (
+                    "# claudefig" in existing_content
+                    or ".claudefig.toml" in existing_content
+                ):
                     console.print(
                         "[blue]i[/blue] .gitignore already contains claudefig entries"
                     )
@@ -409,14 +419,14 @@ class Initializer:
             else:
                 # Create new .gitignore
                 gitignore_path.write_text(entries + "\n", encoding="utf-8")
-                console.print("[green]+[/green] Created .gitignore with claudefig entries")
+                console.print(
+                    "[green]+[/green] Created .gitignore with claudefig entries"
+                )
 
             return True
 
         except FileNotFoundError:
-            console.print(
-                "[yellow]![/yellow] gitignore_entries.txt template not found"
-            )
+            console.print("[yellow]![/yellow] gitignore_entries.txt template not found")
             return False
         except Exception as e:
             console.print(f"[red]x[/red] Error updating .gitignore: {e}")
@@ -446,7 +456,9 @@ class Initializer:
         json_files = list(mcp_dir.glob("*.json"))
 
         if not json_files:
-            console.print("[yellow]![/yellow] No MCP config files found in .claude/mcp/")
+            console.print(
+                "[yellow]![/yellow] No MCP config files found in .claude/mcp/"
+            )
             return False
 
         console.print("\n[bold blue]Setting up MCP servers...[/bold blue]")
@@ -474,14 +486,10 @@ class Initializer:
                 )
 
                 # Run command
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=30
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
                 if result.returncode == 0:
-                    console.print(
-                        f"[green]+[/green] Added MCP server: {server_name}"
-                    )
+                    console.print(f"[green]+[/green] Added MCP server: {server_name}")
                     success_count += 1
                 else:
                     console.print(
@@ -489,22 +497,16 @@ class Initializer:
                     )
 
             except json.JSONDecodeError as e:
-                console.print(
-                    f"[red]x[/red] Invalid JSON in {json_file.name}: {e}"
-                )
+                console.print(f"[red]x[/red] Invalid JSON in {json_file.name}: {e}")
             except subprocess.TimeoutExpired:
-                console.print(
-                    f"[red]x[/red] Timeout adding {server_name}"
-                )
+                console.print(f"[red]x[/red] Timeout adding {server_name}")
             except FileNotFoundError:
                 console.print(
                     "[red]x[/red] 'claude' command not found. Make sure Claude Code is installed."
                 )
                 return False
             except Exception as e:
-                console.print(
-                    f"[red]x[/red] Error adding {server_name}: {e}"
-                )
+                console.print(f"[red]x[/red] Error adding {server_name}: {e}")
 
         if success_count > 0:
             console.print(
@@ -543,7 +545,9 @@ class Initializer:
             return False
 
         try:
-            content = self.template_manager.read_template_file(template_name, source_path)
+            content = self.template_manager.read_template_file(
+                template_name, source_path
+            )
             dest_path.write_text(content, encoding="utf-8")
             console.print(f"[green]+[/green] Created file: {dest_path}")
             return True
@@ -601,7 +605,9 @@ class Initializer:
             return True
 
         except FileNotFoundError:
-            console.print(f"[yellow]![/yellow] Template directory not found: {source_dir}")
+            console.print(
+                f"[yellow]![/yellow] Template directory not found: {source_dir}"
+            )
             return False
         except Exception as e:
             console.print(f"[red]x[/red] Error copying directory {source_dir}: {e}")

@@ -104,12 +104,16 @@ class Preset:
     name: str  # Display name (e.g., "Backend Focused")
     description: str  # Description of what this preset provides
     source: PresetSource  # Where this preset comes from
-    template_path: Optional[Path] = None  # Path to template file (for user/project presets)
+    template_path: Optional[Path] = (
+        None  # Path to template file (for user/project presets)
+    )
     variables: dict[str, Any] = field(
         default_factory=dict
     )  # Template variables with defaults
     extends: Optional[str] = None  # ID of preset to extend/inherit from
-    tags: list[str] = field(default_factory=list)  # Tags for discovery (e.g., ["backend", "python"])
+    tags: list[str] = field(
+        default_factory=list
+    )  # Tags for discovery (e.g., ["backend", "python"])
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Preset":
@@ -171,9 +175,7 @@ class FileInstance:
     preset: str  # ID of preset to use (format: "{file_type}:{preset_name}")
     path: str  # Relative path where file should be generated
     enabled: bool = True  # Whether this instance is active
-    variables: dict[str, Any] = field(
-        default_factory=dict
-    )  # Override preset variables
+    variables: dict[str, Any] = field(default_factory=dict)  # Override preset variables
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileInstance":

@@ -38,7 +38,7 @@ class ConfigPanel(Container):
             yield Label(
                 "No .claudefig.toml found in current directory.\n\n"
                 "Go to 'Presets' panel and use a preset to create a config.",
-                classes="placeholder"
+                classes="placeholder",
             )
             return
 
@@ -58,21 +58,31 @@ class ConfigPanel(Container):
                     instances_by_type[instance.type].append(instance)
 
                 # Display sections
-                enabled_count = sum(1 for i in self.instance_manager.list_instances() if i.enabled)
+                enabled_count = sum(
+                    1 for i in self.instance_manager.list_instances() if i.enabled
+                )
                 total_count = len(self.instance_manager.list_instances())
                 yield Label(
                     f"Summary: {total_count} file instances ({enabled_count} enabled, {total_count - enabled_count} disabled)",
-                    classes="config-summary-title"
+                    classes="config-summary-title",
                 )
 
-                for file_type in sorted(instances_by_type.keys(), key=lambda ft: ft.value):
-                    yield FileTypeSection(file_type, instances_by_type[file_type], classes="file-type-section")
+                for file_type in sorted(
+                    instances_by_type.keys(), key=lambda ft: ft.value
+                ):
+                    yield FileTypeSection(
+                        file_type,
+                        instances_by_type[file_type],
+                        classes="file-type-section",
+                    )
             else:
                 yield Label("No file instances configured.", classes="placeholder")
 
             # Footer button
             with Horizontal(classes="button-row"):
-                yield Button("Save Current Config as New Preset", id="btn-save-as-preset")
+                yield Button(
+                    "Save Current Config as New Preset", id="btn-save-as-preset"
+                )
 
     @work
     async def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -108,7 +118,9 @@ class ConfigPanel(Container):
             elif button_id == "btn-save-as-preset":
                 result = await self.app.push_screen_wait(CreatePresetScreen())
                 if result and result.get("action") == "create":
-                    await self._save_as_preset(result.get("name"), result.get("description"))
+                    await self._save_as_preset(
+                        result.get("name"), result.get("description")
+                    )
         except asyncio.CancelledError:
             # User cancelled the operation (pressed Escape) - this is normal
             pass
@@ -122,7 +134,9 @@ class ConfigPanel(Container):
                 self.instance_manager.update_instance(instance)
 
                 # Save to config
-                instances_data = [inst.to_dict() for inst in self.instance_manager.list_instances()]
+                instances_data = [
+                    inst.to_dict() for inst in self.instance_manager.list_instances()
+                ]
                 self.config.set_file_instances(instances_data)
                 self.config.save()
 
@@ -141,7 +155,9 @@ class ConfigPanel(Container):
             self.instance_manager.remove_instance(instance_id)
 
             # Save to config
-            instances_data = [inst.to_dict() for inst in self.instance_manager.list_instances()]
+            instances_data = [
+                inst.to_dict() for inst in self.instance_manager.list_instances()
+            ]
             self.config.set_file_instances(instances_data)
             self.config.save()
 
@@ -176,9 +192,7 @@ class ConfigPanel(Container):
             # Open edit screen
             result = await self.app.push_screen_wait(
                 FileInstanceEditScreen(
-                    self.instance_manager,
-                    self.preset_manager,
-                    instance=instance
+                    self.instance_manager, self.preset_manager, instance=instance
                 )
             )
 
@@ -189,7 +203,9 @@ class ConfigPanel(Container):
                 self.instance_manager.update_instance(updated_instance)
 
                 # Save to config
-                instances_data = [inst.to_dict() for inst in self.instance_manager.list_instances()]
+                instances_data = [
+                    inst.to_dict() for inst in self.instance_manager.list_instances()
+                ]
                 self.config.set_file_instances(instances_data)
                 self.config.save()
 
@@ -219,7 +235,7 @@ class ConfigPanel(Container):
                     self.instance_manager,
                     self.preset_manager,
                     instance=None,
-                    file_type=file_type
+                    file_type=file_type,
                 )
             )
 
@@ -231,11 +247,15 @@ class ConfigPanel(Container):
 
                 if not validation_result.valid:
                     error_msg = "\n".join(validation_result.errors)
-                    self.app.notify(f"Failed to add instance:\n{error_msg}", severity="error")
+                    self.app.notify(
+                        f"Failed to add instance:\n{error_msg}", severity="error"
+                    )
                     return
 
                 # Save to config
-                instances_data = [inst.to_dict() for inst in self.instance_manager.list_instances()]
+                instances_data = [
+                    inst.to_dict() for inst in self.instance_manager.list_instances()
+                ]
                 self.config.set_file_instances(instances_data)
                 self.config.save()
 

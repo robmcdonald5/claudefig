@@ -45,6 +45,7 @@ class ContentPanel(Container):
         """Switch to presets section."""
         # This will be called from InitializePanel
         from claudefig.tui.app import MainScreen
+
         main_app = self.app
         if isinstance(main_app, MainScreen):
             main_app._activate_section("presets")

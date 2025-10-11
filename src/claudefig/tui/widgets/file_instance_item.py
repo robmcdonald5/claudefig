@@ -25,10 +25,18 @@ class FileInstanceItem(Container):
         yield Label(f"Preset: {self.instance.preset}", classes="instance-preset")
 
         status_text = "+ Enabled" if self.instance.enabled else "- Disabled"
-        status_class = "instance-enabled" if self.instance.enabled else "instance-disabled"
+        status_class = (
+            "instance-enabled" if self.instance.enabled else "instance-disabled"
+        )
         yield Label(status_text, classes=f"instance-status {status_class}")
 
         with Horizontal(classes="instance-actions"):
-            yield Button("Edit", id=f"edit-{self.instance.id}", classes="instance-button")
-            yield Button("Remove", id=f"remove-{self.instance.id}", classes="instance-button")
-            yield Button("Toggle", id=f"toggle-{self.instance.id}", classes="instance-button")
+            yield Button(
+                "Edit", id=f"edit-{self.instance.id}", classes="instance-button"
+            )
+            yield Button(
+                "Remove", id=f"remove-{self.instance.id}", classes="instance-button"
+            )
+            yield Button(
+                "Toggle", id=f"toggle-{self.instance.id}", classes="instance-button"
+            )

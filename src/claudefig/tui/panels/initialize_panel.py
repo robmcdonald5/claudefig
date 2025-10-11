@@ -35,14 +35,13 @@ class InitializePanel(Container):
             config_path = Path.cwd() / ".claudefig.toml"
             if config_path.exists():
                 yield Label(
-                    "Configuration already exists!",
-                    classes="config-summary-title"
+                    "Configuration already exists!", classes="config-summary-title"
                 )
                 yield Label(
                     "Found .claudefig.toml in current directory.\n\n"
                     "Go to the 'Config' panel to manage your existing configuration, "
                     "or go to 'Presets' to apply a different preset (will overwrite).",
-                    classes="panel-info"
+                    classes="panel-info",
                 )
                 with Horizontal(classes="button-row"):
                     yield Button("Go to Config", id="btn-go-config", variant="primary")
@@ -59,16 +58,22 @@ class InitializePanel(Container):
 
             presets = self.config_template_manager.list_global_presets()
             if presets:
-                preset_options = [(preset["name"], preset["name"]) for preset in presets]
+                preset_options = [
+                    (preset["name"], preset["name"]) for preset in presets
+                ]
                 # Default to "default" preset
-                default_preset = "default" if any(p["name"] == "default" for p in presets) else preset_options[0][1]
+                default_preset = (
+                    "default"
+                    if any(p["name"] == "default" for p in presets)
+                    else preset_options[0][1]
+                )
                 self.selected_preset = default_preset
 
                 yield Select(
                     options=preset_options,
                     value=default_preset,
                     id="select-preset",
-                    allow_blank=False
+                    allow_blank=False,
                 )
 
                 # Preset preview
@@ -78,13 +83,15 @@ class InitializePanel(Container):
             else:
                 yield Label(
                     "No presets found! This shouldn't happen - the default preset should exist.",
-                    classes="placeholder"
+                    classes="placeholder",
                 )
                 return
 
             # Action buttons
             with Horizontal(classes="button-row"):
-                yield Button("Start Initialization", id="btn-start-init", variant="primary")
+                yield Button(
+                    "Start Initialization", id="btn-start-init", variant="primary"
+                )
                 yield Button("Manage Presets", id="btn-manage-presets")
 
     def on_mount(self) -> None:
@@ -109,12 +116,16 @@ class InitializePanel(Container):
             # Load preset config
             preset_config = self.config_template_manager.get_preset_config(preset_name)
             preset_list = self.config_template_manager.list_global_presets()
-            preset_info = next((p for p in preset_list if p["name"] == preset_name), None)
+            preset_info = next(
+                (p for p in preset_list if p["name"] == preset_name), None
+            )
 
             preview_lines = []
 
             if preset_info:
-                preview_lines.append(f"Description: {preset_info.get('description', 'N/A')}")
+                preview_lines.append(
+                    f"Description: {preset_info.get('description', 'N/A')}"
+                )
                 preview_lines.append(f"File Count: {preset_info.get('file_count', 0)}")
 
             # Show file instances that will be created
@@ -122,9 +133,9 @@ class InitializePanel(Container):
             if files:
                 preview_lines.append("\nFiles that will be configured:")
                 for file_inst in files:
-                    file_type = file_inst.get('type', '?')
-                    path = file_inst.get('path', '?')
-                    enabled = file_inst.get('enabled', True)
+                    file_type = file_inst.get("type", "?")
+                    path = file_inst.get("path", "?")
+                    enabled = file_inst.get("enabled", True)
                     status = "✓" if enabled else "✗"
                     preview_lines.append(f"  {status} {file_type}: {path}")
             else:
@@ -154,6 +165,7 @@ class InitializePanel(Container):
         elif event.button.id == "btn-go-config":
             # Switch to config panel
             from claudefig.tui.app import MainScreen
+
             if isinstance(self.app, MainScreen):
                 self.app._activate_section("config")
             event.stop()
@@ -172,7 +184,9 @@ class InitializePanel(Container):
 
         try:
             # Step 1: Apply preset (creates .claudefig.toml)
-            self.app.notify(f"Applying preset '{self.selected_preset}'...", severity="information")
+            self.app.notify(
+                f"Applying preset '{self.selected_preset}'...", severity="information"
+            )
             self.config_template_manager.apply_preset_to_project(self.selected_preset)
 
             # Step 2: Reload config after applying preset
@@ -189,12 +203,21 @@ class InitializePanel(Container):
 
             # Step 4: Show success summary
             if success:
-                self.app.notify("Initialization complete! Files generated successfully.", severity="information", timeout=5)
+                self.app.notify(
+                    "Initialization complete! Files generated successfully.",
+                    severity="information",
+                    timeout=5,
+                )
             else:
-                self.app.notify("Initialization completed with warnings. Check logs for details.", severity="warning", timeout=5)
+                self.app.notify(
+                    "Initialization completed with warnings. Check logs for details.",
+                    severity="warning",
+                    timeout=5,
+                )
 
             # Step 5: Switch to Config panel
             from claudefig.tui.app import MainScreen
+
             if isinstance(self.app, MainScreen):
                 # Reload config in app
                 self.app.config = Config()
@@ -203,7 +226,7 @@ class InitializePanel(Container):
         except FileExistsError:
             self.app.notify(
                 ".claudefig.toml already exists! Go to Presets panel to overwrite.",
-                severity="error"
+                severity="error",
             )
         except Exception as e:
             self.app.notify(f"Initialization failed: {e}", severity="error")

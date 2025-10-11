@@ -30,7 +30,7 @@ class PresetsPanel(Container):
         with VerticalScroll():
             yield Label(
                 f"Location: {self.config_template_manager.global_presets_dir}",
-                classes="panel-subtitle"
+                classes="panel-subtitle",
             )
 
             # Load and display presets
@@ -44,7 +44,9 @@ class PresetsPanel(Container):
 
             # Footer button
             with Horizontal(classes="button-row"):
-                yield Button("+ Create New Preset from Current Config", id="btn-create-preset")
+                yield Button(
+                    "+ Create New Preset from Current Config", id="btn-create-preset"
+                )
 
     @work
     async def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -79,7 +81,9 @@ class PresetsPanel(Container):
             elif button_id == "btn-create-preset":
                 result = await self.app.push_screen_wait(CreatePresetScreen())
                 if result and result.get("action") == "create":
-                    await self._create_preset(result.get("name"), result.get("description"))
+                    await self._create_preset(
+                        result.get("name"), result.get("description")
+                    )
         except asyncio.CancelledError:
             # User cancelled the operation (pressed Escape) - this is normal
             pass
@@ -95,11 +99,15 @@ class PresetsPanel(Container):
             if result and result.get("action") == "apply":
                 try:
                     self.config_template_manager.apply_preset_to_project(preset_name)
-                    self.app.notify(f"Applied preset '{preset_name}' successfully!", severity="information")
+                    self.app.notify(
+                        f"Applied preset '{preset_name}' successfully!",
+                        severity="information",
+                    )
 
                     # Reload config and switch to Config panel
                     # Import MainScreen to avoid circular import
                     from claudefig.tui.app import MainScreen
+
                     if isinstance(self.app, MainScreen):
                         self.app.config = Config()
                         self.app._activate_section("config")
@@ -130,7 +138,9 @@ class PresetsPanel(Container):
         """Create a new preset from current config."""
         try:
             self.config_template_manager.save_global_preset(name, description)
-            self.app.notify(f"Created preset '{name}' successfully!", severity="information")
+            self.app.notify(
+                f"Created preset '{name}' successfully!", severity="information"
+            )
 
             # Refresh the panel
             self.refresh(recompose=True)

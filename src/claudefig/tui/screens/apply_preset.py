@@ -33,7 +33,7 @@ class ApplyPresetScreen(Screen):
             with VerticalScroll(id="dialog-content"):
                 yield Label(
                     f"Apply preset '{self.preset_name}' to current directory?",
-                    classes="dialog-text"
+                    classes="dialog-text",
                 )
 
                 # Check if .claudefig.toml already exists
@@ -41,11 +41,11 @@ class ApplyPresetScreen(Screen):
                 if config_path.exists():
                     yield Label(
                         "\nWARNING: .claudefig.toml already exists in this directory!",
-                        classes="dialog-warning"
+                        classes="dialog-warning",
                     )
                     yield Label(
                         "Applying this preset will overwrite the existing configuration.",
-                        classes="dialog-warning"
+                        classes="dialog-warning",
                     )
 
             with Horizontal(classes="dialog-actions"):

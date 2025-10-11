@@ -22,10 +22,21 @@ class PresetCard(Container):
     def compose(self) -> ComposeResult:
         """Compose the preset card."""
         yield Label(self.preset_name, classes="preset-name")
-        yield Label(self.preset_data.get("description", ""), classes="preset-description")
-        yield Label(f"{self.preset_data.get('file_count', 0)} files", classes="preset-file-count")
+        yield Label(
+            self.preset_data.get("description", ""), classes="preset-description"
+        )
+        yield Label(
+            f"{self.preset_data.get('file_count', 0)} files",
+            classes="preset-file-count",
+        )
         with Horizontal(classes="preset-actions"):
-            yield Button("View Details", id=f"view-{self.preset_name}", classes="preset-button")
-            yield Button("Use for Project", id=f"use-{self.preset_name}", classes="preset-button")
+            yield Button(
+                "View Details", id=f"view-{self.preset_name}", classes="preset-button"
+            )
+            yield Button(
+                "Use for Project", id=f"use-{self.preset_name}", classes="preset-button"
+            )
             if self.preset_name != "default":
-                yield Button("Delete", id=f"delete-{self.preset_name}", classes="preset-button")
+                yield Button(
+                    "Delete", id=f"delete-{self.preset_name}", classes="preset-button"
+                )

@@ -24,7 +24,9 @@ class PresetManager:
     """
 
     def __init__(
-        self, user_presets_dir: Optional[Path] = None, project_presets_dir: Optional[Path] = None
+        self,
+        user_presets_dir: Optional[Path] = None,
+        project_presets_dir: Optional[Path] = None,
     ):
         """Initialize preset manager.
 
@@ -32,15 +34,21 @@ class PresetManager:
             user_presets_dir: Path to user presets directory (default: ~/.claudefig/presets/)
             project_presets_dir: Path to project presets directory (default: .claudefig/presets/)
         """
-        self.user_presets_dir = user_presets_dir or (Path.home() / ".claudefig" / "presets")
-        self.project_presets_dir = project_presets_dir or (Path.cwd() / ".claudefig" / "presets")
+        self.user_presets_dir = user_presets_dir or (
+            Path.home() / ".claudefig" / "presets"
+        )
+        self.project_presets_dir = project_presets_dir or (
+            Path.cwd() / ".claudefig" / "presets"
+        )
 
         # Cache for loaded presets
         self._preset_cache: dict[str, Preset] = {}
         self._cache_loaded = False
 
     def list_presets(
-        self, file_type: Optional[FileType] = None, source: Optional[PresetSource] = None
+        self,
+        file_type: Optional[FileType] = None,
+        source: Optional[PresetSource] = None,
     ) -> list[Preset]:
         """List available presets.
 
@@ -78,7 +86,9 @@ class PresetManager:
         self._load_presets()
         return self._preset_cache.get(preset_id)
 
-    def add_preset(self, preset: Preset, source: PresetSource = PresetSource.USER) -> None:
+    def add_preset(
+        self, preset: Preset, source: PresetSource = PresetSource.USER
+    ) -> None:
         """Add a new preset.
 
         Args:
@@ -98,7 +108,9 @@ class PresetManager:
 
         # Determine storage directory
         storage_dir = (
-            self.user_presets_dir if source == PresetSource.USER else self.project_presets_dir
+            self.user_presets_dir
+            if source == PresetSource.USER
+            else self.project_presets_dir
         )
         storage_dir.mkdir(parents=True, exist_ok=True)
 

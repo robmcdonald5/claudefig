@@ -15,7 +15,9 @@ class FileInstanceManager:
     """
 
     def __init__(
-        self, preset_manager: Optional[PresetManager] = None, repo_path: Optional[Path] = None
+        self,
+        preset_manager: Optional[PresetManager] = None,
+        repo_path: Optional[Path] = None,
     ):
         """Initialize file instance manager.
 
@@ -195,7 +197,9 @@ class FileInstanceManager:
         # Check if file type supports multiple instances
         if not instance.type.supports_multiple:
             existing_count = sum(
-                1 for i in self._instances.values() if i.type == instance.type and i.enabled
+                1
+                for i in self._instances.values()
+                if i.type == instance.type and i.enabled
             )
             if existing_count > 0 and (not is_update or not instance.enabled):
                 result.add_error(
@@ -231,7 +235,9 @@ class FileInstanceManager:
 
             # Check for parent directory references (../)
             if ".." in path_obj.parts:
-                result.add_error("Path cannot contain parent directory references (../)")
+                result.add_error(
+                    "Path cannot contain parent directory references (../)"
+                )
 
             # For directories, ensure path ends with /
             if file_type.is_directory and not path.endswith("/"):
@@ -247,7 +253,9 @@ class FileInstanceManager:
 
             # Warn if file already exists
             if full_path.exists() and not file_type.append_mode:
-                result.add_warning(f"File already exists at '{path}' and may be overwritten")
+                result.add_warning(
+                    f"File already exists at '{path}' and may be overwritten"
+                )
 
         except (ValueError, OSError) as e:
             result.add_error(f"Invalid path: {e}")

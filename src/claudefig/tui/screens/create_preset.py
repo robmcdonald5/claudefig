@@ -24,7 +24,9 @@ class CreatePresetScreen(Screen):
                 yield Input(placeholder="my-custom-preset", id="input-preset-name")
 
                 yield Label("\nDescription (optional):", classes="dialog-label")
-                yield Input(placeholder="My custom configuration", id="input-preset-description")
+                yield Input(
+                    placeholder="My custom configuration", id="input-preset-description"
+                )
 
             with Horizontal(classes="dialog-actions"):
                 yield Button("Create", id="btn-create", variant="primary")
@@ -45,8 +47,10 @@ class CreatePresetScreen(Screen):
                 self.notify("Preset name is required", severity="error")
                 return
 
-            self.dismiss(result={
-                "action": "create",
-                "name": preset_name,
-                "description": description
-            })
+            self.dismiss(
+                result={
+                    "action": "create",
+                    "name": preset_name,
+                    "description": description,
+                }
+            )

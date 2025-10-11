@@ -24,7 +24,7 @@ class FileInstanceEditScreen(Screen):
         preset_manager: PresetManager,
         instance: FileInstance | None = None,
         file_type: FileType | None = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Initialize file instance edit screen.
 
@@ -53,23 +53,31 @@ class FileInstanceEditScreen(Screen):
                 # File Type dropdown
                 yield Label("File Type:", classes="dialog-label")
                 file_type_options = [(ft.display_name, ft.value) for ft in FileType]
-                selected_type = self.file_type.value if self.file_type else file_type_options[0][1]
+                selected_type = (
+                    self.file_type.value if self.file_type else file_type_options[0][1]
+                )
                 yield Select(
                     options=file_type_options,
                     value=selected_type,
                     id="select-file-type",
-                    allow_blank=False
+                    allow_blank=False,
                 )
 
                 # Preset dropdown (will be populated based on file type)
                 yield Label("\nPreset:", classes="dialog-label")
-                preset_options = self._get_preset_options_for_type(self.file_type or FileType.CLAUDE_MD)
-                selected_preset = self.instance.preset if self.instance else (preset_options[0][1] if preset_options else "")
+                preset_options = self._get_preset_options_for_type(
+                    self.file_type or FileType.CLAUDE_MD
+                )
+                selected_preset = (
+                    self.instance.preset
+                    if self.instance
+                    else (preset_options[0][1] if preset_options else "")
+                )
                 yield Select(
                     options=preset_options,
                     value=selected_preset,
                     id="select-preset",
-                    allow_blank=False
+                    allow_blank=False,
                 )
 
                 # Path input
@@ -83,7 +91,7 @@ class FileInstanceEditScreen(Screen):
                 yield Input(
                     placeholder="e.g., CLAUDE.md or .claude/commands/",
                     value=default_path,
-                    id="input-path"
+                    id="input-path",
                 )
 
                 # Enabled checkbox
@@ -99,7 +107,9 @@ class FileInstanceEditScreen(Screen):
                 yield Button(save_text, id="btn-save", variant="primary")
                 yield Button("Cancel", id="btn-cancel")
 
-    def _get_preset_options_for_type(self, file_type: FileType) -> list[tuple[str, str]]:
+    def _get_preset_options_for_type(
+        self, file_type: FileType
+    ) -> list[tuple[str, str]]:
         """Get available presets for a specific file type.
 
         Args:
@@ -114,7 +124,10 @@ class FileInstanceEditScreen(Screen):
                 # Fallback to default preset
                 return [(f"{file_type.value}:default", f"{file_type.value}:default")]
 
-            return [(f"{preset.name} ({preset.source.value})", preset.id) for preset in all_presets]
+            return [
+                (f"{preset.name} ({preset.source.value})", preset.id)
+                for preset in all_presets
+            ]
         except Exception:
             # Fallback
             return [(f"{file_type.value}:default", f"{file_type.value}:default")]
@@ -174,7 +187,9 @@ class FileInstanceEditScreen(Screen):
             if self.is_edit_mode and self.instance:
                 instance_id = self.instance.id
             else:
-                instance_id = self.instance_manager.generate_instance_id(file_type, preset_name, path)
+                instance_id = self.instance_manager.generate_instance_id(
+                    file_type, preset_name, path
+                )
 
             # Create temporary instance for validation
             temp_instance = FileInstance(
@@ -182,11 +197,13 @@ class FileInstanceEditScreen(Screen):
                 type=file_type,
                 preset=preset_id,
                 path=path,
-                enabled=enabled
+                enabled=enabled,
             )
 
             # Validate
-            result = self.instance_manager.validate_instance(temp_instance, is_update=self.is_edit_mode)
+            result = self.instance_manager.validate_instance(
+                temp_instance, is_update=self.is_edit_mode
+            )
 
             self.validation_errors = result.errors
             self.validation_warnings = result.warnings
@@ -197,7 +214,9 @@ class FileInstanceEditScreen(Screen):
                 feedback_label.update("\n".join([f"❌ {err}" for err in result.errors]))
                 feedback_label.styles.color = "red"
             elif result.warnings:
-                feedback_label.update("\n".join([f"⚠️  {warn}" for warn in result.warnings]))
+                feedback_label.update(
+                    "\n".join([f"⚠️  {warn}" for warn in result.warnings])
+                )
                 feedback_label.styles.color = "yellow"
             else:
                 feedback_label.update("✓ Validation passed")
@@ -245,7 +264,9 @@ class FileInstanceEditScreen(Screen):
             if self.is_edit_mode and self.instance:
                 instance_id = self.instance.id
             else:
-                instance_id = self.instance_manager.generate_instance_id(file_type, preset_name, path)
+                instance_id = self.instance_manager.generate_instance_id(
+                    file_type, preset_name, path
+                )
 
             # Create file instance
             instance = FileInstance(
@@ -254,11 +275,13 @@ class FileInstanceEditScreen(Screen):
                 preset=preset_id,
                 path=path,
                 enabled=enabled,
-                variables=self.instance.variables if self.instance else {}
+                variables=self.instance.variables if self.instance else {},
             )
 
             # Final validation
-            result = self.instance_manager.validate_instance(instance, is_update=self.is_edit_mode)
+            result = self.instance_manager.validate_instance(
+                instance, is_update=self.is_edit_mode
+            )
 
             if result.has_errors:
                 # Show errors
@@ -267,11 +290,13 @@ class FileInstanceEditScreen(Screen):
                 return
 
             # Dismiss with result
-            self.dismiss(result={
-                "action": "save",
-                "instance": instance,
-                "is_edit": self.is_edit_mode
-            })
+            self.dismiss(
+                result={
+                    "action": "save",
+                    "instance": instance,
+                    "is_edit": self.is_edit_mode,
+                }
+            )
 
         except Exception as e:
             self.notify(f"Error saving instance: {e}", severity="error")

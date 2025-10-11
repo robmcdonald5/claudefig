@@ -58,7 +58,9 @@ class PresetValidator:
                 if "version" not in claudefig:
                     result.add_warning("Missing 'version' in [claudefig] section")
                 if "schema_version" not in claudefig:
-                    result.add_warning("Missing 'schema_version' in [claudefig] section")
+                    result.add_warning(
+                        "Missing 'schema_version' in [claudefig] section"
+                    )
 
             # Validate files section
             if "files" in data:
@@ -129,7 +131,9 @@ class PresetValidator:
             "total": len(validation_results),
             "valid": sum(1 for r in validation_results.values() if r.valid),
             "invalid": sum(1 for r in validation_results.values() if not r.valid),
-            "warnings": sum(1 for r in validation_results.values() if r.has_warnings and r.valid),
+            "warnings": sum(
+                1 for r in validation_results.values() if r.has_warnings and r.valid
+            ),
             "results": validation_results,
         }
 

@@ -168,7 +168,9 @@ class Config:
             return False
 
         original_length = len(self.data["files"])
-        self.data["files"] = [f for f in self.data["files"] if f.get("id") != instance_id]
+        self.data["files"] = [
+            f for f in self.data["files"] if f.get("id") != instance_id
+        ]
         return len(self.data["files"]) < original_length
 
     @classmethod

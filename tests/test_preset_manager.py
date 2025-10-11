@@ -57,7 +57,9 @@ class TestPresetManagerInit:
         user_dir = tmp_path / "user"
         project_dir = tmp_path / "project"
 
-        manager = PresetManager(user_presets_dir=user_dir, project_presets_dir=project_dir)
+        manager = PresetManager(
+            user_presets_dir=user_dir, project_presets_dir=project_dir
+        )
 
         assert manager.user_presets_dir == user_dir
         assert manager.project_presets_dir == project_dir
@@ -294,7 +296,9 @@ class TestUserProjectPresets:
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
-        manager = PresetManager(user_presets_dir=user_dir, project_presets_dir=tmp_path / "project")
+        manager = PresetManager(
+            user_presets_dir=user_dir, project_presets_dir=tmp_path / "project"
+        )
         presets = manager.list_presets()
 
         # Should include the user preset
@@ -320,7 +324,9 @@ class TestUserProjectPresets:
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
-        manager = PresetManager(user_presets_dir=tmp_path / "user", project_presets_dir=project_dir)
+        manager = PresetManager(
+            user_presets_dir=tmp_path / "user", project_presets_dir=project_dir
+        )
         presets = manager.list_presets()
 
         # Should include the project preset

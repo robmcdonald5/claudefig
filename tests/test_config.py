@@ -22,6 +22,7 @@ class TestConfigCorruption:
         IDEAL: Should fall back to defaults with warning
         """
         import sys
+
         if sys.version_info >= (3, 11):
             import tomllib
         else:
@@ -42,6 +43,7 @@ class TestConfigCorruption:
         IDEAL: Should fall back to defaults with warning
         """
         import sys
+
         if sys.version_info >= (3, 11):
             import tomllib
         else:
@@ -66,6 +68,7 @@ class TestConfigCorruption:
         IDEAL: Should fall back to defaults with warning
         """
         import sys
+
         if sys.version_info >= (3, 11):
             import tomllib
         else:
@@ -148,7 +151,7 @@ class TestConfigSaveErrors:
         config = Config()
 
         # Create a read-only file
-        config_file.write_text("[claudefig]\nversion = \"2.0\"", encoding="utf-8")
+        config_file.write_text('[claudefig]\nversion = "2.0"', encoding="utf-8")
         config_file.chmod(0o444)  # Read-only
 
         # Attempt to save should raise PermissionError
@@ -170,6 +173,7 @@ class TestConfigSaveErrors:
     def test_save_disk_full(self, tmp_path):
         """Test saving config when disk is full."""
         import sys
+
         if sys.version_info >= (3, 11):
             pass
         else:
@@ -250,6 +254,7 @@ class TestConfigFileInstances:
         This test shows that we can't add to a corrupted config
         """
         import sys
+
         if sys.version_info >= (3, 11):
             import tomllib
         else:

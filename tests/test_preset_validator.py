@@ -1,6 +1,5 @@
 """Tests for PresetValidator."""
 
-
 import pytest
 import tomli_w
 

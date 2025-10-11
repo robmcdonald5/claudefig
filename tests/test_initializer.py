@@ -322,7 +322,9 @@ class TestSetupMcpServers:
         mock_subprocess.assert_called_once()
 
     @patch("subprocess.run")
-    def test_setup_mcp_servers_invalid_json(self, mock_subprocess, tmp_path, mock_config):
+    def test_setup_mcp_servers_invalid_json(
+        self, mock_subprocess, tmp_path, mock_config
+    ):
         """Test MCP setup with invalid JSON in config file."""
         initializer = Initializer(mock_config)
 
@@ -364,7 +366,9 @@ class TestSetupMcpServers:
         mock_subprocess.assert_called_once()
 
     @patch("subprocess.run")
-    def test_setup_mcp_servers_command_fails(self, mock_subprocess, tmp_path, mock_config):
+    def test_setup_mcp_servers_command_fails(
+        self, mock_subprocess, tmp_path, mock_config
+    ):
         """Test MCP setup when claude command returns non-zero exit code."""
         initializer = Initializer(mock_config)
 
@@ -578,7 +582,13 @@ class TestInitializeTemplateErrors:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_reports_helpful_error_on_template_missing(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config, mock_template_manager, capsys
+        self,
+        mock_ensure_dir,
+        mock_is_git,
+        git_repo,
+        mock_config,
+        mock_template_manager,
+        capsys,
     ):
         """Test that missing template errors include helpful messages.
 

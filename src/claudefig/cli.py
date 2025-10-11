@@ -138,13 +138,13 @@ def show():
 
             for file_type, counts in sorted(type_counts.items()):
                 summary_table.add_row(
-                    file_type,
-                    str(counts["enabled"]),
-                    str(counts["total"])
+                    file_type, str(counts["enabled"]), str(counts["total"])
                 )
 
             console.print(summary_table)
-            console.print("\n[dim]Use 'claudefig files list' to see all file instances[/dim]")
+            console.print(
+                "\n[dim]Use 'claudefig files list' to see all file instances[/dim]"
+            )
         else:
             console.print("[yellow]No file instances configured[/yellow]")
             console.print("[dim]Use 'claudefig files add' to add file instances[/dim]")
@@ -339,7 +339,11 @@ def config_list(path):
                         current_type = instance.type
                         console.print(f"\n[bold]{instance.type.display_name}[/bold]")
 
-                    status = "[green]enabled[/green]" if instance.enabled else "[dim]disabled[/dim]"
+                    status = (
+                        "[green]enabled[/green]"
+                        if instance.enabled
+                        else "[dim]disabled[/dim]"
+                    )
                     console.print(f"  • {instance.id} ({status})")
                     console.print(f"      Path: {instance.path}")
                     console.print(f"      Preset: {instance.preset}")
@@ -403,14 +407,18 @@ def files_list(path, file_type, enabled_only):
                 filter_type = FileType(file_type)
             except ValueError:
                 console.print(f"[red]Invalid file type:[/red] {file_type}")
-                console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
+                console.print(
+                    f"Valid types: {', '.join([ft.value for ft in FileType])}"
+                )
                 raise click.Abort() from None
 
         instances = instance_manager.list_instances(filter_type, enabled_only)
 
         if not instances:
             console.print("[yellow]No file instances configured[/yellow]")
-            console.print("\nUse [cyan]claudefig files add[/cyan] to add a new file instance")
+            console.print(
+                "\nUse [cyan]claudefig files add[/cyan] to add a new file instance"
+            )
             return
 
         # Display instances grouped by type
@@ -526,7 +534,9 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
         cfg.add_file_instance(instance.to_dict())
         cfg.save(config_path)
 
-        console.print(f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]")
+        console.print(
+            f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]"
+        )
         console.print(f"  Type: {instance.type.display_name}")
         console.print(f"  Preset: {instance.preset}")
         console.print(f"  Path: {instance.path}")
@@ -559,7 +569,9 @@ def files_remove(instance_id, path):
 
         if cfg.remove_file_instance(instance_id):
             cfg.save(config_path)
-            console.print(f"[green]+[/green] Removed file instance: [cyan]{instance_id}[/cyan]")
+            console.print(
+                f"[green]+[/green] Removed file instance: [cyan]{instance_id}[/cyan]"
+            )
             console.print(f"[dim]Config saved to: {config_path}[/dim]")
         else:
             console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
@@ -601,7 +613,9 @@ def files_enable(instance_id, path):
             # Save back to config
             cfg.set_file_instances(instance_manager.save_instances())
             cfg.save(config_path)
-            console.print(f"[green]+[/green] Enabled file instance: [cyan]{instance_id}[/cyan]")
+            console.print(
+                f"[green]+[/green] Enabled file instance: [cyan]{instance_id}[/cyan]"
+            )
             console.print(f"[dim]Config saved to: {config_path}[/dim]")
         else:
             console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
@@ -643,7 +657,9 @@ def files_disable(instance_id, path):
             # Save back to config
             cfg.set_file_instances(instance_manager.save_instances())
             cfg.save(config_path)
-            console.print(f"[green]+[/green] Disabled file instance: [cyan]{instance_id}[/cyan]")
+            console.print(
+                f"[green]+[/green] Disabled file instance: [cyan]{instance_id}[/cyan]"
+            )
             console.print(f"[dim]Config saved to: {config_path}[/dim]")
         else:
             console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
@@ -680,7 +696,9 @@ def presets_list(file_type):
                 filter_type = FileType(file_type)
             except ValueError:
                 console.print(f"[red]Invalid file type:[/red] {file_type}")
-                console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
+                console.print(
+                    f"Valid types: {', '.join([ft.value for ft in FileType])}"
+                )
                 raise click.Abort() from None
 
         presets_list = preset_manager.list_presets(filter_type)
@@ -689,7 +707,9 @@ def presets_list(file_type):
             console.print("[yellow]No presets found[/yellow]")
             return
 
-        console.print(f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n")
+        console.print(
+            f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n"
+        )
 
         # Group by file type
         current_type = None
@@ -776,10 +796,14 @@ def templates_list(validate):
 
         if not templates_list:
             console.print("[yellow]No global templates found[/yellow]")
-            console.print(f"\n[dim]Templates location: {manager.global_presets_dir}[/dim]")
+            console.print(
+                f"\n[dim]Templates location: {manager.global_presets_dir}[/dim]"
+            )
             return
 
-        console.print(f"\n[bold blue]Global Config Templates[/bold blue] ({len(templates_list)})\n")
+        console.print(
+            f"\n[bold blue]Global Config Templates[/bold blue] ({len(templates_list)})\n"
+        )
         console.print(f"[dim]Location: {manager.global_presets_dir}[/dim]\n")
 
         table = Table(show_header=True, header_style="bold magenta")
@@ -828,12 +852,16 @@ def templates_show(template_name):
             template_config = manager.get_preset_config(template_name)
         except FileNotFoundError:
             console.print(f"[yellow]Template not found:[/yellow] {template_name}")
-            console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]")
+            console.print(
+                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+            )
             return
 
         # Get template metadata
         templates_list = manager.list_global_presets()
-        template_info = next((t for t in templates_list if t["name"] == template_name), None)
+        template_info = next(
+            (t for t in templates_list if t["name"] == template_name), None
+        )
 
         console.print(f"\n[bold blue]Template: {template_name}[/bold blue]\n")
 
@@ -883,20 +911,30 @@ def templates_apply(template_name, path):
     try:
         manager = ConfigTemplateManager()
 
-        console.print(f"[bold green]Applying template '{template_name}' to:[/bold green] {repo_path}")
+        console.print(
+            f"[bold green]Applying template '{template_name}' to:[/bold green] {repo_path}"
+        )
 
         manager.apply_preset_to_project(template_name, target_path=repo_path)
 
-        console.print(f"\n[green]+[/green] Template '{template_name}' applied successfully!")
+        console.print(
+            f"\n[green]+[/green] Template '{template_name}' applied successfully!"
+        )
         console.print(f"[dim]Created: {repo_path / '.claudefig.toml'}[/dim]")
 
     except FileNotFoundError as e:
         console.print(f"[red]Template not found:[/red] {template_name}")
-        console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]")
+        console.print(
+            "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+        )
         raise click.Abort() from e
     except FileExistsError:
-        console.print(f"[red]Error:[/red] .claudefig.toml already exists in {repo_path}")
-        console.print("[dim]Remove existing config or choose a different directory[/dim]")
+        console.print(
+            f"[red]Error:[/red] .claudefig.toml already exists in {repo_path}"
+        )
+        console.print(
+            "[dim]Remove existing config or choose a different directory[/dim]"
+        )
         raise click.Abort() from None
     except Exception as e:
         console.print(f"[red]Error applying template:[/red] {e}")
@@ -905,9 +943,7 @@ def templates_apply(template_name, path):
 
 @templates.command("delete")
 @click.argument("template_name")
-@click.confirmation_option(
-    prompt="Are you sure you want to delete this template?"
-)
+@click.confirmation_option(prompt="Are you sure you want to delete this template?")
 def templates_delete(template_name):
     """Delete a global config template.
 
@@ -920,7 +956,9 @@ def templates_delete(template_name):
 
         manager.delete_global_preset(template_name)
 
-        console.print(f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]")
+        console.print(
+            f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]"
+        )
 
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
@@ -967,6 +1005,7 @@ def templates_save(template_name, description, path):
 
         # Temporarily change to project dir to read its config
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(repo_path)
@@ -974,8 +1013,12 @@ def templates_save(template_name, description, path):
         finally:
             os.chdir(original_cwd)
 
-        console.print(f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]")
-        console.print(f"[dim]Location: {manager.global_presets_dir / (template_name + '.toml')}[/dim]")
+        console.print(
+            f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]"
+        )
+        console.print(
+            f"[dim]Location: {manager.global_presets_dir / (template_name + '.toml')}[/dim]"
+        )
 
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
@@ -1002,9 +1045,7 @@ def setup_mcp(path):
     """
     repo_path = Path(path).resolve()
 
-    console.print(
-        f"[bold green]Setting up MCP servers in:[/bold green] {repo_path}"
-    )
+    console.print(f"[bold green]Setting up MCP servers in:[/bold green] {repo_path}")
 
     try:
         config = Config()

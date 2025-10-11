@@ -67,9 +67,7 @@ def mock_preset_manager():
 @pytest.fixture
 def instance_manager(mock_preset_manager, tmp_path):
     """Create a FileInstanceManager with mocked dependencies."""
-    return FileInstanceManager(
-        preset_manager=mock_preset_manager, repo_path=tmp_path
-    )
+    return FileInstanceManager(preset_manager=mock_preset_manager, repo_path=tmp_path)
 
 
 @pytest.fixture
@@ -456,6 +454,7 @@ class TestValidatePath:
         """Test that absolute paths are rejected."""
         # Use proper absolute path for Windows
         import platform
+
         if platform.system() == "Windows":
             abs_path = "C:\\absolute\\path.md"
         else:
@@ -469,7 +468,9 @@ class TestValidatePath:
 
     def test_validate_path_with_parent_references(self, instance_manager):
         """Test that paths with ../ are rejected."""
-        result = instance_manager.validate_path("../outside/CLAUDE.md", FileType.CLAUDE_MD)
+        result = instance_manager.validate_path(
+            "../outside/CLAUDE.md", FileType.CLAUDE_MD
+        )
 
         assert result.valid is False
         assert result.has_errors
