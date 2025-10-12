@@ -32,30 +32,77 @@ Screen {
     padding: 1;
 }
 
-Button {
+/* Menu navigation buttons (main tree) - Keep original styles */
+#menu-buttons Button {
     width: 100%;
     margin: 0;
-    min-height: 1;
+    height: 3;
     padding: 0 1;
+    background: $panel;
+    border: none;
+}
+
+#menu-buttons Button:hover {
+    background: $primary;
+    border: none;
+}
+
+#menu-buttons Button:focus {
+    text-style: bold;
+    border: solid $accent;
     background: $panel;
 }
 
-Button:focus {
-    text-style: bold;
-    border: solid $accent;
-}
-
-Button.active {
+#menu-buttons Button.active {
     background: $accent;
     color: $text;
     text-style: bold;
+    border: none;
 }
 
-Button.active:focus {
+#menu-buttons Button.active:focus {
     background: $accent;
     color: $text;
     text-style: bold;
     border: solid $accent;
+}
+
+/* Base button styles for content panels and modals */
+#content-panel Button,
+.dialog-actions Button,
+.instance-actions Button,
+.button-row Button {
+    min-height: 3;
+    padding: 0 2;
+    background: $panel;
+    border: none;
+    min-width: 10;
+}
+
+#content-panel Button:hover,
+.dialog-actions Button:hover,
+.instance-actions Button:hover,
+.button-row Button:hover {
+    background: $primary;
+    border: none;
+}
+
+#content-panel Button:focus,
+.dialog-actions Button:focus,
+.instance-actions Button:focus,
+.button-row Button:focus {
+    border: none;
+    background: $primary;
+    text-style: bold;
+}
+
+#content-panel Button:focus:hover,
+.dialog-actions Button:focus:hover,
+.instance-actions Button:focus:hover,
+.button-row Button:focus:hover {
+    border: none;
+    background: $primary;
+    text-style: bold;
 }
 
 #content-panel {
@@ -88,11 +135,31 @@ Button.active:focus {
     width: 100%;
     margin-bottom: 0;
     text-align: left;
+    border: none;
+    min-height: 1;
+    padding: 0 1;
+}
+
+.category-button:hover {
+    background: $primary;
+    border: none;
+}
+
+.category-button:focus {
+    border: solid $accent;
+    background: $panel;
 }
 
 .category-button.active {
     background: $accent-darken-1;
     color: $text;
+    border: none;
+}
+
+.category-button.active:focus {
+    background: $accent-darken-1;
+    color: $text;
+    border: solid $accent;
 }
 
 #settings-content {
@@ -145,6 +212,13 @@ SettingItem {
 }
 
 /* Initialize Panel Styles */
+InitializePanel VerticalScroll {
+    scrollbar-size: 1 1;
+    scrollbar-background: $panel;
+    scrollbar-color: $primary;
+    overflow-x: hidden;
+}
+
 .panel-title {
     text-style: bold;
     color: $accent;
@@ -174,11 +248,13 @@ SettingItem {
     width: 100%;
     height: auto;
     margin-top: 2;
+    align: left middle;
 }
 
 .button-row Button {
     width: auto;
     margin-right: 2;
+    min-width: 15;
 }
 
 .placeholder {
@@ -192,39 +268,10 @@ SettingItem {
 }
 
 /* Presets Panel Styles */
-.preset-card {
+#preset-select {
     width: 100%;
-    height: auto;
     margin-bottom: 2;
-    padding: 1;
-    border: round $primary;
-    background: $panel;
-}
-
-.preset-name {
-    text-style: bold;
-    color: $accent;
-    margin-bottom: 0;
-}
-
-.preset-description {
-    color: $text-muted;
-    margin-bottom: 1;
-}
-
-.preset-file-count {
-    color: $text-muted;
-    margin-bottom: 1;
-}
-
-.preset-actions {
-    width: 100%;
-    height: auto;
-}
-
-.preset-button {
-    width: auto;
-    margin-right: 1;
+    margin-top: 1;
 }
 
 /* Config Panel Styles */
@@ -273,16 +320,19 @@ SettingItem {
 .instance-actions {
     width: 100%;
     height: auto;
+    align: left middle;
 }
 
 .instance-button {
     width: auto;
     margin-right: 1;
+    min-width: 10;
 }
 
 .add-instance-button {
     width: 100%;
     margin-top: 1;
+    min-height: 3;
 }
 
 .panel-subtitle {
@@ -348,6 +398,78 @@ SettingItem {
 .dialog-actions Button {
     width: auto;
     margin: 0 1;
+    min-width: 15;
+}
+
+/* Button variants for content buttons */
+#content-panel Button.-primary,
+#content-panel Button.primary,
+.dialog-actions Button.-primary,
+.dialog-actions Button.primary,
+.instance-actions Button.-primary,
+.instance-actions Button.primary,
+.button-row Button.-primary,
+.button-row Button.primary {
+    background: $accent;
+    color: $text;
+    border: none;
+}
+
+#content-panel Button.-primary:hover,
+#content-panel Button.primary:hover,
+.dialog-actions Button.-primary:hover,
+.dialog-actions Button.primary:hover,
+.instance-actions Button.-primary:hover,
+.instance-actions Button.primary:hover,
+.button-row Button.-primary:hover,
+.button-row Button.primary:hover {
+    background: $accent-lighten-1;
+    border: none;
+}
+
+#content-panel Button.-primary:focus,
+#content-panel Button.primary:focus,
+.dialog-actions Button.-primary:focus,
+.dialog-actions Button.primary:focus,
+.instance-actions Button.-primary:focus,
+.instance-actions Button.primary:focus,
+.button-row Button.-primary:focus,
+.button-row Button.primary:focus {
+    background: $accent;
+    border: none;
+    text-style: bold;
+}
+
+#content-panel Button.-primary:focus:hover,
+#content-panel Button.primary:focus:hover,
+.dialog-actions Button.-primary:focus:hover,
+.dialog-actions Button.primary:focus:hover,
+.instance-actions Button.-primary:focus:hover,
+.instance-actions Button.primary:focus:hover,
+.button-row Button.-primary:focus:hover,
+.button-row Button.primary:focus:hover {
+    background: $accent-lighten-1;
+    border: none;
+    text-style: bold;
+}
+
+#content-panel Button:disabled,
+.dialog-actions Button:disabled,
+.instance-actions Button:disabled,
+.button-row Button:disabled {
+    opacity: 0.5;
+    background: $panel;
+    border: none;
+    color: $text-muted;
+}
+
+#content-panel Button:disabled:hover,
+.dialog-actions Button:disabled:hover,
+.instance-actions Button:disabled:hover,
+.button-row Button:disabled:hover {
+    background: $panel;
+    border: none;
+    color: $text-muted;
 }
 
 Input {
