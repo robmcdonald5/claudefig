@@ -64,7 +64,7 @@ Screen {
     background: $accent;
     color: $text;
     text-style: bold;
-    border: solid $accent;
+    border: solid $primary-lighten-2;
 }
 
 /* Base button styles for content panels and modals */
