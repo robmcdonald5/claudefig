@@ -44,7 +44,7 @@ class InitializePanel(Container):
                     classes="panel-info",
                 )
                 with Horizontal(classes="button-row"):
-                    yield Button("Go to Config", id="btn-go-config", variant="primary")
+                    yield Button("Go to Config", id="btn-go-config")
                     yield Button("Go to Presets", id="btn-go-presets")
                 return
 
