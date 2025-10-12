@@ -12,6 +12,8 @@ class CreatePresetScreen(Screen):
     BINDINGS = [
         ("escape", "dismiss", "Cancel"),
         ("backspace", "dismiss", "Cancel"),
+        ("left", "focus_previous", "Focus previous"),
+        ("right", "focus_next", "Focus next"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -54,3 +56,11 @@ class CreatePresetScreen(Screen):
                     "description": description,
                 }
             )
+
+    def action_focus_previous(self) -> None:
+        """Navigate focus to the previous focusable widget (left arrow)."""
+        self.screen.focus_previous()
+
+    def action_focus_next(self) -> None:
+        """Navigate focus to the next focusable widget (right arrow)."""
+        self.screen.focus_next()
