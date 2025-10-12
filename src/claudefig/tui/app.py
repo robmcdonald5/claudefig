@@ -295,13 +295,13 @@ class MainScreen(App):
         if not focused:
             return
 
-        # Check if we're in a horizontal button row - don't navigate up/down within it
+        # Check if we're in a horizontal button row - navigate up should exit to previous element
         try:
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
-                    # In a horizontal layout, use left/right only
-                    # Navigate up should exit the button row to previous element
+                    # Navigate up exits the button row to the previous focusable element
+                    self.screen.focus_previous()
                     return
         except Exception:
             pass
@@ -331,13 +331,13 @@ class MainScreen(App):
         if not focused:
             return
 
-        # Check if we're in a horizontal button row - don't navigate up/down within it
+        # Check if we're in a horizontal button row - navigate down should exit to next element
         try:
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
-                    # In a horizontal layout, use left/right only
-                    # Navigate down should exit the button row to next element
+                    # Navigate down exits the button row to the next focusable element
+                    self.screen.focus_next()
                     return
         except Exception:
             pass
