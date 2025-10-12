@@ -14,6 +14,8 @@ class ApplyPresetScreen(Screen):
     BINDINGS = [
         ("escape", "dismiss", "Cancel"),
         ("backspace", "dismiss", "Cancel"),
+        ("left", "focus_previous", "Focus previous"),
+        ("right", "focus_next", "Focus next"),
     ]
 
     def __init__(self, preset_name: str, **kwargs) -> None:
@@ -58,3 +60,11 @@ class ApplyPresetScreen(Screen):
             self.dismiss()
         elif event.button.id == "btn-apply":
             self.dismiss(result={"action": "apply", "preset_name": self.preset_name})
+
+    def action_focus_previous(self) -> None:
+        """Navigate focus to the previous focusable widget (left arrow)."""
+        self.screen.focus_previous()
+
+    def action_focus_next(self) -> None:
+        """Navigate focus to the next focusable widget (right arrow)."""
+        self.screen.focus_next()
