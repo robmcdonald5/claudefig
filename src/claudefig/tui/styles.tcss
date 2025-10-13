@@ -275,6 +275,60 @@ InitializePanel VerticalScroll {
 }
 
 /* Config Panel Styles */
+.config-section {
+    width: 100%;
+    height: auto;
+    border: round $primary;
+    padding: 2;
+    margin: 2 0;
+    background: $panel;
+}
+
+#project-settings-section {
+    border: solid $accent;
+}
+
+#file-instances-section {
+    border: solid $primary;
+}
+
+.setting-label {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.setting-sublabel {
+    color: $text;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+}
+
+.setting-row Switch {
+    margin-right: 2;
+}
+
+.setting-description {
+    color: $text-muted;
+}
+
+#config-content {
+    width: 100%;
+    height: auto;
+    max-height: 40%;
+    overflow-y: auto;
+    padding: 1 0;
+    margin: 2 0;
+}
+
 .file-type-section {
     width: 100%;
     height: auto;
@@ -487,4 +541,555 @@ Select {
     padding: 1;
     border: round $primary-lighten-1;
     min-height: 3;
+}
+
+/* Single Instance Control Styles */
+.single-instance-control {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin-bottom: 2;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.single-instance-control .setting-row {
+    margin-bottom: 1;
+}
+
+.single-instance-control Button {
+    margin-top: 2;
+}
+
+/* Hidden input for maintaining form logic */
+Input.hidden {
+    display: none;
+}
+
+/* Disabled instance visual indicator */
+.instance-path.instance-disabled {
+    color: $text-muted;
+    text-style: italic;
+}
+
+/* === NEW COMPACT CONFIG PANEL STYLES === */
+
+/* Header with title and action buttons */
+.config-header {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    border-bottom: solid $primary;
+    padding-bottom: 1;
+}
+
+.config-header-info {
+    width: 1fr;
+}
+
+.header-actions {
+    width: auto;
+    height: auto;
+    align: right middle;
+}
+
+.header-btn {
+    margin-left: 1;
+    min-width: 12;
+}
+
+/* 2-column grid layout */
+#config-top-grid {
+    grid-size: 2 1;
+    grid-columns: 1fr 1fr;
+    grid-rows: auto;
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 0;
+}
+
+.config-column {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin: 0 1;
+    background: $panel;
+}
+
+#project-settings-col {
+    border: round $accent;
+}
+
+#single-instance-col {
+    border: round $primary;
+}
+
+/* Compact labels and inputs */
+.compact-label {
+    text-style: bold;
+    color: $accent;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.compact-input {
+    width: 100%;
+    margin-bottom: 1;
+    height: 3;
+}
+
+.compact-setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+.compact-setting-row Switch {
+    margin-right: 1;
+}
+
+.compact-description {
+    color: $text-muted;
+}
+
+.save-btn {
+    width: 100%;
+    margin-top: 2;
+}
+
+/* Compact single-instance control */
+.compact-instance-control {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $surface;
+}
+
+.compact-instance-control Switch {
+    margin-right: 1;
+}
+
+.compact-instance-name {
+    width: 1fr;
+    color: $text;
+}
+
+.compact-configure-btn {
+    width: auto;
+    min-width: 10;
+}
+
+/* Multi-instance section with tabs */
+#multi-instance-section {
+    width: 100%;
+    height: auto;
+    border: round $primary;
+    padding: 2;
+    margin: 0;
+    background: $panel;
+}
+
+#file-type-tabs {
+    width: 100%;
+    height: auto;
+    max-height: 30;
+    margin-top: 1;
+}
+
+.tab-content {
+    width: 100%;
+    height: auto;
+    max-height: 25;
+    overflow-y: auto;
+    padding: 1;
+}
+
+.tab-placeholder {
+    color: $text-muted;
+    text-align: center;
+    margin: 2;
+}
+
+.compact-instance-item {
+    margin-bottom: 1;
+    padding: 1;
+}
+
+.add-instance-btn {
+    width: 100%;
+    margin-top: 1;
+}
+
+/* === CATEGORY NAVIGATION SYSTEM === */
+
+/* Minimal header for category-based layout */
+.config-header-minimal {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    padding-bottom: 1;
+    border-bottom: solid $primary;
+}
+
+.panel-subtitle-inline {
+    color: $text-muted;
+    margin-left: 2;
+}
+
+/* Category navigation bar */
+#category-nav {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: round $primary;
+}
+
+/* Category navigation buttons */
+.category-button {
+    width: auto;
+    min-width: 18;
+    height: 3;
+    margin: 0 1;
+    padding: 0 2;
+    background: $surface;
+    border: solid $primary-lighten-1;
+    color: $text-muted;
+}
+
+.category-button:hover {
+    background: $primary;
+    border: solid $primary-lighten-1;
+    color: $text;
+}
+
+.category-button:focus {
+    background: $primary;
+    border: solid $accent;
+    text-style: bold;
+    color: $text;
+}
+
+.category-button.active {
+    background: $accent;
+    border: solid $accent-lighten-1;
+    color: $text;
+    text-style: bold;
+}
+
+.category-button.active:hover {
+    background: $accent-lighten-1;
+    border: solid $accent-lighten-2;
+}
+
+.category-button.active:focus {
+    background: $accent;
+    border: solid $accent-lighten-2;
+    text-style: bold;
+}
+
+/* Category content container */
+#category-content {
+    width: 100%;
+    height: auto;
+    padding: 2;
+}
+
+/* === OVERVIEW CATEGORY STYLES === */
+
+.category-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.category-subtitle {
+    color: $text-muted;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.category-section-header {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.overview-stats {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin-bottom: 2;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.stat-item {
+    color: $text;
+    margin-bottom: 1;
+}
+
+.quick-actions {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+.overview-action-btn {
+    width: 80%;
+    margin: 1;
+    min-height: 3;
+}
+
+/* === PROJECT SETTINGS CATEGORY STYLES === */
+
+.setting-label-cat {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.setting-sublabel-cat {
+    color: $text;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.setting-row-cat {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+}
+
+.setting-row-cat Switch {
+    margin-right: 2;
+}
+
+.setting-desc-cat {
+    color: $text-muted;
+}
+
+.setting-input {
+    width: 100%;
+    margin-bottom: 2;
+}
+
+.save-settings-btn {
+    width: 100%;
+    margin-top: 2;
+    min-height: 3;
+}
+
+/* === CORE FILES CATEGORY STYLES === */
+
+.core-file-control {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $surface;
+}
+
+.core-file-control Switch {
+    margin-right: 1;
+}
+
+/* === FILE INSTANCES CATEGORY STYLES === */
+
+#file-type-tabs-cat {
+    width: 100%;
+    height: auto;
+    max-height: 30;
+    margin-top: 2;
+}
+
+.tab-content-cat {
+    width: 100%;
+    height: auto;
+    max-height: 25;
+    overflow-y: auto;
+    padding: 1;
+}
+
+.tab-placeholder-cat {
+    color: $text-muted;
+    text-align: center;
+    margin: 2;
+}
+
+.file-instance-item-cat {
+    margin-bottom: 1;
+    padding: 1;
+}
+
+.add-instance-btn-cat {
+    width: 100%;
+    margin-top: 1;
+}
+
+/* === CONFIG MENU STYLES === */
+
+#config-menu-grid {
+    grid-size: 2 2;
+    grid-columns: 1fr 1fr;
+    grid-rows: auto auto;
+    grid-gutter: 1 1;
+    width: 100%;
+    height: auto;
+    padding: 2;
+}
+
+.config-menu-button {
+    width: 100%;
+    height: 5;
+    padding: 1;
+    background: $accent;
+    color: $text;
+    text-style: bold;
+    border: round $accent-lighten-1;
+    content-align: center middle;
+}
+
+.config-menu-button:hover {
+    background: $accent-lighten-1;
+    border: round $accent-lighten-2;
+}
+
+.config-menu-button:focus {
+    background: $accent;
+    border: solid $primary;
+    text-style: bold;
+}
+
+/* === NEW SCREEN STYLES === */
+
+/* Common screen styles */
+#overview-screen,
+#project-settings-screen,
+#core-files-screen,
+#file-instances-screen {
+    width: 100%;
+    height: 100%;
+    padding: 2 4;
+    background: $surface;
+}
+
+.screen-title {
+    text-style: bold;
+    color: $accent;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+.screen-description {
+    color: $text-muted;
+    text-align: center;
+    margin-bottom: 2;
+}
+
+.screen-footer {
+    width: 100%;
+    height: auto;
+    margin-top: 2;
+    align: center middle;
+}
+
+/* Overview screen styles */
+.overview-section {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 2;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.stats-container {
+    width: 100%;
+    height: auto;
+    padding: 1;
+}
+
+.stat-line {
+    color: $text;
+    margin-bottom: 0;
+}
+
+.action-buttons {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+.action-buttons Button {
+    width: auto;
+    min-width: 20;
+    margin: 0 1;
+}
+
+/* Project settings screen styles */
+.settings-section {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 2;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.setting-item {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+}
+
+/* Core files screen styles */
+.core-files-list {
+    width: 100%;
+    height: auto;
+    padding: 1;
+}
+
+/* File instances screen styles */
+#file-instances-tabs {
+    width: 100%;
+    height: auto;
+    max-height: 35;
+    margin-top: 2;
+}
+
+.tab-actions {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+}
+
+.instance-list {
+    width: 100%;
+    height: auto;
+    max-height: 20;
+    overflow-y: auto;
+    padding: 1;
+}
+
+.empty-message {
+    color: $text-muted;
+    text-align: center;
+    margin: 2;
 }
