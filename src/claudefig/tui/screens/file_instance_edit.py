@@ -82,19 +82,54 @@ class FileInstanceEditScreen(Screen):
                     allow_blank=False,
                 )
 
-                # Path input
+                # Path input (conditional based on path_customizable)
                 yield Label("\nPath:", classes="dialog-label")
+
+                # Determine default path
                 if self.instance:
                     default_path = self.instance.path
                 elif self.file_type:
                     default_path = self.file_type.default_path
                 else:
                     default_path = ""
-                yield Input(
-                    placeholder="e.g., CLAUDE.md or .claude/commands/",
-                    value=default_path,
-                    id="input-path",
+
+                # Check if path is customizable
+                is_path_customizable = (
+                    self.file_type.path_customizable if self.file_type else True
                 )
+
+                if is_path_customizable:
+                    # Show editable input for CLAUDE.md and .gitignore
+                    yield Input(
+                        placeholder="e.g., CLAUDE.md or docs/CLAUDE.md",
+                        value=default_path,
+                        id="input-path",
+                    )
+                else:
+                    # Show read-only label for fixed location/directory types
+                    yield Label(
+                        f"  {default_path} (fixed location)",
+                        classes="dialog-text setting-description",
+                    )
+                    # Keep a hidden input to maintain form logic
+                    yield Input(
+                        value=default_path,
+                        id="input-path",
+                        classes="hidden",
+                    )
+
+                # Add helper text for special behaviors
+                if self.file_type:
+                    if self.file_type.append_mode:
+                        yield Label(
+                            "ℹ️  This file will be appended to if it already exists",
+                            classes="dialog-text setting-description",
+                        )
+                    if self.file_type.is_directory:
+                        yield Label(
+                            f"ℹ️  Files will be created in {self.file_type.default_path}",
+                            classes="dialog-text setting-description",
+                        )
 
                 # Enabled checkbox
                 yield Label("\nEnabled:", classes="dialog-label")
