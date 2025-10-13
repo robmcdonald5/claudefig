@@ -1,21 +1,41 @@
-"""Config panel for editing project configuration."""
+"""Config panel - main menu for configuration options."""
 
-from textual import work
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Container, Grid
 from textual.widgets import Button, Label
 
 from claudefig.config import Config
-from claudefig.config_template_manager import ConfigTemplateManager
 from claudefig.file_instance_manager import FileInstanceManager
-from claudefig.models import FileInstance, FileType
 from claudefig.preset_manager import PresetManager
-from claudefig.tui.screens import CreatePresetScreen, FileInstanceEditScreen
-from claudefig.tui.widgets import FileTypeSection
+from claudefig.tui.screens import (
+    CoreFilesScreen,
+    FileInstancesScreen,
+    OverviewScreen,
+    ProjectSettingsScreen,
+)
 
 
 class ConfigPanel(Container):
-    """Panel for editing current project's .claudefig.toml."""
+    """Main configuration menu panel."""
+
+    # Bindings for 2D grid navigation
+    BINDINGS = [
+        ("up", "navigate_up", "Navigate up"),
+        ("down", "navigate_down", "Navigate down"),
+        ("left", "navigate_left", "Navigate left"),
+        ("right", "navigate_right", "Navigate right"),
+    ]
+
+    # 2D grid navigation map (button_id -> (row, col))
+    GRID_POSITIONS = {
+        "btn-overview": (0, 0),
+        "btn-settings": (0, 1),
+        "btn-core-files": (1, 0),
+        "btn-file-instances": (1, 1),
+    }
+
+    # Reverse map (row, col) -> button_id
+    POSITION_TO_BUTTON = {v: k for k, v in GRID_POSITIONS.items()}
 
     def __init__(self, config: Config, **kwargs) -> None:
         """Initialize config panel.
@@ -26,13 +46,10 @@ class ConfigPanel(Container):
         super().__init__(**kwargs)
         self.config = config
         self.preset_manager = PresetManager()
-        self.config_template_manager = ConfigTemplateManager()
         self.instance_manager = FileInstanceManager(self.preset_manager)
 
     def compose(self) -> ComposeResult:
-        """Compose the config panel."""
-        yield Label("Project Configuration", classes="panel-title")
-
+        """Compose the config menu panel."""
         # Check if config exists
         if not self.config.config_path or not self.config.config_path.exists():
             yield Label(
@@ -42,230 +59,149 @@ class ConfigPanel(Container):
             )
             return
 
-        with VerticalScroll():
-            yield Label(f"Path: {self.config.config_path}", classes="panel-subtitle")
+        # Load file instances
+        instances_data = self.config.get_file_instances()
+        if instances_data:
+            self.instance_manager.load_instances(instances_data)
 
-            # Load file instances
-            instances_data = self.config.get_file_instances()
-            if instances_data:
-                self.instance_manager.load_instances(instances_data)
+        # Header
+        yield Label("Configuration Menu", classes="panel-title")
 
-                # Group by file type
-                instances_by_type: dict[FileType, list[FileInstance]] = {}
-                for instance in self.instance_manager.list_instances():
-                    if instance.type not in instances_by_type:
-                        instances_by_type[instance.type] = []
-                    instances_by_type[instance.type].append(instance)
+        # Summary info
+        enabled_count = sum(
+            1 for i in self.instance_manager.list_instances() if i.enabled
+        )
+        total_count = len(self.instance_manager.list_instances())
+        config_path_str = str(self.config.config_path)
+        if len(config_path_str) > 60:
+            config_path_str = "..." + config_path_str[-57:]
+        yield Label(
+            f"{config_path_str} | {total_count} instances ({enabled_count} enabled)",
+            classes="panel-subtitle",
+        )
 
-                # Display sections
-                enabled_count = sum(
-                    1 for i in self.instance_manager.list_instances() if i.enabled
-                )
-                total_count = len(self.instance_manager.list_instances())
-                yield Label(
-                    f"Summary: {total_count} file instances ({enabled_count} enabled, {total_count - enabled_count} disabled)",
-                    classes="config-summary-title",
-                )
+        # Menu buttons in 2x2 grid
+        with Grid(id="config-menu-grid"):
+            yield Button(
+                "Project Overview\nStats & quick actions",
+                id="btn-overview",
+                classes="config-menu-button",
+            )
+            yield Button(
+                "Project Settings\nConfig options & paths",
+                id="btn-settings",
+                classes="config-menu-button",
+            )
+            yield Button(
+                "Core Files\nSingle-instance files",
+                id="btn-core-files",
+                classes="config-menu-button",
+            )
+            yield Button(
+                "File Instances\nMulti-instance files",
+                id="btn-file-instances",
+                classes="config-menu-button",
+            )
 
-                for file_type in sorted(
-                    instances_by_type.keys(), key=lambda ft: ft.value
-                ):
-                    yield FileTypeSection(
-                        file_type,
-                        instances_by_type[file_type],
-                        classes="file-type-section",
-                    )
-            else:
-                yield Label("No file instances configured.", classes="placeholder")
+    def _navigate_grid(self, row_delta: int, col_delta: int) -> None:
+        """Navigate in the grid by moving in a direction.
 
-            # Footer button
-            with Horizontal(classes="button-row"):
-                yield Button(
-                    "Save Current Config as New Preset", id="btn-save-as-preset"
-                )
-
-    @work
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button press events."""
-        import asyncio
-
-        button_id = event.button.id
-        if not button_id:
+        Args:
+            row_delta: Change in row (-1 for up, 1 for down)
+            col_delta: Change in column (-1 for left, 1 for right)
+        """
+        # Get currently focused widget
+        focused = self.app.focused
+        if not focused or not isinstance(focused, Button):
             return
 
-        try:
-            # Toggle instance
-            if button_id.startswith("toggle-"):
-                instance_id = button_id.replace("toggle-", "")
-                await self._toggle_instance(instance_id)
+        button_id = focused.id
+        if button_id not in self.GRID_POSITIONS:
+            return
 
-            # Remove instance
-            elif button_id.startswith("remove-"):
-                instance_id = button_id.replace("remove-", "")
-                await self._remove_instance(instance_id)
+        # Get current position
+        row, col = self.GRID_POSITIONS[button_id]
 
-            # Edit instance
-            elif button_id.startswith("edit-"):
-                instance_id = button_id.replace("edit-", "")
-                self._edit_instance(instance_id)
+        # Calculate new position
+        new_row = row + row_delta
+        new_col = col + col_delta
 
-            # Add instance
-            elif button_id.startswith("add-"):
-                file_type_str = button_id.replace("add-", "")
-                self._add_instance(file_type_str)
+        # Vertical: Stop at edges (no wrapping)
+        if row_delta < 0 and row == 0:
+            # Already at top row - do nothing
+            return
+        if row_delta > 0 and row == 1:
+            # Already at bottom row - do nothing
+            return
 
-            # Save as preset
-            elif button_id == "btn-save-as-preset":
-                result = await self.app.push_screen_wait(CreatePresetScreen())
-                if result and result.get("action") == "create":
-                    await self._save_as_preset(
-                        result.get("name"), result.get("description")
-                    )
-        except asyncio.CancelledError:
-            # User cancelled the operation (pressed Escape) - this is normal
-            pass
-
-    async def _toggle_instance(self, instance_id: str) -> None:
-        """Toggle instance enabled/disabled."""
-        try:
-            instance = self.instance_manager.get_instance(instance_id)
-            if instance:
-                instance.enabled = not instance.enabled
-                self.instance_manager.update_instance(instance)
-
-                # Save to config
-                instances_data = [
-                    inst.to_dict() for inst in self.instance_manager.list_instances()
-                ]
-                self.config.set_file_instances(instances_data)
-                self.config.save()
-
-                status = "enabled" if instance.enabled else "disabled"
-                self.app.notify(f"Instance {status}", severity="information")
-
-                # Refresh panel
-                self.refresh(recompose=True)
-
-        except Exception as e:
-            self.app.notify(f"Error toggling instance: {e}", severity="error")
-
-    async def _remove_instance(self, instance_id: str) -> None:
-        """Remove an instance from config."""
-        try:
-            self.instance_manager.remove_instance(instance_id)
-
-            # Save to config
-            instances_data = [
-                inst.to_dict() for inst in self.instance_manager.list_instances()
-            ]
-            self.config.set_file_instances(instances_data)
-            self.config.save()
-
-            self.app.notify("Instance removed", severity="information")
-
-            # Refresh panel
-            self.refresh(recompose=True)
-
-        except Exception as e:
-            self.app.notify(f"Error removing instance: {e}", severity="error")
-
-    async def _save_as_preset(self, name: str, description: str) -> None:
-        """Save current config as new preset."""
-        try:
-            self.config_template_manager.save_global_preset(name, description)
-            self.app.notify(f"Saved config as preset '{name}'", severity="information")
-
-        except Exception as e:
-            self.app.notify(f"Error saving preset: {e}", severity="error")
-
-    @work
-    async def _edit_instance(self, instance_id: str) -> None:
-        """Open edit dialog for an existing file instance."""
-        import asyncio
-
-        try:
-            instance = self.instance_manager.get_instance(instance_id)
-            if not instance:
-                self.app.notify(f"Instance '{instance_id}' not found", severity="error")
+        # Horizontal: Escape to main menu when navigating left from leftmost column
+        if col_delta < 0 and col == 0:
+            # Moving left from leftmost column - go to Config button in main menu
+            try:
+                config_button = self.app.query_one("#config", Button)
+                config_button.focus()
                 return
+            except Exception:
+                pass  # Config button not found
 
-            # Open edit screen
-            result = await self.app.push_screen_wait(
-                FileInstanceEditScreen(
-                    self.instance_manager, self.preset_manager, instance=instance
+        # Horizontal: Stay at right edge when navigating right from rightmost column
+        if col_delta > 0 and col == 1:
+            # Already at rightmost column - do nothing
+            return
+
+        # Focus the new button within the grid
+        new_button_id = self.POSITION_TO_BUTTON.get((new_row, new_col))
+        if new_button_id:
+            try:
+                new_button = self.query_one(f"#{new_button_id}", Button)
+                new_button.focus()
+            except Exception:
+                pass  # Button not found
+
+    def action_navigate_up(self) -> None:
+        """Navigate up in the grid."""
+        self._navigate_grid(-1, 0)
+
+    def action_navigate_down(self) -> None:
+        """Navigate down in the grid."""
+        self._navigate_grid(1, 0)
+
+    def action_navigate_left(self) -> None:
+        """Navigate left in the grid."""
+        self._navigate_grid(0, -1)
+
+    def action_navigate_right(self) -> None:
+        """Navigate right in the grid."""
+        self._navigate_grid(0, 1)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses and navigate to screens."""
+        button_id = event.button.id
+
+        if button_id == "btn-overview":
+            self.app.push_screen(
+                OverviewScreen(
+                    config=self.config,
+                    instance_manager=self.instance_manager,
                 )
             )
-
-            if result and result.get("action") == "save":
-                updated_instance = result.get("instance")
-
-                # Update instance
-                self.instance_manager.update_instance(updated_instance)
-
-                # Save to config
-                instances_data = [
-                    inst.to_dict() for inst in self.instance_manager.list_instances()
-                ]
-                self.config.set_file_instances(instances_data)
-                self.config.save()
-
-                self.app.notify("Instance updated successfully", severity="information")
-
-                # Refresh panel
-                self.refresh(recompose=True)
-
-        except asyncio.CancelledError:
-            # User cancelled the operation (pressed Escape) - this is normal
-            pass
-        except Exception as e:
-            self.app.notify(f"Error editing instance: {e}", severity="error")
-
-    @work
-    async def _add_instance(self, file_type_str: str) -> None:
-        """Open add dialog for a new file instance."""
-        import asyncio
-
-        try:
-            # Parse file type
-            file_type = FileType(file_type_str)
-
-            # Open add screen
-            result = await self.app.push_screen_wait(
-                FileInstanceEditScreen(
-                    self.instance_manager,
-                    self.preset_manager,
-                    instance=None,
-                    file_type=file_type,
+        elif button_id == "btn-settings":
+            self.app.push_screen(
+                ProjectSettingsScreen(config=self.config)
+            )
+        elif button_id == "btn-core-files":
+            self.app.push_screen(
+                CoreFilesScreen(
+                    config=self.config,
+                    instance_manager=self.instance_manager,
+                    preset_manager=self.preset_manager,
                 )
             )
-
-            if result and result.get("action") == "save":
-                new_instance = result.get("instance")
-
-                # Add instance
-                validation_result = self.instance_manager.add_instance(new_instance)
-
-                if not validation_result.valid:
-                    error_msg = "\n".join(validation_result.errors)
-                    self.app.notify(
-                        f"Failed to add instance:\n{error_msg}", severity="error"
-                    )
-                    return
-
-                # Save to config
-                instances_data = [
-                    inst.to_dict() for inst in self.instance_manager.list_instances()
-                ]
-                self.config.set_file_instances(instances_data)
-                self.config.save()
-
-                self.app.notify("Instance added successfully", severity="information")
-
-                # Refresh panel
-                self.refresh(recompose=True)
-
-        except asyncio.CancelledError:
-            # User cancelled the operation (pressed Escape) - this is normal
-            pass
-        except Exception as e:
-            self.app.notify(f"Error adding instance: {e}", severity="error")
+        elif button_id == "btn-file-instances":
+            self.app.push_screen(
+                FileInstancesScreen(
+                    config=self.config,
+                    instance_manager=self.instance_manager,
+                    preset_manager=self.preset_manager,
+                )
+            )
