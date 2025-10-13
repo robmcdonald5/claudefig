@@ -59,6 +59,7 @@ class FileType(Enum):
         """Check if this file type supports multiple instances."""
         # Most types support multiple instances, except these:
         single_instance_types = {
+            self.SETTINGS_JSON,  # Only one settings.json per project
             self.SETTINGS_LOCAL_JSON,  # Typically only one per project
             self.STATUSLINE,  # Only one statusline script
         }
@@ -81,6 +82,16 @@ class FileType(Enum):
         """Check if this file type should append to existing files."""
         # .gitignore should append, not replace
         return self == self.GITIGNORE
+
+    @property
+    def path_customizable(self) -> bool:
+        """Check if path can be customized (vs fixed location/directory)."""
+        # Only CLAUDE.md and .gitignore allow custom paths
+        customizable_types = {
+            self.CLAUDE_MD,
+            self.GITIGNORE,
+        }
+        return self in customizable_types
 
 
 class PresetSource(Enum):
