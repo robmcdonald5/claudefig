@@ -70,13 +70,20 @@ Screen {
 /* Base button styles for content panels and modals */
 #content-panel Button,
 .dialog-actions Button,
-.instance-actions Button,
 .button-row Button {
     min-height: 3;
     padding: 0 2;
     background: $panel;
     border: none;
     min-width: 10;
+}
+
+.instance-actions Button {
+    min-height: 2;
+    padding: 0 1;
+    background: $panel;
+    border: none;
+    min-width: 8;
 }
 
 #content-panel Button:hover,
@@ -353,14 +360,16 @@ InitializePanel VerticalScroll {
 .instance-path {
     text-style: bold;
     color: $text;
+    margin-bottom: 0;
 }
 
 .instance-preset {
     color: $text-muted;
+    margin-bottom: 0;
 }
 
 .instance-status {
-    margin-bottom: 1;
+    margin-bottom: 0;
 }
 
 .instance-enabled {
@@ -375,12 +384,14 @@ InitializePanel VerticalScroll {
     width: 100%;
     height: auto;
     align: left middle;
+    margin-top: 0;
 }
 
 .instance-button {
     width: auto;
     margin-right: 1;
-    min-width: 10;
+    min-width: 8;
+    min-height: 2;
 }
 
 .add-instance-button {
@@ -661,28 +672,29 @@ Input.hidden {
 }
 
 /* Compact single-instance control */
-.compact-instance-control {
+CompactSingleInstanceControl {
     width: 100%;
-    height: auto;
+    height: 3;  /* Fixed compact height */
     align: left middle;
-    margin-bottom: 1;
-    padding: 1;
-    border: round $primary-lighten-1;
-    background: $surface;
+    margin-bottom: 0;  /* No bottom margin - more compact */
+    padding: 0 1;
+    border: none;
+    background: transparent;
 }
 
-.compact-instance-control Switch {
+.compact-switch {
     margin-right: 1;
+    width: auto;
 }
 
 .compact-instance-name {
-    width: 1fr;
+    width: 30;  /* Fixed width for consistent layout */
     color: $text;
 }
 
-.compact-configure-btn {
-    width: auto;
-    min-width: 10;
+.compact-preset-select {
+    width: 1fr;  /* Takes remaining space */
+    margin-left: 1;
 }
 
 /* Multi-instance section with tabs */
@@ -981,10 +993,17 @@ Input.hidden {
 /* Common screen styles */
 #overview-screen,
 #project-settings-screen,
-#core-files-screen,
-#file-instances-screen {
+#core-files-screen {
     width: 100%;
     height: 100%;
+    padding: 2 4;
+    background: $surface;
+}
+
+/* File instances screen needs auto height to prevent excessive stretching */
+#file-instances-screen {
+    width: 100%;
+    height: auto;
     padding: 2 4;
     background: $surface;
 }
@@ -1006,7 +1025,44 @@ Input.hidden {
     width: 100%;
     height: auto;
     margin-top: 2;
-    align: center middle;
+    align: left middle;
+}
+
+.screen-footer Button {
+    margin-right: 1;
+    min-width: 15;
+    min-height: 3;
+    padding: 0 2;
+    background: $panel;
+    border: none;
+}
+
+.screen-footer Button:hover {
+    background: $primary;
+    border: none;
+}
+
+.screen-footer Button:focus {
+    border: none;
+    background: $primary;
+    text-style: bold;
+}
+
+.screen-footer Button.-primary,
+.screen-footer Button.primary {
+    background: $accent;
+    color: $text;
+}
+
+.screen-footer Button.-primary:hover,
+.screen-footer Button.primary:hover {
+    background: $accent-lighten-1;
+}
+
+.screen-footer Button.-primary:focus,
+.screen-footer Button.primary:focus {
+    background: $accent;
+    text-style: bold;
 }
 
 /* Overview screen styles - Compact layout */
@@ -1078,7 +1134,7 @@ Input.hidden {
     margin: 0 1;
 }
 
-/* Project settings screen styles */
+/* Project settings screen styles - OLD (deprecated) */
 .settings-section {
     width: 100%;
     height: auto;
@@ -1094,38 +1150,169 @@ Input.hidden {
     margin-bottom: 2;
 }
 
+/* Project settings screen styles - NEW COMPACT */
+.compact-settings-list {
+    width: 100%;
+    height: auto;
+    padding: 1;
+    margin-top: 1;
+}
+
+.compact-setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.compact-setting-row Switch {
+    margin-right: 2;
+}
+
+.compact-setting-info {
+    width: 1fr;
+    height: auto;
+}
+
+.compact-setting-label {
+    text-style: bold;
+    color: $text;
+    margin-bottom: 0;
+}
+
+.compact-setting-desc {
+    color: $text-muted;
+    margin-top: 0;
+}
+
+.compact-setting-input-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.compact-setting-input-row .compact-setting-label {
+    margin-bottom: 1;
+}
+
+.compact-setting-input-row .compact-input {
+    margin-bottom: 0;
+}
+
+.compact-setting-input-row .compact-setting-desc {
+    margin-top: 1;
+}
+
+/* Initialization settings screen styles (matching Core Files) */
+.init-settings-list {
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin-top: 1;
+}
+
+.init-setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;  /* Reduced from 2 */
+    padding: 0 1;      /* Much smaller padding */
+    background: transparent;  /* No background */
+    border: none;      /* No border */
+}
+
+.init-setting-row Switch {
+    margin-right: 2;
+}
+
+.init-setting-info {
+    width: 1fr;
+    height: auto;
+}
+
+.init-setting-label {
+    text-style: bold;
+    color: $text;
+    margin-bottom: 0;
+}
+
+.init-setting-desc {
+    color: $text-muted;
+    margin-top: 0;
+}
+
 /* Core files screen styles */
 .core-files-list {
     width: 100%;
     height: auto;
-    padding: 1;
+    padding: 0;  /* Remove padding for more compact layout */
+    margin-top: 1;
+}
+
+.screen-description {
+    color: $text-muted;
+    text-align: center;
+    margin-bottom: 1;  /* Reduced from 2 to be more compact */
 }
 
 /* File instances screen styles */
 #file-instances-tabs {
     width: 100%;
     height: auto;
-    max-height: 35;
-    margin-top: 2;
+    max-height: 20;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+#file-instances-tabs ContentSwitcher {
+    width: 100%;
+    height: auto;
+    max-height: 18;
+}
+
+#file-instances-tabs TabPane {
+    width: 100%;
+    height: auto;
+    padding: 0 1;
 }
 
 .tab-actions {
     width: 100%;
     height: auto;
     align: left middle;
-    margin-bottom: 2;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.tab-actions Button {
+    min-height: 2;
+    padding: 0 1;
 }
 
 .instance-list {
     width: 100%;
     height: auto;
-    max-height: 20;
+    max-height: 12;
     overflow-y: auto;
+    padding: 0;
+}
+
+.instance-list FileInstanceItem {
+    width: 100%;
+    margin-bottom: 1;
     padding: 1;
+    border: round $primary-lighten-1;
+    background: $panel;
 }
 
 .empty-message {
     color: $text-muted;
     text-align: center;
-    margin: 2;
+    margin: 1;
 }
