@@ -6,9 +6,10 @@ from textual.screen import Screen
 from textual.widgets import Button, Label, Static, Switch
 
 from claudefig.config import Config
+from claudefig.tui.base import BackButtonMixin
 
 
-class ProjectSettingsScreen(Screen):
+class ProjectSettingsScreen(Screen, BackButtonMixin):
     """Screen for editing initialization settings."""
 
     BINDINGS = [
@@ -64,8 +65,7 @@ class ProjectSettingsScreen(Screen):
                         )
 
             # Action buttons (matching Core Files style)
-            with Container(classes="screen-footer"):
-                yield Button("← Back to Config Menu", id="btn-back")
+            yield from self.compose_back_button()
 
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
@@ -73,8 +73,7 @@ class ProjectSettingsScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        if event.button.id == "btn-back":
-            self.app.pop_screen()
+        self.handle_back_button(event)
 
     def on_switch_changed(self, event: Switch.Changed) -> None:
         """Handle switch changes and auto-save."""

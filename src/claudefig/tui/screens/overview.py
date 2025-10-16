@@ -8,10 +8,11 @@ from textual.widgets import Button, Label, Static
 from claudefig.config import Config
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileInstance, FileType
+from claudefig.tui.base import BackButtonMixin
 from claudefig.tui.widgets import OverlayDropdown
 
 
-class OverviewScreen(Screen):
+class OverviewScreen(Screen, BackButtonMixin):
     """Screen displaying project overview with stats and quick actions."""
 
     BINDINGS = [
@@ -84,8 +85,7 @@ class OverviewScreen(Screen):
             )
 
             # Back button
-            with Container(classes="screen-footer"):
-                yield Button("← Back to Config Menu", id="btn-back")
+            yield from self.compose_back_button()
 
     def on_mount(self) -> None:
         """Called when screen is mounted - populate dropdown content."""
@@ -139,8 +139,7 @@ class OverviewScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        if event.button.id == "btn-back":
-            self.app.pop_screen()
+        self.handle_back_button(event)
 
     def on_click(self, event) -> None:
         """Handle clicks on the screen - close other dropdowns when one opens."""

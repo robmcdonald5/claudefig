@@ -9,10 +9,11 @@ from claudefig.config import Config
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
+from claudefig.tui.base import BackButtonMixin, FileInstanceMixin
 from claudefig.tui.widgets.compact_single_instance import CompactSingleInstanceControl
 
 
-class CoreFilesScreen(Screen):
+class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
     """Screen for managing single-instance core files."""
 
     BINDINGS = [
@@ -74,8 +75,7 @@ class CoreFilesScreen(Screen):
                     )
 
             # Back button
-            with Container(classes="screen-footer"):
-                yield Button("← Back to Config Menu", id="btn-back")
+            yield from self.compose_back_button()
 
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
@@ -83,8 +83,7 @@ class CoreFilesScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        if event.button.id == "btn-back":
-            self.app.pop_screen()
+        self.handle_back_button(event)
 
     def on_compact_single_instance_control_toggle_changed(
         self, event: CompactSingleInstanceControl.ToggleChanged
@@ -124,16 +123,14 @@ class CoreFilesScreen(Screen):
             self.instance_manager.add_instance(new_instance)
 
             # Sync to config and save
-            self.config.set_file_instances(self.instance_manager.save_instances())
-            self.config.save()
+            self.sync_instances_to_config()
         elif instance:
             # Update enabled status
             instance.enabled = enabled
             self.instance_manager.update_instance(instance)
 
             # Sync to config and save
-            self.config.set_file_instances(self.instance_manager.save_instances())
-            self.config.save()
+            self.sync_instances_to_config()
 
     def on_compact_single_instance_control_preset_changed(
         self, event: CompactSingleInstanceControl.PresetChanged
@@ -155,5 +152,4 @@ class CoreFilesScreen(Screen):
             self.instance_manager.update_instance(instance)
 
             # Sync to config and save
-            self.config.set_file_instances(self.instance_manager.save_instances())
-            self.config.save()
+            self.sync_instances_to_config()

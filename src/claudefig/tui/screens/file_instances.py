@@ -9,10 +9,11 @@ from claudefig.config import Config
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
+from claudefig.tui.base import BackButtonMixin, FileInstanceMixin
 from claudefig.tui.widgets.file_instance_item import FileInstanceItem
 
 
-class FileInstancesScreen(Screen):
+class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
     """Screen for managing multi-instance file types with tabs."""
 
     BINDINGS = [
@@ -91,19 +92,19 @@ class FileInstancesScreen(Screen):
                             )
 
             # Back button
-            with Container(classes="screen-footer"):
-                yield Button("← Back to Config Menu", id="btn-back")
+            yield from self.compose_back_button()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        button_id = event.button.id
+        # Handle back button first
+        if self.handle_back_button(event):
+            return
 
+        button_id = event.button.id
         if not button_id:
             return
 
-        if button_id == "btn-back":
-            self.app.pop_screen()
-        elif button_id.startswith("btn-add-"):
+        if button_id.startswith("btn-add-"):
             # Extract file type from button id
             file_type_value = button_id.replace("btn-add-", "")
             try:
@@ -139,11 +140,10 @@ class FileInstancesScreen(Screen):
                 try:
                     self.instance_manager.add_instance(instance)
                     # Sync to config and save
-                    self.config.set_file_instances(self.instance_manager.save_instances())
-                    self.config.save()
+                    self.sync_instances_to_config()
                     self.notify(f"Added {instance.type.display_name} instance", severity="information")
-                    # Refresh screen
-                    self._refresh_screen()
+                    # Refresh screen to show updated data
+                    self.refresh(recompose=True)
                 except Exception as e:
                     self.notify(f"Error adding instance: {e}", severity="error")
 
@@ -177,11 +177,10 @@ class FileInstancesScreen(Screen):
                 try:
                     self.instance_manager.update_instance(updated_instance)
                     # Sync to config and save
-                    self.config.set_file_instances(self.instance_manager.save_instances())
-                    self.config.save()
+                    self.sync_instances_to_config()
                     self.notify(f"Updated {updated_instance.type.display_name} instance", severity="information")
-                    # Refresh screen
-                    self._refresh_screen()
+                    # Refresh screen to show updated data
+                    self.refresh(recompose=True)
                 except Exception as e:
                     self.notify(f"Error updating instance: {e}", severity="error")
 
@@ -209,11 +208,10 @@ class FileInstancesScreen(Screen):
         # Remove from manager
         if self.instance_manager.remove_instance(instance_id):
             # Sync to config and save
-            self.config.set_file_instances(self.instance_manager.save_instances())
-            self.config.save()
+            self.sync_instances_to_config()
             self.notify(f"Removed {instance.type.display_name} instance", severity="information")
-            # Refresh screen
-            self._refresh_screen()
+            # Refresh screen to show updated data
+            self.refresh(recompose=True)
         else:
             self.notify(f"Failed to remove instance: {instance_id}", severity="error")
 
@@ -233,22 +231,10 @@ class FileInstancesScreen(Screen):
         self.instance_manager.update_instance(instance)
 
         # Sync to config and save
-        self.config.set_file_instances(self.instance_manager.save_instances())
-        self.config.save()
+        self.sync_instances_to_config()
 
         status = "enabled" if instance.enabled else "disabled"
         self.notify(f"{instance.type.display_name} instance {status}", severity="information")
 
-        # Refresh screen
-        self._refresh_screen()
-
-    def _refresh_screen(self) -> None:
-        """Refresh the current screen to show updated data."""
-        self.app.pop_screen()
-        self.app.push_screen(
-            FileInstancesScreen(
-                config=self.config,
-                instance_manager=self.instance_manager,
-                preset_manager=self.preset_manager,
-            )
-        )
+        # Refresh screen to show updated data
+        self.refresh(recompose=True)

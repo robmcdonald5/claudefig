@@ -1,22 +1,14 @@
 """Preset details modal screen."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
-from textual.screen import Screen
 from textual.widgets import Button, Label
 
 from claudefig.config_template_manager import ConfigTemplateManager
+from claudefig.tui.base import BaseModalScreen
 
 
-class PresetDetailsScreen(Screen):
+class PresetDetailsScreen(BaseModalScreen):
     """Modal screen to view preset details."""
-
-    BINDINGS = [
-        ("escape", "dismiss", "Close"),
-        ("backspace", "dismiss", "Close"),
-        ("left", "focus_previous", "Focus previous"),
-        ("right", "focus_next", "Focus next"),
-    ]
 
     def __init__(
         self, preset_name: str, config_template_manager: ConfigTemplateManager, **kwargs
@@ -31,8 +23,12 @@ class PresetDetailsScreen(Screen):
         self.preset_name = preset_name
         self.config_template_manager = config_template_manager
 
-    def compose(self) -> ComposeResult:
-        """Compose the preset details screen."""
+    def compose_title(self) -> str:
+        """Return the modal title."""
+        return f"Preset: {self.preset_name}"
+
+    def compose_content(self) -> ComposeResult:
+        """Compose the modal content."""
         try:
             # Load preset config
             preset_config = self.config_template_manager.get_preset_config(
@@ -43,42 +39,36 @@ class PresetDetailsScreen(Screen):
                 (p for p in preset_list if p["name"] == self.preset_name), None
             )
 
-            with Container(id="dialog-container"):
-                yield Label(f"Preset: {self.preset_name}", classes="dialog-header")
+            if preset_info:
+                yield Label(
+                    f"Description: {preset_info.get('description', 'N/A')}",
+                    classes="dialog-text",
+                )
+                yield Label(
+                    f"File Count: {preset_info.get('file_count', 0)}",
+                    classes="dialog-text",
+                )
 
-                with VerticalScroll(id="dialog-content"):
-                    if preset_info:
-                        yield Label(
-                            f"Description: {preset_info.get('description', 'N/A')}",
-                            classes="dialog-text",
-                        )
-                        yield Label(
-                            f"File Count: {preset_info.get('file_count', 0)}",
-                            classes="dialog-text",
-                        )
+            yield Label("\nFile Instances:", classes="dialog-section-title")
 
-                    yield Label("\nFile Instances:", classes="dialog-section-title")
-
-                    files = preset_config.get_file_instances()
-                    if files:
-                        for file_inst in files:
-                            yield Label(
-                                f"  - {file_inst.get('type', '?')}: {file_inst.get('path', '?')} "
-                                f"(preset: {file_inst.get('preset', '?')})",
-                                classes="dialog-text",
-                            )
-                    else:
-                        yield Label("  No file instances", classes="dialog-text")
-
-                with Horizontal(classes="dialog-actions"):
-                    yield Button(
-                        "Use for Project", id="btn-use-preset", variant="primary"
+            files = preset_config.get_file_instances()
+            if files:
+                for file_inst in files:
+                    yield Label(
+                        f"  - {file_inst.get('type', '?')}: {file_inst.get('path', '?')} "
+                        f"(preset: {file_inst.get('preset', '?')})",
+                        classes="dialog-text",
                     )
-                    yield Button("Close", id="btn-close")
+            else:
+                yield Label("  No file instances", classes="dialog-text")
 
         except Exception as e:
             yield Label(f"Error loading preset: {e}", classes="dialog-error")
-            yield Button("Close", id="btn-close")
+
+    def compose_actions(self) -> ComposeResult:
+        """Compose the action buttons."""
+        yield Button("Use for Project", id="btn-use-preset", variant="primary")
+        yield Button("Close", id="btn-close")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -86,11 +76,3 @@ class PresetDetailsScreen(Screen):
             self.dismiss()
         elif event.button.id == "btn-use-preset":
             self.dismiss(result={"action": "use", "preset_name": self.preset_name})
-
-    def action_focus_previous(self) -> None:
-        """Navigate focus to the previous focusable widget (left arrow)."""
-        self.screen.focus_previous()
-
-    def action_focus_next(self) -> None:
-        """Navigate focus to the next focusable widget (right arrow)."""
-        self.screen.focus_next()
