@@ -1009,34 +1009,70 @@ Input.hidden {
     align: center middle;
 }
 
-/* Overview screen styles */
-.overview-section {
+/* Overview screen styles - Compact layout */
+.overview-info-line {
     width: 100%;
-    height: auto;
-    margin-bottom: 2;
-    padding: 2;
-    background: $panel;
-    border: round $primary-lighten-1;
-}
-
-.stats-container {
-    width: 100%;
-    height: auto;
-    padding: 1;
-}
-
-.stat-line {
     color: $text;
+    margin-bottom: 1;
+}
+
+/* Overview screen - Section headers within dropdowns */
+.overview-section-header {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.overview-section-header.error {
+    color: $error;
+}
+
+.overview-section-header.warning {
+    color: $warning;
+}
+
+/* Status item colors */
+.overview-error-item {
+    color: $error;
     margin-bottom: 0;
 }
 
-.action-buttons {
+.overview-warning-item {
+    color: $warning;
+    margin-bottom: 0;
+}
+
+.overview-healthy-item {
+    color: $success;
+    margin-bottom: 0;
+}
+
+/* File status indicators */
+.file-enabled {
+    color: $success;
+    width: 100%;
+}
+
+.file-disabled {
+    color: $text-muted;
+    text-style: italic;
+    width: 100%;
+}
+
+.overview-actions-header {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.overview-action-buttons {
     width: 100%;
     height: auto;
     align: center middle;
+    margin-bottom: 2;
 }
 
-.action-buttons Button {
+.overview-action-buttons Button {
     width: auto;
     min-width: 20;
     margin: 0 1;
