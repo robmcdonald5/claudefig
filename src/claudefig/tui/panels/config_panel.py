@@ -88,7 +88,7 @@ class ConfigPanel(Container):
                 classes="config-menu-button",
             )
             yield Button(
-                "Project Settings\nConfig options & paths",
+                "Initialization Settings\nFile generation behavior",
                 id="btn-settings",
                 classes="config-menu-button",
             )
