@@ -17,7 +17,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
     """Screen for managing multi-instance file types with tabs."""
 
     BINDINGS = [
-        ("escape", "app.pop_screen", "Back"),
+        ("escape", "pop_screen", "Back"),
+        ("backspace", "pop_screen", "Back"),
     ]
 
     def __init__(
@@ -38,6 +39,10 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         self.config = config
         self.instance_manager = instance_manager
         self.preset_manager = preset_manager
+
+    def action_pop_screen(self) -> None:
+        """Pop the current screen to return to config menu."""
+        self.app.pop_screen()
 
     def compose(self) -> ComposeResult:
         """Compose the file instances screen."""
