@@ -96,16 +96,33 @@ class FileInstancesScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        if event.button.id == "btn-back":
+        button_id = event.button.id
+
+        if not button_id:
+            return
+
+        if button_id == "btn-back":
             self.app.pop_screen()
-        elif event.button.id and event.button.id.startswith("btn-add-"):
+        elif button_id.startswith("btn-add-"):
             # Extract file type from button id
-            file_type_value = event.button.id.replace("btn-add-", "")
+            file_type_value = button_id.replace("btn-add-", "")
             try:
                 file_type = FileType(file_type_value)
                 self._show_add_instance_dialog(file_type)
             except ValueError:
                 self.notify(f"Unknown file type: {file_type_value}", severity="error")
+        elif button_id.startswith("edit-"):
+            # Edit instance
+            instance_id = button_id.replace("edit-", "")
+            self._show_edit_instance_dialog(instance_id)
+        elif button_id.startswith("remove-"):
+            # Remove instance
+            instance_id = button_id.replace("remove-", "")
+            self._remove_instance(instance_id)
+        elif button_id.startswith("toggle-"):
+            # Toggle instance enabled/disabled
+            instance_id = button_id.replace("toggle-", "")
+            self._toggle_instance(instance_id)
 
     def _show_add_instance_dialog(self, file_type: FileType) -> None:
         """Show the add instance dialog for a file type.
@@ -121,18 +138,12 @@ class FileInstancesScreen(Screen):
                 instance = result["instance"]
                 try:
                     self.instance_manager.add_instance(instance)
-                    self.config.add_file_instance(instance.to_dict())
+                    # Sync to config and save
+                    self.config.set_file_instances(self.instance_manager.save_instances())
                     self.config.save()
                     self.notify(f"Added {instance.type.display_name} instance", severity="information")
                     # Refresh screen
-                    self.app.pop_screen()
-                    self.app.push_screen(
-                        FileInstancesScreen(
-                            config=self.config,
-                            instance_manager=self.instance_manager,
-                            preset_manager=self.preset_manager,
-                        )
-                    )
+                    self._refresh_screen()
                 except Exception as e:
                     self.notify(f"Error adding instance: {e}", severity="error")
 
@@ -143,4 +154,101 @@ class FileInstancesScreen(Screen):
                 file_type=file_type,
             ),
             callback=handle_result
+        )
+
+    def _show_edit_instance_dialog(self, instance_id: str) -> None:
+        """Show the edit instance dialog for an existing instance.
+
+        Args:
+            instance_id: ID of the instance to edit
+        """
+        from claudefig.tui.screens.file_instance_edit import FileInstanceEditScreen
+
+        # Get the instance
+        instance = self.instance_manager.get_instance(instance_id)
+        if not instance:
+            self.notify(f"Instance not found: {instance_id}", severity="error")
+            return
+
+        def handle_result(result: dict | None) -> None:
+            """Handle dialog result."""
+            if result and result.get("action") == "save":
+                updated_instance = result["instance"]
+                try:
+                    self.instance_manager.update_instance(updated_instance)
+                    # Sync to config and save
+                    self.config.set_file_instances(self.instance_manager.save_instances())
+                    self.config.save()
+                    self.notify(f"Updated {updated_instance.type.display_name} instance", severity="information")
+                    # Refresh screen
+                    self._refresh_screen()
+                except Exception as e:
+                    self.notify(f"Error updating instance: {e}", severity="error")
+
+        self.app.push_screen(
+            FileInstanceEditScreen(
+                instance_manager=self.instance_manager,
+                preset_manager=self.preset_manager,
+                instance=instance,
+            ),
+            callback=handle_result
+        )
+
+    def _remove_instance(self, instance_id: str) -> None:
+        """Remove a file instance.
+
+        Args:
+            instance_id: ID of the instance to remove
+        """
+        # Get the instance for display name
+        instance = self.instance_manager.get_instance(instance_id)
+        if not instance:
+            self.notify(f"Instance not found: {instance_id}", severity="error")
+            return
+
+        # Remove from manager
+        if self.instance_manager.remove_instance(instance_id):
+            # Sync to config and save
+            self.config.set_file_instances(self.instance_manager.save_instances())
+            self.config.save()
+            self.notify(f"Removed {instance.type.display_name} instance", severity="information")
+            # Refresh screen
+            self._refresh_screen()
+        else:
+            self.notify(f"Failed to remove instance: {instance_id}", severity="error")
+
+    def _toggle_instance(self, instance_id: str) -> None:
+        """Toggle an instance's enabled status.
+
+        Args:
+            instance_id: ID of the instance to toggle
+        """
+        instance = self.instance_manager.get_instance(instance_id)
+        if not instance:
+            self.notify(f"Instance not found: {instance_id}", severity="error")
+            return
+
+        # Toggle enabled status
+        instance.enabled = not instance.enabled
+        self.instance_manager.update_instance(instance)
+
+        # Sync to config and save
+        self.config.set_file_instances(self.instance_manager.save_instances())
+        self.config.save()
+
+        status = "enabled" if instance.enabled else "disabled"
+        self.notify(f"{instance.type.display_name} instance {status}", severity="information")
+
+        # Refresh screen
+        self._refresh_screen()
+
+    def _refresh_screen(self) -> None:
+        """Refresh the current screen to show updated data."""
+        self.app.pop_screen()
+        self.app.push_screen(
+            FileInstancesScreen(
+                config=self.config,
+                instance_manager=self.instance_manager,
+                preset_manager=self.preset_manager,
+            )
         )

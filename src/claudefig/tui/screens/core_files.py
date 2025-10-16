@@ -122,10 +122,18 @@ class CoreFilesScreen(Screen):
                 enabled=True,
             )
             self.instance_manager.add_instance(new_instance)
+
+            # Sync to config and save
+            self.config.set_file_instances(self.instance_manager.save_instances())
+            self.config.save()
         elif instance:
             # Update enabled status
             instance.enabled = enabled
             self.instance_manager.update_instance(instance)
+
+            # Sync to config and save
+            self.config.set_file_instances(self.instance_manager.save_instances())
+            self.config.save()
 
     def on_compact_single_instance_control_preset_changed(
         self, event: CompactSingleInstanceControl.PresetChanged
@@ -145,3 +153,7 @@ class CoreFilesScreen(Screen):
             # Update preset
             instance.preset = preset_id
             self.instance_manager.update_instance(instance)
+
+            # Sync to config and save
+            self.config.set_file_instances(self.instance_manager.save_instances())
+            self.config.save()
