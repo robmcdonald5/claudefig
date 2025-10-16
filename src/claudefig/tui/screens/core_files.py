@@ -16,7 +16,8 @@ class CoreFilesScreen(Screen):
     """Screen for managing single-instance core files."""
 
     BINDINGS = [
-        ("escape", "app.pop_screen", "Back"),
+        ("escape", "pop_screen", "Back"),
+        ("backspace", "pop_screen", "Back"),
     ]
 
     def __init__(
@@ -69,13 +70,78 @@ class CoreFilesScreen(Screen):
                     yield CompactSingleInstanceControl(
                         file_type=file_type,
                         instance=instance,
+                        preset_manager=self.preset_manager,
                     )
 
             # Back button
             with Container(classes="screen-footer"):
                 yield Button("← Back to Config Menu", id="btn-back")
 
+    def action_pop_screen(self) -> None:
+        """Pop the current screen to return to config menu."""
+        self.app.pop_screen()
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "btn-back":
             self.app.pop_screen()
+
+    def on_compact_single_instance_control_toggle_changed(
+        self, event: CompactSingleInstanceControl.ToggleChanged
+    ) -> None:
+        """Handle toggle changes - create or disable instance."""
+        file_type = event.file_type
+        enabled = event.enabled
+
+        # Find existing instance
+        instances = [
+            inst for inst in self.instance_manager.list_instances()
+            if inst.type == file_type
+        ]
+        instance = instances[0] if instances else None
+
+        if enabled and not instance:
+            # Create new instance with default template
+            # For template directory types, use "default" as the template name
+            # For other types, use the first available preset
+            from claudefig.models import FileInstance
+
+            if file_type.template_directory:
+                # Use simple template name
+                default_template = "default"
+            else:
+                # Use preset system
+                presets = self.preset_manager.list_presets(file_type=file_type)
+                default_template = presets[0].id if presets else "default"
+
+            new_instance = FileInstance(
+                id=f"{file_type.value}-default",
+                type=file_type,
+                preset=default_template,
+                path=file_type.default_path,
+                enabled=True,
+            )
+            self.instance_manager.add_instance(new_instance)
+        elif instance:
+            # Update enabled status
+            instance.enabled = enabled
+            self.instance_manager.update_instance(instance)
+
+    def on_compact_single_instance_control_preset_changed(
+        self, event: CompactSingleInstanceControl.PresetChanged
+    ) -> None:
+        """Handle preset selection changes."""
+        file_type = event.file_type
+        preset_id = event.preset_id
+
+        # Find existing instance
+        instances = [
+            inst for inst in self.instance_manager.list_instances()
+            if inst.type == file_type
+        ]
+        instance = instances[0] if instances else None
+
+        if instance:
+            # Update preset
+            instance.preset = preset_id
+            self.instance_manager.update_instance(instance)

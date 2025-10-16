@@ -78,7 +78,7 @@ class OverviewScreen(Screen):
 
             # SECTION 3: Settings - OVERLAY DROPDOWN
             yield OverlayDropdown(
-                title="PROJECT SETTINGS",
+                title="INITIALIZATION SETTINGS",
                 expanded=False,
                 id="settings-dropdown"
             )
@@ -129,14 +129,12 @@ class OverviewScreen(Screen):
 
         # Populate SETTINGS dropdown
         overwrite = "Yes" if self.config.get('init.overwrite_existing') else "No"
-        template_dir = self.config.get('custom.template_dir') or "(not set)"
-        presets_dir = self.config.get('custom.presets_dir') or "(not set)"
+        backup = "Yes" if self.config.get('init.create_backup', True) else "No"
 
         settings_dropdown = self.query_one("#settings-dropdown", OverlayDropdown)
         settings_dropdown.set_content(
             Static(f"• Overwrite existing files: {overwrite}"),  # type: ignore[arg-type]
-            Static(f"• Custom template directory: {template_dir}"),  # type: ignore[arg-type]
-            Static(f"• Custom presets directory: {presets_dir}")  # type: ignore[arg-type]
+            Static(f"• Create backup files: {backup}")  # type: ignore[arg-type]
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

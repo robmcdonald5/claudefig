@@ -1,22 +1,23 @@
-"""Project settings screen for editing config values."""
+"""Initialization settings screen for editing init behavior."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, Static, Switch
+from textual.widgets import Button, Label, Static, Switch
 
 from claudefig.config import Config
 
 
 class ProjectSettingsScreen(Screen):
-    """Screen for editing project configuration settings."""
+    """Screen for editing initialization settings."""
 
     BINDINGS = [
-        ("escape", "app.pop_screen", "Back"),
+        ("escape", "pop_screen", "Back"),
+        ("backspace", "pop_screen", "Back"),
     ]
 
     def __init__(self, config: Config, **kwargs) -> None:
-        """Initialize project settings screen.
+        """Initialize initialization settings screen.
 
         Args:
             config: Configuration object
@@ -25,79 +26,71 @@ class ProjectSettingsScreen(Screen):
         self.config = config
 
     def compose(self) -> ComposeResult:
-        """Compose the project settings screen."""
+        """Compose the initialization settings screen."""
         with Container(id="project-settings-screen"):
-            yield Label("PROJECT SETTINGS", classes="screen-title")
+            yield Label("INITIALIZATION SETTINGS", classes="screen-title")
 
-            # Initialization settings
-            with Vertical(classes="settings-section"):
-                yield Label("Initialization Settings", classes="section-header")
+            yield Label(
+                "Configure how claudefig initializes and generates files in your project.",
+                classes="screen-description"
+            )
 
-                with Vertical(classes="setting-item"):
-                    yield Label("Overwrite Existing Files:", classes="setting-label")
+            # Compact settings list (matching Core Files style)
+            with Vertical(classes="init-settings-list"):
+                # Overwrite setting - compact row
+                with Horizontal(classes="init-setting-row"):
                     overwrite = self.config.get("init.overwrite_existing", False)
                     yield Switch(value=overwrite, id="switch-overwrite")
-                    yield Static(
-                        "Allow overwriting files that already exist during init",
-                        classes="setting-description"
+                    with Vertical(classes="init-setting-info"):
+                        yield Label("Overwrite Existing Files", classes="init-setting-label")
+                        yield Static(
+                            "Allow initialization to overwrite files that already exist",
+                            classes="init-setting-desc"
+                        )
+
+                # Backup setting - compact row (disabled when overwrite is off)
+                with Horizontal(classes="init-setting-row"):
+                    backup = self.config.get("init.create_backup", True)
+                    yield Switch(
+                        value=backup,
+                        id="switch-backup",
+                        disabled=not overwrite
                     )
+                    with Vertical(classes="init-setting-info"):
+                        yield Label("Create Backup Files", classes="init-setting-label")
+                        yield Static(
+                            "Save original files as .bak before overwriting",
+                            classes="init-setting-desc"
+                        )
 
-            # Custom paths settings
-            with Vertical(classes="settings-section"):
-                yield Label("Custom Paths", classes="section-header")
-
-                with Vertical(classes="setting-item"):
-                    yield Label("Template Directory:", classes="setting-label")
-                    template_dir = self.config.get("custom.template_dir", "")
-                    yield Input(
-                        placeholder="Path to custom templates (optional)",
-                        value=template_dir,
-                        id="input-template-dir"
-                    )
-
-                with Vertical(classes="setting-item"):
-                    yield Label("Presets Directory:", classes="setting-label")
-                    presets_dir = self.config.get("custom.presets_dir", "")
-                    yield Input(
-                        placeholder="Path to custom presets (optional)",
-                        value=presets_dir,
-                        id="input-presets-dir"
-                    )
-
-            # Action buttons
+            # Action buttons (matching Core Files style)
             with Container(classes="screen-footer"):
-                with Horizontal(classes="action-buttons"):
-                    yield Button("Save Changes", id="btn-save", variant="primary")
-                    yield Button("← Back", id="btn-back")
+                yield Button("← Back to Config Menu", id="btn-back")
+
+    def action_pop_screen(self) -> None:
+        """Pop the current screen to return to config menu."""
+        self.app.pop_screen()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "btn-back":
             self.app.pop_screen()
-        elif event.button.id == "btn-save":
-            self._save_settings()
 
     def on_switch_changed(self, event: Switch.Changed) -> None:
         """Handle switch changes and auto-save."""
         if event.switch.id == "switch-overwrite":
+            # Save overwrite setting
             self.config.set("init.overwrite_existing", event.value)
             self.config.save()
+
+            # Enable/disable backup switch based on overwrite
+            backup_switch = self.query_one("#switch-backup", Switch)
+            backup_switch.disabled = not event.value
+
             self.notify("Setting saved", severity="information")
 
-    def _save_settings(self) -> None:
-        """Save all settings to config."""
-        try:
-            # Get input values
-            template_dir_input = self.query_one("#input-template-dir", Input)
-            presets_dir_input = self.query_one("#input-presets-dir", Input)
-
-            # Update config
-            self.config.set("custom.template_dir", template_dir_input.value.strip())
-            self.config.set("custom.presets_dir", presets_dir_input.value.strip())
-
-            # Save
+        elif event.switch.id == "switch-backup":
+            # Save backup setting
+            self.config.set("init.create_backup", event.value)
             self.config.save()
-
-            self.notify("Settings saved successfully!", severity="information")
-        except Exception as e:
-            self.notify(f"Error saving settings: {e}", severity="error")
+            self.notify("Setting saved", severity="information")
