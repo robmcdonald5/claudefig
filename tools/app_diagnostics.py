@@ -2,7 +2,7 @@
 Diagnostic version of MainScreen for debugging hover flash issue.
 
 Usage:
-    1. Run: python -m claudefig.tui.app_diagnostics
+    1. Run: python tools/app_diagnostics.py
     2. Navigate to a section (Presets or Config)
     3. Press escape/backspace
     4. Check the terminal output for event sequence
@@ -12,6 +12,9 @@ Usage:
 import sys
 from pathlib import Path
 from datetime import datetime
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from textual import events
 from textual.app import App, ComposeResult
@@ -58,7 +61,7 @@ class MainScreenDiagnostic(App):
     SUB_TITLE = f"v{__version__}"
 
     config: Config
-    CSS_PATH = Path(__file__).parent / "styles.tcss"
+    CSS_PATH = Path(__file__).parent.parent / "src" / "claudefig" / "tui" / "styles.tcss"
 
     BINDINGS = [
         ("q", "quit", "Quit"),
