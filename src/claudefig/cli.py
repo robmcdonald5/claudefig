@@ -8,8 +8,9 @@ from rich.table import Table
 
 from claudefig import __version__
 from claudefig.config import Config
+from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_success, format_cli_warning
 from claudefig.initializer import Initializer
-from claudefig.template_manager import TemplateManager
+from claudefig.template_manager import FileTemplateManager
 
 console = Console()
 
@@ -75,7 +76,7 @@ def init(path, force):
         if not success:
             raise click.Abort()
     except Exception as e:
-        console.print(f"[red]Error during initialization:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("initialization", str(e))))
         raise click.Abort() from e
 
 
@@ -150,7 +151,7 @@ def show():
             console.print("[dim]Use 'claudefig files add' to add file instances[/dim]")
 
     except Exception as e:
-        console.print(f"[red]Error loading configuration:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("loading configuration", str(e))))
 
 
 @main.command()
@@ -173,7 +174,7 @@ def list_templates():
     try:
         config = Config()
         custom_dir = config.get("custom.template_dir")
-        template_manager = TemplateManager(Path(custom_dir) if custom_dir else None)
+        template_manager = FileTemplateManager(Path(custom_dir) if custom_dir else None)
 
         templates = template_manager.list_templates()
 
@@ -185,7 +186,7 @@ def list_templates():
             console.print(f"  • {template}")
 
     except Exception as e:
-        console.print(f"[red]Error listing templates:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("listing templates", str(e))))
 
 
 @main.group()
@@ -469,10 +470,10 @@ def files_list(path, file_type, enabled_only):
             try:
                 filter_type = FileType(file_type)
             except ValueError:
-                console.print(f"[red]Invalid file type:[/red] {file_type}")
-                console.print(
-                    f"Valid types: {', '.join([ft.value for ft in FileType])}"
-                )
+                valid_types = [ft.value for ft in FileType]
+                console.print(format_cli_error(
+                    ErrorMessages.invalid_type("file type", file_type, valid_types)
+                ))
                 raise click.Abort() from None
 
         instances = instance_manager.list_instances(filter_type, enabled_only)
@@ -499,7 +500,7 @@ def files_list(path, file_type, enabled_only):
             console.print(f"      Preset: {instance.preset}")
 
     except Exception as e:
-        console.print(f"[red]Error listing file instances:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("listing file instances", str(e))))
         raise click.Abort() from e
 
 
@@ -607,7 +608,7 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
         console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
 
     except Exception as e:
-        console.print(f"[red]Error adding file instance:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("adding file instance", str(e))))
         raise click.Abort() from e
 
 
@@ -637,10 +638,10 @@ def files_remove(instance_id, path):
             )
             console.print(f"[dim]Config saved to: {config_path}[/dim]")
         else:
-            console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
+            console.print(format_cli_warning(ErrorMessages.not_found("file instance", instance_id)))
 
     except Exception as e:
-        console.print(f"[red]Error removing file instance:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("removing file instance", str(e))))
         raise click.Abort() from e
 
 
@@ -681,10 +682,10 @@ def files_enable(instance_id, path):
             )
             console.print(f"[dim]Config saved to: {config_path}[/dim]")
         else:
-            console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
+            console.print(format_cli_warning(ErrorMessages.not_found("file instance", instance_id)))
 
     except Exception as e:
-        console.print(f"[red]Error enabling file instance:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("enabling file instance", str(e))))
         raise click.Abort() from e
 
 
@@ -725,10 +726,10 @@ def files_disable(instance_id, path):
             )
             console.print(f"[dim]Config saved to: {config_path}[/dim]")
         else:
-            console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
+            console.print(format_cli_warning(ErrorMessages.not_found("file instance", instance_id)))
 
     except Exception as e:
-        console.print(f"[red]Error disabling file instance:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("disabling file instance", str(e))))
         raise click.Abort() from e
 
 
@@ -778,7 +779,7 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
         # Get existing instance
         instance = instance_manager.get_instance(instance_id)
         if not instance:
-            console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
+            console.print(format_cli_warning(ErrorMessages.not_found("file instance", instance_id)))
             raise click.Abort()
 
         # Track changes
@@ -837,7 +838,7 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
         console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
 
     except Exception as e:
-        console.print(f"[red]Error editing file instance:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("editing file instance", str(e))))
         raise click.Abort() from e
 
 
@@ -867,10 +868,10 @@ def presets_list(file_type):
             try:
                 filter_type = FileType(file_type)
             except ValueError:
-                console.print(f"[red]Invalid file type:[/red] {file_type}")
-                console.print(
-                    f"Valid types: {', '.join([ft.value for ft in FileType])}"
-                )
+                valid_types = [ft.value for ft in FileType]
+                console.print(format_cli_error(
+                    ErrorMessages.invalid_type("file type", file_type, valid_types)
+                ))
                 raise click.Abort() from None
 
         presets_list = preset_manager.list_presets(filter_type)
@@ -902,7 +903,7 @@ def presets_list(file_type):
                 console.print(f"      {preset.description}")
 
     except Exception as e:
-        console.print(f"[red]Error listing presets:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("listing presets", str(e))))
         raise click.Abort() from e
 
 
@@ -920,7 +921,7 @@ def presets_show(preset_id):
         preset = preset_manager.get_preset(preset_id)
 
         if not preset:
-            console.print(f"[yellow]Preset not found:[/yellow] {preset_id}")
+            console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
             return
 
         console.print("\n[bold blue]Preset Details[/bold blue]\n")
@@ -942,7 +943,7 @@ def presets_show(preset_id):
                 console.print(f"  • {key}: {value}")
 
     except Exception as e:
-        console.print(f"[red]Error showing preset:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("showing preset", str(e))))
         raise click.Abort() from e
 
 
@@ -1078,7 +1079,7 @@ def templates_show(template_name):
         try:
             template_config = manager.get_preset_config(template_name)
         except FileNotFoundError:
-            console.print(f"[yellow]Template not found:[/yellow] {template_name}")
+            console.print(format_cli_warning(ErrorMessages.not_found("template", template_name)))
             console.print(
                 "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
             )
@@ -1224,7 +1225,7 @@ def templates_save(template_name, description, path):
         # Ensure a config exists in the project
         config_path = repo_path / ".claudefig.toml"
         if not config_path.exists():
-            console.print(f"[red]Error:[/red] No .claudefig.toml found in {repo_path}")
+            console.print(format_cli_error(ErrorMessages.config_file_not_found(str(repo_path))))
             console.print("[dim]Initialize a config first with 'claudefig init'[/dim]")
             raise click.Abort()
 
@@ -1309,7 +1310,7 @@ def sync(path, force):
     config_path = repo_path / ".claudefig.toml"
 
     if not config_path.exists():
-        console.print(f"[red]Error:[/red] No .claudefig.toml found in {repo_path}")
+        console.print(format_cli_error(ErrorMessages.config_file_not_found(str(repo_path))))
         console.print("[dim]Run 'claudefig init' to initialize configuration first[/dim]")
         raise click.Abort()
 
@@ -1337,7 +1338,7 @@ def sync(path, force):
             raise click.Abort()
 
     except Exception as e:
-        console.print(f"[red]Error synchronizing files:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("synchronizing files", str(e))))
         raise click.Abort() from e
 
 
@@ -1361,7 +1362,7 @@ def validate(path):
     config_path = repo_path / ".claudefig.toml"
 
     if not config_path.exists():
-        console.print(f"[red]Error:[/red] No .claudefig.toml found in {repo_path}")
+        console.print(format_cli_error(ErrorMessages.config_file_not_found(str(repo_path))))
         console.print("[dim]Run 'claudefig init' to initialize configuration first[/dim]")
         raise click.Abort()
 
@@ -1426,7 +1427,7 @@ def validate(path):
         console.print(f"\n[dim]Validated {len(enabled_instances)} enabled instance(s)[/dim]")
 
     except Exception as e:
-        console.print(f"[red]Error during validation:[/red] {e}")
+        console.print(format_cli_error(ErrorMessages.operation_failed("validation", str(e))))
         raise click.Abort() from e
 
 
