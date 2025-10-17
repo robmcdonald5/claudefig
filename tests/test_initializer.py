@@ -28,7 +28,7 @@ def mock_config():
 
 @pytest.fixture
 def mock_template_manager():
-    """Create a mock TemplateManager."""
+    """Create a mock FileTemplateManager."""
     manager = MagicMock()
     manager.read_template_file.return_value = "# Template content"
     return manager
@@ -57,7 +57,7 @@ class TestInitializerInit:
         assert isinstance(initializer.config, Config)
         assert initializer.template_manager is not None
 
-    @patch("claudefig.initializer.TemplateManager")
+    @patch("claudefig.initializer.FileTemplateManager")
     def test_init_with_custom_template_dir(self, mock_tm_class):
         """Test initialization with custom template directory."""
         config = Mock(spec=Config)
@@ -491,25 +491,28 @@ class TestInitializeTemplateErrors:
     def test_initialize_missing_critical_template(
         self, mock_ensure_dir, mock_is_git, git_repo, mock_config, mock_template_manager
     ):
-        """Test initialization when a critical template file is missing.
+        """Test initialization when critical templates are missing.
 
-        BEHAVIOR: Should skip the file gracefully with warning but continue initialization.
+        BEHAVIOR: Should trigger rollback when >50% of files fail.
         """
+        from claudefig.exceptions import InitializationRollbackError
+
         mock_is_git.return_value = True
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
 
-        # Mock template manager to raise FileNotFoundError for CLAUDE.md
+        # Mock template manager to raise FileNotFoundError for all templates
         mock_template_manager.read_template_file.side_effect = FileNotFoundError(
             "Template not found"
         )
 
-        with patch.object(Config, "create_default"):
-            result = initializer.initialize(git_repo, force=False)
+        with (
+            patch.object(Config, "create_default"),
+            pytest.raises(InitializationRollbackError)
+        ):
+            initializer.initialize(git_repo, force=False)
 
-        # Should complete but with warnings (result=False indicates warnings)
-        assert result is False
-        # Config should still be created
+        # Should have tried to create .claude directory
         mock_ensure_dir.assert_called_once()
 
     @patch("claudefig.initializer.is_git_repository")
@@ -519,15 +522,14 @@ class TestInitializeTemplateErrors:
     ):
         """Test initialization when write permission is denied.
 
-        BEHAVIOR: Should catch PermissionError, report error, and continue initialization.
+        BEHAVIOR: Should trigger rollback when all file writes fail due to permissions.
         """
+        from claudefig.exceptions import InitializationRollbackError
+
         mock_is_git.return_value = True
         initializer = Initializer(mock_config)
 
-        # Create read-only git repo directory
-        # Note: We can't actually make the directory read-only as it would prevent
-        # the test from cleaning up. Instead, we'll patch Path.write_text to raise PermissionError
-
+        # Patch Path.write_text to raise PermissionError for all writes
         with (
             patch.object(Config, "create_default"),
             patch.object(
@@ -535,12 +537,11 @@ class TestInitializeTemplateErrors:
                 "write_text",
                 side_effect=PermissionError("Permission denied"),
             ),
+            pytest.raises(InitializationRollbackError)
         ):
-            result = initializer.initialize(git_repo, force=False)
+            initializer.initialize(git_repo, force=False)
 
-        # Should complete but with errors (result=False)
-        assert result is False
-        # Should still have tried to create .claude directory
+        # Should have tried to create .claude directory
         mock_ensure_dir.assert_called_once()
 
     @patch("claudefig.initializer.is_git_repository")
@@ -592,8 +593,10 @@ class TestInitializeTemplateErrors:
     ):
         """Test that missing template errors include helpful messages.
 
-        BEHAVIOR: Error messages should indicate which template is missing.
+        BEHAVIOR: Should trigger rollback and display helpful error messages.
         """
+        from claudefig.exceptions import InitializationRollbackError
+
         mock_is_git.return_value = True
         initializer = Initializer(mock_config)
         initializer.template_manager = mock_template_manager
@@ -603,11 +606,11 @@ class TestInitializeTemplateErrors:
             "CLAUDE.md not found"
         )
 
-        with patch.object(Config, "create_default"):
-            result = initializer.initialize(git_repo, force=False)
-
-        # Should have failed with warnings
-        assert result is False
+        with (
+            patch.object(Config, "create_default"),
+            pytest.raises(InitializationRollbackError)
+        ):
+            initializer.initialize(git_repo, force=False)
 
         # Check that output includes helpful warning
         captured = capsys.readouterr()

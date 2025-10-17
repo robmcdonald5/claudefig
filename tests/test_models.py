@@ -78,12 +78,12 @@ class TestFileTypeEnum:
     def test_supports_multiple_property(self):
         """Test supports_multiple property identifies single-instance types."""
         # Single instance types
+        assert not FileType.SETTINGS_JSON.supports_multiple
         assert not FileType.SETTINGS_LOCAL_JSON.supports_multiple
         assert not FileType.STATUSLINE.supports_multiple
 
         # Multiple instance types
         assert FileType.CLAUDE_MD.supports_multiple
-        assert FileType.SETTINGS_JSON.supports_multiple
         assert FileType.GITIGNORE.supports_multiple
         assert FileType.COMMANDS.supports_multiple
         assert FileType.AGENTS.supports_multiple

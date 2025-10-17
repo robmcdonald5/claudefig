@@ -631,8 +631,8 @@ class TestLoadSaveInstances:
         # Should be empty now
         assert len(instance_manager._instances) == 0
 
-    def test_load_instances_with_invalid_data(self, instance_manager, capfd):
-        """Test loading instances with invalid data prints warning."""
+    def test_load_instances_with_invalid_data(self, instance_manager):
+        """Test loading instances with invalid data tracks errors."""
         instances_data = [
             {
                 "id": "valid",
@@ -653,9 +653,10 @@ class TestLoadSaveInstances:
         # Invalid instance should be skipped
         assert "invalid" not in instance_manager._instances
 
-        # Should have printed warning
-        captured = capfd.readouterr()
-        assert "Warning: Failed to load instance" in captured.out
+        # Should have tracked error
+        errors = instance_manager.get_load_errors()
+        assert len(errors) > 0
+        assert any("invalid" in e.lower() for e in errors)
 
     def test_save_instances_to_dicts(self, instance_manager):
         """Test saving instances to dict format."""
