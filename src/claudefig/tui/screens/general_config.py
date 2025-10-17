@@ -1,6 +1,7 @@
 """General config editor screen."""
 
 from pathlib import Path
+from typing import Union
 
 from textual import on
 from textual.app import ComposeResult
@@ -99,7 +100,7 @@ class GeneralConfigScreen(Screen, BackButtonMixin):
         else:
             return "No configuration loaded"
 
-    def _parse_value(self, value_str: str) -> str | bool | int | float:
+    def _parse_value(self, value_str: str) -> Union[str, bool, int, float]:
         """Parse value string into appropriate type.
 
         Args:

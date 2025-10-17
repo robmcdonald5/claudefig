@@ -1,6 +1,7 @@
 """Interactive TUI (Text User Interface) for claudefig."""
 
 from pathlib import Path
+from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -36,7 +37,7 @@ class MainScreen(App):
         Binding("down", "navigate_down", "Nav Down", show=True),
     ]
 
-    active_button: reactive[str | None] = reactive(None)
+    active_button: reactive[Optional[str]] = reactive(None)
 
     def __init__(self, **kwargs):
         """Initialize the app."""
