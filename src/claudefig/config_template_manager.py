@@ -9,7 +9,7 @@ or existing projects.
 import shutil
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -19,6 +19,9 @@ else:
 import tomli_w
 
 from claudefig.preset_validator import PresetValidator
+
+if TYPE_CHECKING:
+    from claudefig.config import Config
 
 
 class ConfigTemplateManager:
