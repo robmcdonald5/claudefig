@@ -16,6 +16,7 @@ from claudefig.config_template_manager import ConfigTemplateManager
 from claudefig.tui.screens import (
     ApplyPresetScreen,
     CreatePresetScreen,
+    DeletePresetScreen,
 )
 
 
@@ -85,6 +86,11 @@ class PresetsPanel(Container):
                 id="btn-apply-preset",
                 disabled=True,  # Disabled until preset selected
             )
+            yield Button(
+                "🗑 Delete Preset",
+                id="btn-delete-preset",
+                disabled=True,  # Disabled until preset selected
+            )
             yield Button("📁 Open Presets Folder", id="btn-open-folder")
             yield Button("+ Create New Preset", id="btn-create-preset")
 
@@ -103,16 +109,19 @@ class PresetsPanel(Container):
     ) -> None:
         """Watch method called when selected_preset changes.
 
-        Enables/disables the Apply button based on selection state.
+        Enables/disables the Apply and Delete buttons based on selection state.
         """
         apply_button = self.query_one("#btn-apply-preset", Button)
+        delete_button = self.query_one("#btn-delete-preset", Button)
 
         if new_value and new_value in self._presets_data:
-            # Enable Apply button when preset is selected
+            # Enable Apply and Delete buttons when preset is selected
             apply_button.disabled = False
+            delete_button.disabled = False
         else:
-            # Disable Apply button when no preset selected
+            # Disable Apply and Delete buttons when no preset selected
             apply_button.disabled = True
+            delete_button.disabled = True
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle Select widget value changes."""
@@ -139,6 +148,11 @@ class PresetsPanel(Container):
             if button_id == "btn-apply-preset":
                 if self.selected_preset:
                     self._apply_preset(self.selected_preset)
+
+            # Delete preset
+            elif button_id == "btn-delete-preset":
+                if self.selected_preset:
+                    await self._delete_preset(self.selected_preset)
 
             # Open presets folder in file explorer
             elif button_id == "btn-open-folder":
@@ -240,6 +254,38 @@ class PresetsPanel(Container):
             self.app.notify(str(e), severity="error")
         except Exception as e:
             self.app.notify(f"Error creating preset: {e}", severity="error")
+
+    async def _delete_preset(self, preset_name: str) -> None:
+        """Delete a preset after confirmation."""
+        import asyncio
+
+        try:
+            # Show confirmation dialog
+            result = await self.app.push_screen_wait(DeletePresetScreen(preset_name))
+
+            if result and result.get("action") == "delete":
+                try:
+                    self.config_template_manager.delete_global_preset(preset_name)
+                    self.app.notify(
+                        f"Deleted preset '{preset_name}' successfully!",
+                        severity="information",
+                    )
+
+                    # Clear the selection since the preset is gone
+                    self.selected_preset = None
+                    PresetsPanel._last_selected_preset = None
+
+                    # Refresh the panel to remove deleted preset
+                    self.refresh(recompose=True)
+
+                except FileNotFoundError as e:
+                    self.app.notify(str(e), severity="error")
+                except Exception as e:
+                    self.app.notify(f"Error deleting preset: {e}", severity="error")
+
+        except asyncio.CancelledError:
+            # User cancelled the operation (pressed Escape) - this is normal
+            pass
 
     def on_key(self, event) -> None:
         """Handle key events for custom navigation behavior."""

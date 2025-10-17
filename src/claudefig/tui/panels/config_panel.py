@@ -10,6 +10,7 @@ from claudefig.preset_manager import PresetManager
 from claudefig.tui.screens import (
     CoreFilesScreen,
     FileInstancesScreen,
+    GeneralConfigScreen,
     OverviewScreen,
     ProjectSettingsScreen,
 )
@@ -32,6 +33,7 @@ class ConfigPanel(Container):
         "btn-settings": (0, 1),
         "btn-core-files": (1, 0),
         "btn-file-instances": (1, 1),
+        "btn-general-config": (2, 0),
     }
 
     # Reverse map (row, col) -> button_id
@@ -80,7 +82,7 @@ class ConfigPanel(Container):
             classes="panel-subtitle",
         )
 
-        # Menu buttons in 2x2 grid
+        # Menu buttons in grid
         with Grid(id="config-menu-grid"):
             yield Button(
                 "Project Overview\nStats & quick actions",
@@ -100,6 +102,11 @@ class ConfigPanel(Container):
             yield Button(
                 "File Instances\nMulti-instance files",
                 id="btn-file-instances",
+                classes="config-menu-button",
+            )
+            yield Button(
+                "General Config\nEdit any config setting",
+                id="btn-general-config",
                 classes="config-menu-button",
             )
 
@@ -130,8 +137,8 @@ class ConfigPanel(Container):
         if row_delta < 0 and row == 0:
             # Already at top row - do nothing
             return
-        if row_delta > 0 and row == 1:
-            # Already at bottom row - do nothing
+        if row_delta > 0 and row == 2:
+            # Already at bottom row (row 2) - do nothing
             return
 
         # Horizontal: Escape to main menu when navigating left from leftmost column
@@ -204,4 +211,8 @@ class ConfigPanel(Container):
                     instance_manager=self.instance_manager,
                     preset_manager=self.preset_manager,
                 )
+            )
+        elif button_id == "btn-general-config":
+            self.app.push_screen(
+                GeneralConfigScreen(config=self.config)
             )
