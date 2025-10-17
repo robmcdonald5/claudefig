@@ -332,3 +332,219 @@ class TestUserProjectPresets:
         # Should include the project preset
         preset_ids = [p.id for p in presets]
         assert "settings_json:project_preset" in preset_ids
+
+
+class TestPresetEdgeCases:
+    """Tests for preset manager edge cases and error handling."""
+
+    def test_get_preset_with_invalid_id_format(self):
+        """Test getting preset with malformed ID."""
+        manager = PresetManager()
+
+        # Try to get preset with invalid ID format (no colon separator)
+        preset = manager.get_preset("invalid_format_no_colon")
+
+        # Should return None for invalid format
+        assert preset is None
+
+    def test_get_preset_by_name_with_empty_name(self):
+        """Test getting preset by name with empty string."""
+        manager = PresetManager()
+
+        preset = manager.get_preset_by_name(FileType.CLAUDE_MD, "")
+
+        assert preset is None
+
+    def test_list_presets_after_clear_cache(self):
+        """Test listing presets after clearing cache reloads."""
+        manager = PresetManager()
+
+        # Load presets
+        presets1 = manager.list_presets()
+        initial_count = len(presets1)
+
+        # Clear cache
+        manager.clear_cache()
+
+        # List again - should reload from source
+        presets2 = manager.list_presets()
+
+        assert len(presets2) == initial_count
+        assert manager._cache_loaded is True
+
+    def test_render_preset_missing_template_file(self, tmp_path):
+        """Test rendering preset when template file doesn't exist."""
+        nonexistent_template = tmp_path / "does_not_exist.md"
+
+        preset = Preset(
+            id="test:missing",
+            type=FileType.CLAUDE_MD,
+            name="Missing Template",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=nonexistent_template,
+            variables={},
+        )
+
+        manager = PresetManager()
+
+        # Should raise FileNotFoundError
+        with pytest.raises(FileNotFoundError):
+            manager.render_preset(preset)
+
+    def test_render_preset_with_empty_variables(self, tmp_path):
+        """Test rendering preset with no variables."""
+        template_file = tmp_path / "template.md"
+        template_file.write_text("Static content with no variables", encoding="utf-8")
+
+        preset = Preset(
+            id="test:static",
+            type=FileType.CLAUDE_MD,
+            name="Static",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={},
+        )
+
+        manager = PresetManager()
+        rendered = manager.render_preset(preset)
+
+        assert rendered == "Static content with no variables"
+
+    def test_list_presets_with_invalid_source(self):
+        """Test listing presets with invalid source filter."""
+        manager = PresetManager()
+
+        # This should work without crashing even with invalid source
+        # Implementation determines behavior - may return empty list or ignore filter
+        try:
+            presets = manager.list_presets(source="invalid_source")
+            # Should either return empty list or all presets
+            assert isinstance(presets, list)
+        except (ValueError, KeyError):
+            # Or it may raise an error, which is also acceptable
+            pass
+
+    def test_render_preset_with_unicode_content(self, tmp_path):
+        """Test rendering preset with Unicode characters."""
+        template_file = tmp_path / "unicode.md"
+        template_file.write_text(
+            "Hello {name}! 你好 {greeting} 🎉", encoding="utf-8"
+        )
+
+        preset = Preset(
+            id="test:unicode",
+            type=FileType.CLAUDE_MD,
+            name="Unicode Test",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={"name": "World", "greeting": "世界"},
+        )
+
+        manager = PresetManager()
+        rendered = manager.render_preset(preset)
+
+        assert "Hello World!" in rendered
+        assert "你好 世界" in rendered
+        assert "🎉" in rendered
+
+
+class TestPresetManagerListFiltering:
+    """Tests for preset list filtering combinations."""
+
+    def test_list_by_both_type_and_source(self):
+        """Test filtering by both file type and source."""
+        manager = PresetManager()
+
+        presets = manager.list_presets(
+            file_type=FileType.CLAUDE_MD, source=PresetSource.BUILT_IN
+        )
+
+        # All should match both filters
+        assert all(p.type == FileType.CLAUDE_MD for p in presets)
+        assert all(p.source == PresetSource.BUILT_IN for p in presets)
+
+    def test_list_empty_result_with_filters(self, tmp_path):
+        """Test listing with filters that match no presets."""
+        # Create manager with empty custom directories
+        user_dir = tmp_path / "empty_user"
+        project_dir = tmp_path / "empty_project"
+        user_dir.mkdir()
+        project_dir.mkdir()
+
+        manager = PresetManager(user_presets_dir=user_dir, project_presets_dir=project_dir)
+
+        # Try to list USER source presets (should be empty)
+        presets = manager.list_presets(source=PresetSource.USER)
+
+        assert len(presets) == 0
+
+    def test_list_presets_multiple_types(self):
+        """Test that list includes multiple file types."""
+        manager = PresetManager()
+
+        presets = manager.list_presets()
+        preset_types = {p.type for p in presets}
+
+        # Should have multiple types
+        assert len(preset_types) >= 2  # At least Claude MD and Settings JSON
+
+
+class TestPresetCaching:
+    """Tests for preset caching behavior."""
+
+    def test_cache_persists_across_list_calls(self):
+        """Test that cache persists across multiple list calls."""
+        manager = PresetManager()
+
+        # First call loads and caches
+        presets1 = manager.list_presets()
+        cache_loaded_after_first = manager._cache_loaded
+
+        # Second call uses cache
+        presets2 = manager.list_presets()
+        cache_loaded_after_second = manager._cache_loaded
+
+        assert cache_loaded_after_first is True
+        assert cache_loaded_after_second is True
+        # Results should be identical
+        assert len(presets1) == len(presets2)
+
+    def test_cache_cleared_allows_reload(self, tmp_path):
+        """Test that clearing cache allows fresh reload."""
+        user_dir = tmp_path / "user"
+        user_dir.mkdir()
+
+        manager = PresetManager(user_presets_dir=user_dir, project_presets_dir=tmp_path)
+
+        # Load initially (no custom presets)
+        presets1 = manager.list_presets()
+        initial_count = len(presets1)
+
+        # Add a custom preset file
+        preset_data = {
+            "preset": {
+                "id": "claude_md:custom",
+                "type": "claude_md",
+                "name": "Custom",
+                "description": "Added later",
+                "source": "user",
+            }
+        }
+        preset_file = user_dir / "custom.toml"
+        with open(preset_file, "wb") as f:
+            tomli_w.dump(preset_data, f)
+
+        # Without clearing cache, won't see new preset
+        presets2 = manager.list_presets()
+        assert len(presets2) == initial_count
+
+        # Clear cache and reload
+        manager.clear_cache()
+        presets3 = manager.list_presets()
+
+        # Should now include the new preset
+        assert len(presets3) == initial_count + 1
+        assert any(p.id == "claude_md:custom" for p in presets3)
