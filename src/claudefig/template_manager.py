@@ -1,12 +1,16 @@
-"""Template management for claudefig."""
+"""File template management for claudefig."""
 
 from importlib.resources import files
 from pathlib import Path
 from typing import Optional
 
 
-class TemplateManager:
-    """Manages templates for claudefig."""
+class FileTemplateManager:
+    """Manages file templates for claudefig.
+
+    This class handles templates for individual files (like CLAUDE.md, .gitignore, etc.),
+    as opposed to ConfigTemplateManager which handles entire project configurations.
+    """
 
     def __init__(self, custom_template_dir: Optional[Path] = None):
         """Initialize template manager.

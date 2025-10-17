@@ -1,15 +1,17 @@
 """Repository initialization logic for claudefig."""
 
+import shutil
 from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
 
 from claudefig.config import Config
+from claudefig.exceptions import InitializationRollbackError
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
-from claudefig.template_manager import TemplateManager
+from claudefig.template_manager import FileTemplateManager
 from claudefig.utils import ensure_directory, is_git_repository
 
 console = Console()
@@ -26,11 +28,65 @@ class Initializer:
         """
         self.config = config or Config()
         custom_dir = self.config.get("custom.template_dir")
-        self.template_manager = TemplateManager(
+        self.template_manager = FileTemplateManager(
             Path(custom_dir) if custom_dir else None
         )
         self.preset_manager = PresetManager()
         self.instance_manager: Optional[FileInstanceManager] = None
+
+        # Track created files/directories for rollback
+        self._created_files: list[Path] = []
+        self._created_dirs: list[Path] = []
+        self._rollback_enabled: bool = True
+
+    def _track_file(self, file_path: Path) -> None:
+        """Track a created file for potential rollback.
+
+        Args:
+            file_path: Path to file that was created
+        """
+        if self._rollback_enabled and file_path not in self._created_files:
+            self._created_files.append(file_path)
+
+    def _track_directory(self, dir_path: Path) -> None:
+        """Track a created directory for potential rollback.
+
+        Args:
+            dir_path: Path to directory that was created
+        """
+        if self._rollback_enabled and dir_path not in self._created_dirs:
+            self._created_dirs.append(dir_path)
+
+    def _rollback(self) -> None:
+        """Rollback initialization by removing all created files and directories."""
+        console.print("\n[yellow]Rolling back initialization...[/yellow]")
+
+        # Remove files
+        for file_path in reversed(self._created_files):
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+                    console.print(f"[dim]Removed file: {file_path}[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to remove {file_path}: {e}[/yellow]")
+
+        # Remove directories (in reverse order to handle nested directories)
+        for dir_path in reversed(self._created_dirs):
+            try:
+                if dir_path.exists() and dir_path.is_dir():
+                    # Only remove if empty
+                    if not any(dir_path.iterdir()):
+                        dir_path.rmdir()
+                        console.print(f"[dim]Removed directory: {dir_path}[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to remove {dir_path}: {e}[/yellow]")
+
+        console.print("[yellow]Rollback complete[/yellow]")
+
+    def _clear_tracking(self) -> None:
+        """Clear the rollback tracking lists."""
+        self._created_files.clear()
+        self._created_dirs.clear()
 
     def initialize(self, repo_path: Path, force: bool = False) -> bool:
         """Initialize Claude Code configuration in repository.
@@ -43,7 +99,16 @@ class Initializer:
 
         Returns:
             True if initialization successful, False otherwise.
+
+        Raises:
+            InitializationRollbackError: If initialization fails and rollback is triggered
         """
+        # Clear any previous tracking
+        self._clear_tracking()
+
+        # Disable rollback in force mode (user explicitly wants to overwrite)
+        self._rollback_enabled = not force
+
         try:
             repo_path = repo_path.resolve()
         except (OSError, RuntimeError) as e:
@@ -60,66 +125,102 @@ class Initializer:
                 console.print("[yellow]Initialization cancelled[/yellow]")
                 return False
 
-        # Initialize FileInstanceManager
-        self.instance_manager = FileInstanceManager(self.preset_manager, repo_path)
+        # Wrap the actual initialization in try-except for rollback
+        errors = []
+        failed_files = []
 
-        # Load file instances from config
-        instances_data = self.config.get_file_instances()
+        try:
+            # Initialize FileInstanceManager
+            self.instance_manager = FileInstanceManager(self.preset_manager, repo_path)
 
-        if not instances_data:
-            # No file instances configured - create default ones
-            console.print(
-                "[yellow]No file instances configured, using defaults[/yellow]"
-            )
-            instances_data = self._create_default_instances()
-            self.config.set_file_instances(instances_data)
+            # Load file instances from config
+            instances_data = self.config.get_file_instances()
 
-        self.instance_manager.load_instances(instances_data)
+            if not instances_data:
+                # No file instances configured - create default ones
+                console.print(
+                    "[yellow]No file instances configured, using defaults[/yellow]"
+                )
+                instances_data = self._create_default_instances()
+                self.config.set_file_instances(instances_data)
 
-        # Create .claude directory
-        claude_dir = repo_path / ".claude"
-        ensure_directory(claude_dir)
-        console.print(f"[green]+[/green] Created directory: {claude_dir}")
+            self.instance_manager.load_instances(instances_data)
 
-        # Generate files from file instances
-        success = True
-        files_created = 0
+            # Create .claude directory
+            claude_dir = repo_path / ".claude"
+            if not claude_dir.exists():
+                ensure_directory(claude_dir)
+                self._track_directory(claude_dir)
+                console.print(f"[green]+[/green] Created directory: {claude_dir}")
 
-        enabled_instances = self.instance_manager.list_instances(enabled_only=True)
+            # Generate files from file instances
+            success = True
+            files_created = 0
 
-        if not enabled_instances:
-            console.print("[yellow]No enabled file instances to generate[/yellow]")
-        else:
-            console.print(
-                f"\n[bold blue]Generating {len(enabled_instances)} file(s)...[/bold blue]\n"
-            )
+            enabled_instances = self.instance_manager.list_instances(enabled_only=True)
 
-            for instance in enabled_instances:
-                result = self._generate_file_from_instance(instance, repo_path, force)
-                if result:
-                    files_created += 1
-                success &= result
+            if not enabled_instances:
+                console.print("[yellow]No enabled file instances to generate[/yellow]")
+            else:
+                console.print(
+                    f"\n[bold blue]Generating {len(enabled_instances)} file(s)...[/bold blue]\n"
+                )
 
-        # Create config file if it doesn't exist
-        config_path = repo_path / ".claudefig.toml"
-        if not config_path.exists():
-            Config.create_default(config_path)
-            console.print(f"\n[green]+[/green] Created config: {config_path}")
-        else:
-            console.print(f"\n[blue]i[/blue] Config already exists: {config_path}")
+                for instance in enabled_instances:
+                    result = self._generate_file_from_instance(instance, repo_path, force)
+                    if result:
+                        files_created += 1
+                    else:
+                        failed_files.append(instance.path)
+                        errors.append(f"Failed to generate {instance.path}")
+                    success &= result
 
-        # Summary
-        console.print("\n[bold]Summary:[/bold]")
-        console.print(f"  Files created: {files_created}")
-        console.print(f"  Enabled instances: {len(enabled_instances)}")
+            # Create config file if it doesn't exist
+            config_path = repo_path / ".claudefig.toml"
+            if not config_path.exists():
+                Config.create_default(config_path)
+                self._track_file(config_path)
+                console.print(f"\n[green]+[/green] Created config: {config_path}")
+            else:
+                console.print(f"\n[blue]i[/blue] Config already exists: {config_path}")
 
-        if success:
-            console.print("\n[bold green]Initialization complete![/bold green]")
-            console.print(f"\nClaude Code configuration initialized in: {repo_path}")
-        else:
-            console.print("\n[yellow]Initialization completed with warnings[/yellow]")
+            # If we had critical failures and rollback is enabled, trigger rollback
+            if not success and self._rollback_enabled and len(failed_files) > len(enabled_instances) // 2:
+                # More than half failed - this is a critical failure
+                raise InitializationRollbackError(failed_files, errors)
 
-        return success
+            # Summary
+            console.print("\n[bold]Summary:[/bold]")
+            console.print(f"  Files created: {files_created}")
+            console.print(f"  Enabled instances: {len(enabled_instances)}")
+
+            if success:
+                console.print("\n[bold green]Initialization complete![/bold green]")
+                console.print(f"\nClaude Code configuration initialized in: {repo_path}")
+            else:
+                console.print("\n[yellow]Initialization completed with warnings[/yellow]")
+
+            # Clear tracking on success
+            self._clear_tracking()
+
+            return success
+
+        except InitializationRollbackError:
+            # Rollback and re-raise
+            self._rollback()
+            raise
+
+        except Exception as e:
+            # Unexpected error - rollback if enabled
+            error_msg = f"Unexpected error during initialization: {type(e).__name__}: {e}"
+            errors.append(error_msg)
+            console.print(f"[red]Error:[/red] {error_msg}")
+
+            if self._rollback_enabled:
+                self._rollback()
+                raise InitializationRollbackError(failed_files, errors) from e
+
+            return False
 
     def _create_default_instances(self) -> list[dict]:
         """Create default file instances when none are configured.
@@ -321,6 +422,7 @@ class Initializer:
 
         # Write content
         dest_path.write_text(content, encoding="utf-8")
+        self._track_file(dest_path)  # Track for rollback
         console.print(f"[green]+[/green] Created: {dest_path}")
 
         # Make statusline executable
@@ -367,10 +469,12 @@ class Initializer:
                 separator = "\n\n" if existing_content.strip() else ""
                 new_content = existing_content.rstrip() + separator + entries + "\n"
                 dest_path.write_text(new_content, encoding="utf-8")
+                # Don't track appends - file already existed
                 console.print(f"[green]+[/green] Updated: {dest_path}")
             else:
                 # Create new
                 dest_path.write_text(entries + "\n", encoding="utf-8")
+                self._track_file(dest_path)  # Track for rollback
                 console.print(f"[green]+[/green] Created: {dest_path}")
 
             return True
@@ -442,6 +546,7 @@ class Initializer:
         try:
             content = self.template_manager.read_template_file(template_name, filename)
             dest_path.write_text(content, encoding="utf-8")
+            self._track_file(dest_path)  # Track for rollback
             console.print(f"[green]+[/green] Created file: {dest_path}")
             return True
         except FileNotFoundError:
@@ -627,6 +732,7 @@ class Initializer:
                 template_name, source_path
             )
             dest_path.write_text(content, encoding="utf-8")
+            self._track_file(dest_path)  # Track for rollback
             console.print(f"[green]+[/green] Created file: {dest_path}")
             return True
         except FileNotFoundError:
@@ -659,7 +765,9 @@ class Initializer:
             source_path = template_root.joinpath(source_dir)
 
             # Create destination directory
-            ensure_directory(dest_dir)
+            if not dest_dir.exists():
+                ensure_directory(dest_dir)
+                self._track_directory(dest_dir)  # Track for rollback
 
             # Copy all files from source to destination
             copied_count = 0
@@ -673,6 +781,7 @@ class Initializer:
                         continue
 
                     shutil.copy2(str(item), dest_file)
+                    self._track_file(dest_file)  # Track for rollback
                     copied_count += 1
                     console.print(f"[green]+[/green] Created file: {dest_file}")
 
