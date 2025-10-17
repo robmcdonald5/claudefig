@@ -142,7 +142,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 55.0  # Realistic threshold for core business logic (excluding TUI/CLI)
+fail_under = 70.0  # Improved threshold for core business logic (excluding TUI/CLI)
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

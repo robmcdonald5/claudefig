@@ -28,6 +28,7 @@ class FileInstanceManager:
         self.preset_manager = preset_manager or PresetManager()
         self.repo_path = repo_path or Path.cwd()
         self._instances: dict[str, FileInstance] = {}
+        self._load_errors: list[str] = []  # Track errors during instance loading
 
     def list_instances(
         self, file_type: Optional[FileType] = None, enabled_only: bool = False
@@ -315,13 +316,22 @@ class FileInstanceManager:
             instances_data: List of instance dictionaries
         """
         self._instances.clear()
+        self._load_errors.clear()
 
         for data in instances_data:
             try:
                 instance = FileInstance.from_dict(data)
                 self._instances[instance.id] = instance
+            except (KeyError, ValueError, TypeError) as e:
+                # Invalid instance data
+                instance_id = data.get("id", "<unknown>")
+                error_msg = f"Invalid instance data for '{instance_id}': {e}"
+                self._load_errors.append(error_msg)
             except Exception as e:
-                print(f"Warning: Failed to load instance: {e}")
+                # Unexpected errors - still catch but be explicit
+                instance_id = data.get("id", "<unknown>")
+                error_msg = f"Unexpected error loading instance '{instance_id}': {type(e).__name__}: {e}"
+                self._load_errors.append(error_msg)
 
     def save_instances(self) -> list[dict]:
         """Save file instances to configuration format.
@@ -355,3 +365,11 @@ class FileInstanceManager:
             List of file instances
         """
         return [i for i in self._instances.values() if i.type == file_type]
+
+    def get_load_errors(self) -> list[str]:
+        """Get any errors that occurred during instance loading.
+
+        Returns:
+            List of error messages from instance loading failures
+        """
+        return self._load_errors.copy()

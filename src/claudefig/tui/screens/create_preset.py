@@ -1,36 +1,32 @@
 """Create preset modal screen."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
-from textual.screen import Screen
 from textual.widgets import Button, Input, Label
 
+from claudefig.tui.base import BaseModalScreen
 
-class CreatePresetScreen(Screen):
+
+class CreatePresetScreen(BaseModalScreen):
     """Modal screen to create a new preset from current config."""
 
-    BINDINGS = [
-        ("escape", "dismiss", "Cancel"),
-        ("backspace", "dismiss", "Cancel"),
-    ]
+    def compose_title(self) -> str:
+        """Return the modal title."""
+        return "Create New Preset"
 
-    def compose(self) -> ComposeResult:
-        """Compose the create preset screen."""
-        with Container(id="dialog-container"):
-            yield Label("Create New Preset", classes="dialog-header")
+    def compose_content(self) -> ComposeResult:
+        """Compose the modal content."""
+        yield Label("Preset Name:", classes="dialog-label")
+        yield Input(placeholder="my-custom-preset", id="input-preset-name")
 
-            with VerticalScroll(id="dialog-content"):
-                yield Label("Preset Name:", classes="dialog-label")
-                yield Input(placeholder="my-custom-preset", id="input-preset-name")
+        yield Label("\nDescription (optional):", classes="dialog-label")
+        yield Input(
+            placeholder="My custom configuration", id="input-preset-description"
+        )
 
-                yield Label("\nDescription (optional):", classes="dialog-label")
-                yield Input(
-                    placeholder="My custom configuration", id="input-preset-description"
-                )
-
-            with Horizontal(classes="dialog-actions"):
-                yield Button("Create", id="btn-create", variant="primary")
-                yield Button("Cancel", id="btn-cancel")
+    def compose_actions(self) -> ComposeResult:
+        """Compose the action buttons."""
+        yield Button("Create", id="btn-create", variant="primary")
+        yield Button("Cancel", id="btn-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

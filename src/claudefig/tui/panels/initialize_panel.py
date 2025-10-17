@@ -1,6 +1,7 @@
 """Initialize panel for project setup."""
 
 from pathlib import Path
+from typing import Optional
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
@@ -24,7 +25,7 @@ class InitializePanel(Container):
         self.config = config
         self.on_switch_to_presets_callback = on_switch_to_presets
         self.config_template_manager = ConfigTemplateManager()
-        self.selected_preset: str | None = None
+        self.selected_preset: Optional[str] = None
 
     def compose(self) -> ComposeResult:
         """Compose the initialize panel."""
@@ -44,7 +45,7 @@ class InitializePanel(Container):
                     classes="panel-info",
                 )
                 with Horizontal(classes="button-row"):
-                    yield Button("Go to Config", id="btn-go-config", variant="primary")
+                    yield Button("Go to Config", id="btn-go-config")
                     yield Button("Go to Presets", id="btn-go-presets")
                 return
 

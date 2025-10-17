@@ -1,5 +1,7 @@
 """Content panel for orchestrating dynamic panel display."""
 
+from typing import Optional
+
 from textual.containers import Container
 
 from claudefig.config import Config
@@ -15,7 +17,7 @@ class ContentPanel(Container):
         """Initialize the content panel."""
         super().__init__(**kwargs)
         self.config = config
-        self.current_section: str | None = None
+        self.current_section: Optional[str] = None
 
     def show_section(self, section: str) -> None:
         """Display content for the specified section."""
@@ -39,8 +41,6 @@ class ContentPanel(Container):
         elif section == "config":
             self.mount(ConfigPanel(self.config, id="config-panel"))
 
-        self.display = True
-
     def _switch_to_presets(self) -> None:
         """Switch to presets section."""
         # This will be called from InitializePanel
@@ -54,4 +54,3 @@ class ContentPanel(Container):
         """Clear the content panel."""
         self.current_section = None
         self.remove_children()
-        self.display = False

@@ -1,6 +1,7 @@
 """Interactive TUI (Text User Interface) for claudefig."""
 
 from pathlib import Path
+from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -36,7 +37,7 @@ class MainScreen(App):
         Binding("down", "navigate_down", "Nav Down", show=True),
     ]
 
-    active_button: reactive[str | None] = reactive(None)
+    active_button: reactive[Optional[str]] = reactive(None)
 
     def __init__(self, **kwargs):
         """Initialize the app."""
@@ -132,14 +133,9 @@ class MainScreen(App):
         for button in self.query("#menu-buttons Button"):
             button.remove_class("active")
 
-        # Hide content panel
-        content_panel = self.query_one("#content-panel", ContentPanel)
-        content_panel.clear()
-        content_panel.remove_class("visible")
-
         self.active_button = None
 
-        # Refocus the previously active button, or default to init
+        # FOCUS FIRST - set focus on target button
         if previously_active:
             try:
                 self.query_one(f"#{previously_active}", Button).focus()
@@ -147,6 +143,16 @@ class MainScreen(App):
                 self.query_one("#init", Button).focus()
         else:
             self.query_one("#init", Button).focus()
+
+        # CRITICAL: Use call_after_refresh to ensure focus has settled before removing widgets
+        # Removing focused widgets causes Textual to temporarily focus Exit button
+        self.call_after_refresh(self._clear_content_panel)
+
+    def _clear_content_panel(self) -> None:
+        """Clear content panel after focus has settled."""
+        content_panel = self.query_one("#content-panel", ContentPanel)
+        content_panel.clear()
+        content_panel.remove_class("visible")
 
     def _is_descendant_of(self, widget, ancestor) -> bool:
         """Check if widget is a descendant of ancestor."""
@@ -290,13 +296,13 @@ class MainScreen(App):
         if not focused:
             return
 
-        # Check if we're in a horizontal button row - don't navigate up/down within it
+        # Check if we're in a horizontal button row - navigate up should exit to previous element
         try:
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
-                    # In a horizontal layout, use left/right only
-                    # Navigate up should exit the button row to previous element
+                    # Navigate up exits the button row to the previous focusable element
+                    self.screen.focus_previous()
                     return
         except Exception:
             pass
@@ -326,13 +332,13 @@ class MainScreen(App):
         if not focused:
             return
 
-        # Check if we're in a horizontal button row - don't navigate up/down within it
+        # Check if we're in a horizontal button row - navigate down should exit to next element
         try:
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
-                    # In a horizontal layout, use left/right only
-                    # Navigate down should exit the button row to next element
+                    # Navigate down exits the button row to the next focusable element
+                    self.screen.focus_next()
                     return
         except Exception:
             pass

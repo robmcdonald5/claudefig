@@ -32,38 +32,92 @@ Screen {
     padding: 1;
 }
 
-Button {
+/* Menu navigation buttons (main tree) - Keep original styles */
+#menu-buttons Button {
     width: 100%;
     margin: 0;
-    min-height: 1;
+    height: 3;
     padding: 0 1;
+    background: $panel;
+    border: none;
+}
+
+#menu-buttons Button:hover {
+    background: $primary;
+    border: none;
+}
+
+#menu-buttons Button:focus {
+    text-style: bold;
+    border: solid $accent;
     background: $panel;
 }
 
-Button:focus {
-    text-style: bold;
-    border: solid $accent;
-}
-
-Button.active {
+#menu-buttons Button.active {
     background: $accent;
     color: $text;
     text-style: bold;
+    border: none;
 }
 
-Button.active:focus {
+#menu-buttons Button.active:focus {
     background: $accent;
     color: $text;
     text-style: bold;
-    border: solid $accent;
+    border: solid $primary-lighten-2;
+}
+
+/* Base button styles for content panels and modals */
+#content-panel Button,
+.dialog-actions Button,
+.button-row Button {
+    min-height: 3;
+    padding: 0 2;
+    background: $panel;
+    border: none;
+    min-width: 10;
+}
+
+.instance-actions Button {
+    min-height: 2;
+    padding: 0 1;
+    background: $panel;
+    border: none;
+    min-width: 8;
+}
+
+#content-panel Button:hover,
+.dialog-actions Button:hover,
+.instance-actions Button:hover,
+.button-row Button:hover {
+    background: $primary;
+    border: none;
+}
+
+#content-panel Button:focus,
+.dialog-actions Button:focus,
+.instance-actions Button:focus,
+.button-row Button:focus {
+    border: none;
+    background: $primary;
+    text-style: bold;
+}
+
+#content-panel Button:focus:hover,
+.dialog-actions Button:focus:hover,
+.instance-actions Button:focus:hover,
+.button-row Button:focus:hover {
+    border: none;
+    background: $primary;
+    text-style: bold;
 }
 
 #content-panel {
+    display: none;
     width: 1fr;
     height: 100%;
     border-left: solid $primary;
     padding: 2 4;
-    display: none;
 }
 
 #content-panel.visible {
@@ -88,11 +142,31 @@ Button.active:focus {
     width: 100%;
     margin-bottom: 0;
     text-align: left;
+    border: none;
+    min-height: 1;
+    padding: 0 1;
+}
+
+.category-button:hover {
+    background: $primary;
+    border: none;
+}
+
+.category-button:focus {
+    border: solid $accent;
+    background: $panel;
 }
 
 .category-button.active {
     background: $accent-darken-1;
     color: $text;
+    border: none;
+}
+
+.category-button.active:focus {
+    background: $accent-darken-1;
+    color: $text;
+    border: solid $accent;
 }
 
 #settings-content {
@@ -145,6 +219,13 @@ SettingItem {
 }
 
 /* Initialize Panel Styles */
+InitializePanel VerticalScroll {
+    scrollbar-size: 1 1;
+    scrollbar-background: $panel;
+    scrollbar-color: $primary;
+    overflow-x: hidden;
+}
+
 .panel-title {
     text-style: bold;
     color: $accent;
@@ -174,11 +255,13 @@ SettingItem {
     width: 100%;
     height: auto;
     margin-top: 2;
+    align: left middle;
 }
 
 .button-row Button {
     width: auto;
     margin-right: 2;
+    min-width: 15;
 }
 
 .placeholder {
@@ -192,42 +275,67 @@ SettingItem {
 }
 
 /* Presets Panel Styles */
-.preset-card {
+#preset-select {
     width: 100%;
-    height: auto;
     margin-bottom: 2;
-    padding: 1;
-    border: round $primary;
-    background: $panel;
-}
-
-.preset-name {
-    text-style: bold;
-    color: $accent;
-    margin-bottom: 0;
-}
-
-.preset-description {
-    color: $text-muted;
-    margin-bottom: 1;
-}
-
-.preset-file-count {
-    color: $text-muted;
-    margin-bottom: 1;
-}
-
-.preset-actions {
-    width: 100%;
-    height: auto;
-}
-
-.preset-button {
-    width: auto;
-    margin-right: 1;
+    margin-top: 1;
 }
 
 /* Config Panel Styles */
+.config-section {
+    width: 100%;
+    height: auto;
+    border: round $primary;
+    padding: 2;
+    margin: 2 0;
+    background: $panel;
+}
+
+#project-settings-section {
+    border: solid $accent;
+}
+
+#file-instances-section {
+    border: solid $primary;
+}
+
+.setting-label {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.setting-sublabel {
+    color: $text;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+}
+
+.setting-row Switch {
+    margin-right: 2;
+}
+
+.setting-description {
+    color: $text-muted;
+}
+
+#config-content {
+    width: 100%;
+    height: auto;
+    max-height: 40%;
+    overflow-y: auto;
+    padding: 1 0;
+    margin: 2 0;
+}
+
 .file-type-section {
     width: 100%;
     height: auto;
@@ -252,14 +360,16 @@ SettingItem {
 .instance-path {
     text-style: bold;
     color: $text;
+    margin-bottom: 0;
 }
 
 .instance-preset {
     color: $text-muted;
+    margin-bottom: 0;
 }
 
 .instance-status {
-    margin-bottom: 1;
+    margin-bottom: 0;
 }
 
 .instance-enabled {
@@ -273,16 +383,21 @@ SettingItem {
 .instance-actions {
     width: 100%;
     height: auto;
+    align: left middle;
+    margin-top: 0;
 }
 
 .instance-button {
     width: auto;
     margin-right: 1;
+    min-width: 8;
+    min-height: 2;
 }
 
 .add-instance-button {
     width: 100%;
     margin-top: 1;
+    min-height: 3;
 }
 
 .panel-subtitle {
@@ -348,6 +463,78 @@ SettingItem {
 .dialog-actions Button {
     width: auto;
     margin: 0 1;
+    min-width: 15;
+}
+
+/* Button variants for content buttons */
+#content-panel Button.-primary,
+#content-panel Button.primary,
+.dialog-actions Button.-primary,
+.dialog-actions Button.primary,
+.instance-actions Button.-primary,
+.instance-actions Button.primary,
+.button-row Button.-primary,
+.button-row Button.primary {
+    background: $accent;
+    color: $text;
+    border: none;
+}
+
+#content-panel Button.-primary:hover,
+#content-panel Button.primary:hover,
+.dialog-actions Button.-primary:hover,
+.dialog-actions Button.primary:hover,
+.instance-actions Button.-primary:hover,
+.instance-actions Button.primary:hover,
+.button-row Button.-primary:hover,
+.button-row Button.primary:hover {
+    background: $accent-lighten-1;
+    border: none;
+}
+
+#content-panel Button.-primary:focus,
+#content-panel Button.primary:focus,
+.dialog-actions Button.-primary:focus,
+.dialog-actions Button.primary:focus,
+.instance-actions Button.-primary:focus,
+.instance-actions Button.primary:focus,
+.button-row Button.-primary:focus,
+.button-row Button.primary:focus {
+    background: $accent;
+    border: none;
+    text-style: bold;
+}
+
+#content-panel Button.-primary:focus:hover,
+#content-panel Button.primary:focus:hover,
+.dialog-actions Button.-primary:focus:hover,
+.dialog-actions Button.primary:focus:hover,
+.instance-actions Button.-primary:focus:hover,
+.instance-actions Button.primary:focus:hover,
+.button-row Button.-primary:focus:hover,
+.button-row Button.primary:focus:hover {
+    background: $accent-lighten-1;
+    border: none;
+    text-style: bold;
+}
+
+#content-panel Button:disabled,
+.dialog-actions Button:disabled,
+.instance-actions Button:disabled,
+.button-row Button:disabled {
+    opacity: 0.5;
+    background: $panel;
+    border: none;
+    color: $text-muted;
+}
+
+#content-panel Button:disabled:hover,
+.dialog-actions Button:disabled:hover,
+.instance-actions Button:disabled:hover,
+.button-row Button:disabled:hover {
+    background: $panel;
+    border: none;
+    color: $text-muted;
 }
 
 Input {
@@ -365,4 +552,767 @@ Select {
     padding: 1;
     border: round $primary-lighten-1;
     min-height: 3;
+}
+
+/* Single Instance Control Styles */
+.single-instance-control {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin-bottom: 2;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.single-instance-control .setting-row {
+    margin-bottom: 1;
+}
+
+.single-instance-control Button {
+    margin-top: 2;
+}
+
+/* Hidden input for maintaining form logic */
+Input.hidden {
+    display: none;
+}
+
+/* Disabled instance visual indicator */
+.instance-path.instance-disabled {
+    color: $text-muted;
+    text-style: italic;
+}
+
+/* === NEW COMPACT CONFIG PANEL STYLES === */
+
+/* Header with title and action buttons */
+.config-header {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    border-bottom: solid $primary;
+    padding-bottom: 1;
+}
+
+.config-header-info {
+    width: 1fr;
+}
+
+.header-actions {
+    width: auto;
+    height: auto;
+    align: right middle;
+}
+
+.header-btn {
+    margin-left: 1;
+    min-width: 12;
+}
+
+/* 2-column grid layout */
+#config-top-grid {
+    grid-size: 2 1;
+    grid-columns: 1fr 1fr;
+    grid-rows: auto;
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 0;
+}
+
+.config-column {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin: 0 1;
+    background: $panel;
+}
+
+#project-settings-col {
+    border: round $accent;
+}
+
+#single-instance-col {
+    border: round $primary;
+}
+
+/* Compact labels and inputs */
+.compact-label {
+    text-style: bold;
+    color: $accent;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.compact-input {
+    width: 100%;
+    margin-bottom: 1;
+    height: 3;
+}
+
+.compact-setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+.compact-setting-row Switch {
+    margin-right: 1;
+}
+
+.compact-description {
+    color: $text-muted;
+}
+
+.save-btn {
+    width: 100%;
+    margin-top: 2;
+}
+
+/* Compact single-instance control */
+CompactSingleInstanceControl {
+    width: 100%;
+    height: 3;  /* Fixed compact height */
+    align: left middle;
+    margin-bottom: 0;  /* No bottom margin - more compact */
+    padding: 0 1;
+    border: none;
+    background: transparent;
+}
+
+.compact-switch {
+    margin-right: 1;
+    width: auto;
+}
+
+.compact-instance-name {
+    width: 30;  /* Fixed width for consistent layout */
+    color: $text;
+}
+
+.compact-preset-select {
+    width: 1fr;  /* Takes remaining space */
+    margin-left: 1;
+}
+
+/* Multi-instance section with tabs */
+#multi-instance-section {
+    width: 100%;
+    height: auto;
+    border: round $primary;
+    padding: 2;
+    margin: 0;
+    background: $panel;
+}
+
+#file-type-tabs {
+    width: 100%;
+    height: auto;
+    max-height: 30;
+    margin-top: 1;
+}
+
+.tab-content {
+    width: 100%;
+    height: auto;
+    max-height: 25;
+    overflow-y: auto;
+    padding: 1;
+}
+
+.tab-placeholder {
+    color: $text-muted;
+    text-align: center;
+    margin: 2;
+}
+
+.compact-instance-item {
+    margin-bottom: 1;
+    padding: 1;
+}
+
+.add-instance-btn {
+    width: 100%;
+    margin-top: 1;
+}
+
+/* === CATEGORY NAVIGATION SYSTEM === */
+
+/* Minimal header for category-based layout */
+.config-header-minimal {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    padding-bottom: 1;
+    border-bottom: solid $primary;
+}
+
+.panel-subtitle-inline {
+    color: $text-muted;
+    margin-left: 2;
+}
+
+/* Category navigation bar */
+#category-nav {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: round $primary;
+}
+
+/* Category navigation buttons */
+.category-button {
+    width: auto;
+    min-width: 18;
+    height: 3;
+    margin: 0 1;
+    padding: 0 2;
+    background: $surface;
+    border: solid $primary-lighten-1;
+    color: $text-muted;
+}
+
+.category-button:hover {
+    background: $primary;
+    border: solid $primary-lighten-1;
+    color: $text;
+}
+
+.category-button:focus {
+    background: $primary;
+    border: solid $accent;
+    text-style: bold;
+    color: $text;
+}
+
+.category-button.active {
+    background: $accent;
+    border: solid $accent-lighten-1;
+    color: $text;
+    text-style: bold;
+}
+
+.category-button.active:hover {
+    background: $accent-lighten-1;
+    border: solid $accent-lighten-2;
+}
+
+.category-button.active:focus {
+    background: $accent;
+    border: solid $accent-lighten-2;
+    text-style: bold;
+}
+
+/* Category content container */
+#category-content {
+    width: 100%;
+    height: auto;
+    padding: 2;
+}
+
+/* === OVERVIEW CATEGORY STYLES === */
+
+.category-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.category-subtitle {
+    color: $text-muted;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.category-section-header {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.overview-stats {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin-bottom: 2;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.stat-item {
+    color: $text;
+    margin-bottom: 1;
+}
+
+.quick-actions {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+.overview-action-btn {
+    width: 80%;
+    margin: 1;
+    min-height: 3;
+}
+
+/* === PROJECT SETTINGS CATEGORY STYLES === */
+
+.setting-label-cat {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.setting-sublabel-cat {
+    color: $text;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.setting-row-cat {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+}
+
+.setting-row-cat Switch {
+    margin-right: 2;
+}
+
+.setting-desc-cat {
+    color: $text-muted;
+}
+
+.setting-input {
+    width: 100%;
+    margin-bottom: 2;
+}
+
+.save-settings-btn {
+    width: 100%;
+    margin-top: 2;
+    min-height: 3;
+}
+
+/* === CORE FILES CATEGORY STYLES === */
+
+.core-file-control {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $surface;
+}
+
+.core-file-control Switch {
+    margin-right: 1;
+}
+
+/* === FILE INSTANCES CATEGORY STYLES === */
+
+#file-type-tabs-cat {
+    width: 100%;
+    height: auto;
+    max-height: 30;
+    margin-top: 2;
+}
+
+.tab-content-cat {
+    width: 100%;
+    height: auto;
+    max-height: 25;
+    overflow-y: auto;
+    padding: 1;
+}
+
+.tab-placeholder-cat {
+    color: $text-muted;
+    text-align: center;
+    margin: 2;
+}
+
+.file-instance-item-cat {
+    margin-bottom: 1;
+    padding: 1;
+}
+
+.add-instance-btn-cat {
+    width: 100%;
+    margin-top: 1;
+}
+
+/* === CONFIG MENU STYLES === */
+
+#config-menu-grid {
+    grid-size: 2 2;
+    grid-columns: 1fr 1fr;
+    grid-rows: auto auto;
+    grid-gutter: 1 1;
+    width: 100%;
+    height: auto;
+    padding: 2;
+}
+
+.config-menu-button {
+    width: 100%;
+    height: 5;
+    padding: 1;
+    background: $accent;
+    color: $text;
+    text-style: bold;
+    border: round $accent-lighten-1;
+    content-align: center middle;
+}
+
+.config-menu-button:hover {
+    background: $accent-lighten-1;
+    border: round $accent-lighten-2;
+}
+
+.config-menu-button:focus {
+    background: $accent;
+    border: solid $primary;
+    text-style: bold;
+}
+
+/* === NEW SCREEN STYLES === */
+
+/* Common screen styles */
+#overview-screen,
+#project-settings-screen,
+#core-files-screen {
+    width: 100%;
+    height: 100%;
+    padding: 2 4;
+    background: $surface;
+}
+
+/* File instances screen needs auto height to prevent excessive stretching */
+#file-instances-screen {
+    width: 100%;
+    height: auto;
+    padding: 2 4;
+    background: $surface;
+}
+
+.screen-title {
+    text-style: bold;
+    color: $accent;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+.screen-description {
+    color: $text-muted;
+    text-align: center;
+    margin-bottom: 2;
+}
+
+.screen-footer {
+    width: 100%;
+    height: auto;
+    margin-top: 2;
+    align: left middle;
+}
+
+.screen-footer Button {
+    margin-right: 1;
+    min-width: 15;
+    min-height: 3;
+    padding: 0 2;
+    background: $panel;
+    border: none;
+}
+
+.screen-footer Button:hover {
+    background: $primary;
+    border: none;
+}
+
+.screen-footer Button:focus {
+    border: none;
+    background: $primary;
+    text-style: bold;
+}
+
+.screen-footer Button.-primary,
+.screen-footer Button.primary {
+    background: $accent;
+    color: $text;
+}
+
+.screen-footer Button.-primary:hover,
+.screen-footer Button.primary:hover {
+    background: $accent-lighten-1;
+}
+
+.screen-footer Button.-primary:focus,
+.screen-footer Button.primary:focus {
+    background: $accent;
+    text-style: bold;
+}
+
+/* Overview screen styles - Compact layout */
+.overview-info-line {
+    width: 100%;
+    color: $text;
+    margin-bottom: 1;
+}
+
+/* Overview screen - Section headers within dropdowns */
+.overview-section-header {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.overview-section-header.error {
+    color: $error;
+}
+
+.overview-section-header.warning {
+    color: $warning;
+}
+
+/* Status item colors */
+.overview-error-item {
+    color: $error;
+    margin-bottom: 0;
+}
+
+.overview-warning-item {
+    color: $warning;
+    margin-bottom: 0;
+}
+
+.overview-healthy-item {
+    color: $success;
+    margin-bottom: 0;
+}
+
+/* File status indicators */
+.file-enabled {
+    color: $success;
+    width: 100%;
+}
+
+.file-disabled {
+    color: $text-muted;
+    text-style: italic;
+    width: 100%;
+}
+
+.overview-actions-header {
+    text-style: bold;
+    color: $accent;
+    margin-top: 2;
+    margin-bottom: 1;
+}
+
+.overview-action-buttons {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-bottom: 2;
+}
+
+.overview-action-buttons Button {
+    width: auto;
+    min-width: 20;
+    margin: 0 1;
+}
+
+/* Project settings screen styles - OLD (deprecated) */
+.settings-section {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 2;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.setting-item {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+}
+
+/* Project settings screen styles - NEW COMPACT */
+.compact-settings-list {
+    width: 100%;
+    height: auto;
+    padding: 1;
+    margin-top: 1;
+}
+
+.compact-setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.compact-setting-row Switch {
+    margin-right: 2;
+}
+
+.compact-setting-info {
+    width: 1fr;
+    height: auto;
+}
+
+.compact-setting-label {
+    text-style: bold;
+    color: $text;
+    margin-bottom: 0;
+}
+
+.compact-setting-desc {
+    color: $text-muted;
+    margin-top: 0;
+}
+
+.compact-setting-input-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+    padding: 1;
+    background: $panel;
+    border: round $primary-lighten-1;
+}
+
+.compact-setting-input-row .compact-setting-label {
+    margin-bottom: 1;
+}
+
+.compact-setting-input-row .compact-input {
+    margin-bottom: 0;
+}
+
+.compact-setting-input-row .compact-setting-desc {
+    margin-top: 1;
+}
+
+/* Initialization settings screen styles (matching Core Files) */
+.init-settings-list {
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin-top: 1;
+}
+
+.init-setting-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;  /* Reduced from 2 */
+    padding: 0 1;      /* Much smaller padding */
+    background: transparent;  /* No background */
+    border: none;      /* No border */
+}
+
+.init-setting-row Switch {
+    margin-right: 2;
+}
+
+.init-setting-info {
+    width: 1fr;
+    height: auto;
+}
+
+.init-setting-label {
+    text-style: bold;
+    color: $text;
+    margin-bottom: 0;
+}
+
+.init-setting-desc {
+    color: $text-muted;
+    margin-top: 0;
+}
+
+/* Core files screen styles */
+.core-files-list {
+    width: 100%;
+    height: auto;
+    padding: 0;  /* Remove padding for more compact layout */
+    margin-top: 1;
+}
+
+.screen-description {
+    color: $text-muted;
+    text-align: center;
+    margin-bottom: 1;  /* Reduced from 2 to be more compact */
+}
+
+/* File instances screen styles */
+#file-instances-tabs {
+    width: 100%;
+    height: auto;
+    max-height: 20;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+#file-instances-tabs ContentSwitcher {
+    width: 100%;
+    height: auto;
+    max-height: 18;
+}
+
+#file-instances-tabs TabPane {
+    width: 100%;
+    height: auto;
+    padding: 0 1;
+}
+
+.tab-actions {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.tab-actions Button {
+    min-height: 2;
+    padding: 0 1;
+}
+
+.instance-list {
+    width: 100%;
+    height: auto;
+    max-height: 12;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.instance-list FileInstanceItem {
+    width: 100%;
+    margin-bottom: 1;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.empty-message {
+    color: $text-muted;
+    text-align: center;
+    margin: 1;
 }

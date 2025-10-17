@@ -1,19 +1,19 @@
-"""Tests for TemplateManager class."""
+"""Tests for FileTemplateManager class."""
 
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from claudefig.template_manager import TemplateManager
+from claudefig.template_manager import FileTemplateManager
 
 
 class TestTemplateManagerInit:
-    """Tests for TemplateManager.__init__ method."""
+    """Tests for FileTemplateManager.__init__ method."""
 
     def test_init_without_custom_dir(self):
         """Test initialization without custom template directory."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         assert manager.custom_template_dir is None
 
@@ -22,17 +22,17 @@ class TestTemplateManagerInit:
         custom_dir = tmp_path / "custom_templates"
         custom_dir.mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         assert manager.custom_template_dir == custom_dir
 
 
 class TestGetTemplateDir:
-    """Tests for TemplateManager.get_template_dir method."""
+    """Tests for FileTemplateManager.get_template_dir method."""
 
     def test_get_builtin_template(self):
         """Test getting built-in template directory."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         # Should not raise an error for default template
         template_dir = manager.get_template_dir("default")
@@ -48,7 +48,7 @@ class TestGetTemplateDir:
         my_template = custom_dir / "my_template"
         my_template.mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         # Should return the custom template path
         result = manager.get_template_dir("my_template")
@@ -60,7 +60,7 @@ class TestGetTemplateDir:
         custom_dir = tmp_path / "custom_templates"
         custom_dir.mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         # Should fall back to built-in template
         result = manager.get_template_dir("default")
@@ -75,7 +75,7 @@ class TestGetTemplateDir:
         Note: Validation happens later when trying to read files from the path,
         not when getting the template directory path.
         """
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         # get_template_dir doesn't validate existence, just returns a path
         result = manager.get_template_dir("nonexistent_template")
@@ -93,7 +93,7 @@ class TestGetTemplateDir:
         default_template = custom_dir / "default"
         default_template.mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         # Should return custom template, not built-in
         result = manager.get_template_dir("default")
@@ -102,11 +102,11 @@ class TestGetTemplateDir:
 
 
 class TestListTemplates:
-    """Tests for TemplateManager.list_templates method."""
+    """Tests for FileTemplateManager.list_templates method."""
 
     def test_list_builtin_templates(self):
         """Test listing built-in templates."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         templates = manager.list_templates()
 
@@ -124,7 +124,7 @@ class TestListTemplates:
         (custom_dir / "custom1").mkdir()
         (custom_dir / "custom2").mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         templates = manager.list_templates()
 
@@ -138,7 +138,7 @@ class TestListTemplates:
         custom_dir.mkdir()
         (custom_dir / "my_custom").mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         templates = manager.list_templates()
 
@@ -151,7 +151,7 @@ class TestListTemplates:
         """Test listing templates when custom directory doesn't exist."""
         nonexistent_dir = tmp_path / "nonexistent"
 
-        manager = TemplateManager(custom_template_dir=nonexistent_dir)
+        manager = FileTemplateManager(custom_template_dir=nonexistent_dir)
 
         templates = manager.list_templates()
 
@@ -169,7 +169,7 @@ class TestListTemplates:
         (custom_dir / "_hidden_template").mkdir()
         (custom_dir / "__pycache__").mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         templates = manager.list_templates()
 
@@ -189,7 +189,7 @@ class TestListTemplates:
         (custom_dir / "alpha").mkdir()
         (custom_dir / "beta").mkdir()
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         templates = manager.list_templates()
 
@@ -203,11 +203,11 @@ class TestListTemplates:
 
 
 class TestGetTemplateFiles:
-    """Tests for TemplateManager.get_template_files method."""
+    """Tests for FileTemplateManager.get_template_files method."""
 
     def test_get_files_from_existing_template(self):
         """Test getting files from an existing template."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         # Get files from default template
         files = manager.get_template_files("default")
@@ -221,7 +221,7 @@ class TestGetTemplateFiles:
 
     def test_get_files_from_nonexistent_template(self):
         """Test getting files from non-existent template returns empty list."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         # Mock get_template_dir to return a path that doesn't exist
         with patch.object(
@@ -247,7 +247,7 @@ class TestGetTemplateFiles:
         (template_dir / "_hidden.md").write_text("content", encoding="utf-8")
         (template_dir / ".gitignore").write_text("content", encoding="utf-8")
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         files = manager.get_template_files("test_template")
 
@@ -269,7 +269,7 @@ class TestGetTemplateFiles:
         (template_dir / "subdir").mkdir()
         (template_dir / "another_file.txt").write_text("content", encoding="utf-8")
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         files = manager.get_template_files("test_template")
 
@@ -281,11 +281,11 @@ class TestGetTemplateFiles:
 
 
 class TestReadTemplateFile:
-    """Tests for TemplateManager.read_template_file method."""
+    """Tests for FileTemplateManager.read_template_file method."""
 
     def test_read_existing_file(self):
         """Test reading an existing template file."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         # Read a file from default template (CLAUDE.md should exist)
         content = manager.read_template_file("default", "CLAUDE.md")
@@ -296,7 +296,7 @@ class TestReadTemplateFile:
 
     def test_read_nonexistent_file_raises(self):
         """Test that reading non-existent file raises FileNotFoundError."""
-        manager = TemplateManager()
+        manager = FileTemplateManager()
 
         with pytest.raises(FileNotFoundError, match="not found"):
             manager.read_template_file("default", "nonexistent_file_xyz.md")
@@ -314,7 +314,7 @@ class TestReadTemplateFile:
         expected_content = "# Test File\n\nThis has émojis 🎉 and spëcial chars"
         test_file.write_text(expected_content, encoding="utf-8")
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         # Read the file
         content = manager.read_template_file("test_template", "test.md")
@@ -334,7 +334,7 @@ class TestReadTemplateFile:
         expected_content = "# Custom Template Content"
         test_file.write_text(expected_content, encoding="utf-8")
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         content = manager.read_template_file("my_template", "custom.md")
 
@@ -354,7 +354,7 @@ class TestReadTemplateFile:
         expected_content = '{"key": "value"}'
         test_file.write_text(expected_content, encoding="utf-8")
 
-        manager = TemplateManager(custom_template_dir=custom_dir)
+        manager = FileTemplateManager(custom_template_dir=custom_dir)
 
         # Read using nested path
         content = manager.read_template_file("test_template", "claude/settings.json")

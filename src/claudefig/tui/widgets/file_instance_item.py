@@ -21,7 +21,13 @@ class FileInstanceItem(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the file instance item."""
-        yield Label(f"Path: {self.instance.path}", classes="instance-path")
+        # Add disabled indicator to path display
+        path_suffix = " [disabled]" if not self.instance.enabled else ""
+        path_classes = "instance-path"
+        if not self.instance.enabled:
+            path_classes += " instance-disabled"
+
+        yield Label(f"Path: {self.instance.path}{path_suffix}", classes=path_classes)
         yield Label(f"Preset: {self.instance.preset}", classes="instance-preset")
 
         status_text = "+ Enabled" if self.instance.enabled else "- Disabled"

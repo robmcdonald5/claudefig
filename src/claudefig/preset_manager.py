@@ -11,7 +11,8 @@ else:
 
 import tomli_w
 
-from claudefig.models import FileType, Preset, PresetSource
+from claudefig.exceptions import CircularDependencyError
+from claudefig.models import FileType, Preset, PresetSource, ValidationResult
 
 
 class PresetManager:
@@ -44,6 +45,7 @@ class PresetManager:
         # Cache for loaded presets
         self._preset_cache: dict[str, Preset] = {}
         self._cache_loaded = False
+        self._load_errors: list[str] = []  # Track errors during preset loading
 
     def list_presets(
         self,
@@ -191,6 +193,81 @@ class PresetManager:
 
         return content
 
+    def extract_template_variables(self, template_content: str) -> set[str]:
+        """Extract variable placeholders from template content.
+
+        Args:
+            template_content: Template content to analyze
+
+        Returns:
+            Set of variable names found in the template
+        """
+        import re
+
+        # Find all {variable_name} patterns
+        pattern = r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}"
+        matches = re.findall(pattern, template_content)
+        return set(matches)
+
+    def validate_template_variables(
+        self, preset: Preset, variables: Optional[dict[str, Any]] = None
+    ) -> ValidationResult:
+        """Validate template variables for a preset.
+
+        Args:
+            preset: Preset to validate
+            variables: Variables that will be provided during rendering
+
+        Returns:
+            ValidationResult with any errors or warnings
+        """
+        result = ValidationResult(valid=True)
+
+        # If no template file, nothing to validate
+        if not preset.template_path:
+            return result
+
+        if not preset.template_path.exists():
+            result.add_error(f"Template file not found: {preset.template_path}")
+            return result
+
+        try:
+            # Read template content
+            content = preset.template_path.read_text(encoding="utf-8")
+
+            # Extract variables from template
+            template_vars = self.extract_template_variables(content)
+
+            # Merge preset variables with provided variables
+            available_vars = set(preset.variables.keys())
+            if variables:
+                available_vars.update(variables.keys())
+
+            # Check for missing variables
+            missing_vars = template_vars - available_vars
+            if missing_vars:
+                for var in sorted(missing_vars):
+                    result.add_warning(
+                        f"Template uses variable '{var}' but no default value is provided"
+                    )
+
+            # Check for unused variables (in preset but not in template)
+            unused_vars = set(preset.variables.keys()) - template_vars
+            if unused_vars:
+                for var in sorted(unused_vars):
+                    result.add_warning(
+                        f"Preset defines variable '{var}' but it's not used in the template"
+                    )
+
+        except OSError as e:
+            result.add_error(f"Failed to read template file: {e}")
+        except Exception as e:
+            result.add_error(
+                f"Unexpected error validating template: {type(e).__name__}: {e}"
+            )
+
+        return result
+
     def get_preset_by_name(
         self, file_type: FileType, preset_name: str
     ) -> Optional[Preset]:
@@ -223,6 +300,12 @@ class PresetManager:
             self._load_presets_from_directory(
                 self.project_presets_dir, PresetSource.PROJECT
             )
+
+        # Validate preset inheritance (check for circular dependencies)
+        inheritance_errors = self.validate_preset_inheritance()
+        if inheritance_errors:
+            for error in inheritance_errors:
+                self._load_errors.append(error)
 
         self._cache_loaded = True
 
@@ -385,17 +468,119 @@ class PresetManager:
                     data = tomllib.load(f)
 
                 if "preset" not in data:
+                    error_msg = f"Missing 'preset' key in {preset_file}"
+                    self._load_errors.append(error_msg)
                     continue
 
                 preset = Preset.from_dict(data["preset"])
                 preset.source = source
                 self._preset_cache[preset.id] = preset
 
+            except OSError as e:
+                # File system errors
+                error_msg = f"Failed to read preset file {preset_file}: {e}"
+                self._load_errors.append(error_msg)
+            except (KeyError, ValueError, TypeError) as e:
+                # Invalid preset data
+                error_msg = f"Invalid preset data in {preset_file}: {e}"
+                self._load_errors.append(error_msg)
             except Exception as e:
-                # Log error but continue loading other presets
-                print(f"Warning: Failed to load preset from {preset_file}: {e}")
+                # Unexpected errors - still catch but be explicit
+                error_msg = f"Unexpected error loading preset from {preset_file}: {type(e).__name__}: {e}"
+                self._load_errors.append(error_msg)
 
     def clear_cache(self) -> None:
         """Clear the preset cache to force reload."""
         self._preset_cache.clear()
         self._cache_loaded = False
+        self._load_errors.clear()
+
+    def get_load_errors(self) -> list[str]:
+        """Get any errors that occurred during preset loading.
+
+        Returns:
+            List of error messages from preset loading failures
+        """
+        return self._load_errors.copy()
+
+    def check_circular_dependency(
+        self, preset_id: str, visited: Optional[set[str]] = None
+    ) -> None:
+        """Check for circular dependencies in preset inheritance chain.
+
+        Args:
+            preset_id: ID of preset to check
+            visited: Set of already visited preset IDs (used for recursion)
+
+        Raises:
+            CircularDependencyError: If circular dependency is detected
+        """
+        if visited is None:
+            visited = set()
+
+        if preset_id in visited:
+            # Circular dependency detected
+            cycle_path = list(visited) + [preset_id]
+            raise CircularDependencyError(cycle_path)
+
+        # Get the preset
+        preset = self.get_preset(preset_id)
+        if not preset or not preset.extends:
+            # No inheritance or preset not found - no circular dependency
+            return
+
+        # Add current preset to visited set
+        visited.add(preset_id)
+
+        # Check the parent preset recursively
+        self.check_circular_dependency(preset.extends, visited)
+
+    def validate_preset_inheritance(self) -> list[str]:
+        """Validate all preset inheritance chains for circular dependencies.
+
+        Returns:
+            List of error messages for any circular dependencies found
+        """
+        errors = []
+
+        for preset_id, preset in self._preset_cache.items():
+            if preset.extends:
+                try:
+                    self.check_circular_dependency(preset_id)
+                except CircularDependencyError as e:
+                    errors.append(str(e))
+
+        return errors
+
+    def resolve_preset_variables(self, preset: Preset) -> dict[str, Any]:
+        """Resolve preset variables including inherited values.
+
+        Args:
+            preset: Preset to resolve variables for
+
+        Returns:
+            Dictionary of resolved variables (parent + child, child overrides parent)
+
+        Raises:
+            CircularDependencyError: If circular dependency is detected
+        """
+        # Check for circular dependencies first
+        self.check_circular_dependency(preset.id)
+
+        # Build inheritance chain from parent to child
+        chain = []
+        current_id = preset.id
+
+        while current_id:
+            current = self.get_preset(current_id)
+            if not current:
+                break
+            chain.insert(0, current)  # Insert at beginning to go parent -> child
+            current_id = current.extends
+
+        # Merge variables from parent to child (child overrides parent)
+        merged_variables = {}
+        for p in chain:
+            merged_variables.update(p.variables)
+
+        return merged_variables

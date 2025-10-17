@@ -472,3 +472,257 @@ class TestConfigFileInstances:
         instances = config.get_file_instances()
         assert len(instances) == 1
         assert instances[0]["id"] == "test"
+
+
+class TestConfigValidation:
+    """Tests for Config.validate_schema() method."""
+
+    def test_validate_schema_valid_config(self, tmp_path):
+        """Test validation passes for valid configuration."""
+        config_file = tmp_path / ".claudefig.toml"
+        config_file.write_text(
+            """[claudefig]
+            version = "2.0"
+            schema_version = "2.0"
+
+            [init]
+            overwrite_existing = false
+            create_backup = true
+
+            [[files]]
+            id = "test"
+            type = "claude_md"
+            preset = "claude_md:default"
+            path = "CLAUDE.md"
+            enabled = true
+
+            [custom]
+            template_dir = ""
+            """,
+            encoding="utf-8",
+        )
+
+        config = Config(config_path=config_file)
+        result = config.validate_schema()
+
+        assert result.valid is True
+        assert len(result.errors) == 0
+
+    def test_validate_schema_missing_required_section(self, tmp_path):
+        """Test validation catches missing required [claudefig] section."""
+        config_file = tmp_path / ".claudefig.toml"
+        config_file.write_text(
+            """[custom]
+            some_key = "value"
+            """,
+            encoding="utf-8",
+        )
+
+        config = Config(config_path=config_file)
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any("Missing required section: 'claudefig'" in e for e in result.errors)
+
+    def test_validate_schema_claudefig_not_dict(self, tmp_path):
+        """Test validation catches claudefig section as non-dict."""
+        config = Config()
+        config.data = {"claudefig": "not a dict"}
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any(
+            "Section 'claudefig' must be a dictionary" in e for e in result.errors
+        )
+
+    def test_validate_schema_missing_schema_version(self, tmp_path):
+        """Test validation warns about missing schema_version."""
+        config_file = tmp_path / ".claudefig.toml"
+        config_file.write_text(
+            """[claudefig]
+            version = "2.0"
+            """,
+            encoding="utf-8",
+        )
+
+        config = Config(config_path=config_file)
+        result = config.validate_schema()
+
+        # Should be valid but have warning
+        assert result.valid is True
+        assert any("Missing 'claudefig.schema_version'" in w for w in result.warnings)
+
+    def test_validate_schema_version_mismatch(self, tmp_path):
+        """Test validation warns about schema version mismatch."""
+        config_file = tmp_path / ".claudefig.toml"
+        config_file.write_text(
+            """[claudefig]
+            version = "2.0"
+            schema_version = "1.0"
+            """,
+            encoding="utf-8",
+        )
+
+        config = Config(config_path=config_file)
+        result = config.validate_schema()
+
+        assert result.valid is True
+        assert any("Schema version mismatch" in w for w in result.warnings)
+
+    def test_validate_schema_init_section_not_dict(self):
+        """Test validation catches [init] section as non-dict."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "init": "not a dict",
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any("Section 'init' must be a dictionary" in e for e in result.errors)
+
+    def test_validate_schema_init_overwrite_not_bool(self):
+        """Test validation catches init.overwrite_existing as non-boolean."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "init": {"overwrite_existing": "not a bool"},
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any(
+            "'init.overwrite_existing' must be a boolean" in e for e in result.errors
+        )
+
+    def test_validate_schema_init_create_backup_not_bool(self):
+        """Test validation catches init.create_backup as non-boolean."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "init": {"create_backup": 123},
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any("'init.create_backup' must be a boolean" in e for e in result.errors)
+
+    def test_validate_schema_files_not_list(self):
+        """Test validation catches [[files]] as non-list."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "files": "not a list",
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any("Section 'files' must be a list" in e for e in result.errors)
+
+    def test_validate_schema_file_instance_not_dict(self):
+        """Test validation catches file instance as non-dict."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "files": ["not a dict", {"id": "valid"}],
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any(
+            "File instance at index 0 must be a dictionary" in e for e in result.errors
+        )
+
+    def test_validate_schema_file_instance_missing_fields(self):
+        """Test validation catches missing required fields in file instance."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "files": [
+                {"id": "test1"},  # Missing type, preset, path
+                {
+                    "id": "test2",
+                    "type": "claude_md",
+                    "preset": "claude_md:default",
+                    "path": "CLAUDE.md",
+                },  # Complete
+            ],
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        # Should have errors for missing fields
+        assert any("missing required field: 'type'" in e for e in result.errors)
+        assert any("missing required field: 'preset'" in e for e in result.errors)
+        assert any("missing required field: 'path'" in e for e in result.errors)
+
+    def test_validate_schema_custom_section_not_dict(self):
+        """Test validation catches [custom] section as non-dict."""
+        config = Config()
+        config.data = {
+            "claudefig": {"version": "2.0", "schema_version": "2.0"},
+            "custom": ["not", "a", "dict"],
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any("Section 'custom' must be a dictionary" in e for e in result.errors)
+
+    def test_validate_schema_data_not_dict(self):
+        """Test validation catches config.data as non-dict."""
+        config = Config()
+        config.data = "not a dictionary"
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        assert any("Configuration must be a dictionary" in e for e in result.errors)
+
+    def test_get_validation_result_caches_result(self, tmp_path):
+        """Test that get_validation_result caches the validation result."""
+        config_file = tmp_path / ".claudefig.toml"
+        config_file.write_text(
+            """[claudefig]
+            version = "2.0"
+            schema_version = "2.0"
+            """,
+            encoding="utf-8",
+        )
+
+        config = Config(config_path=config_file)
+
+        # First call should validate and cache
+        result1 = config.get_validation_result()
+        # Second call should return cached result
+        result2 = config.get_validation_result()
+
+        assert result1 is result2  # Same object
+        assert result1.valid is True
+
+    def test_validate_schema_multiple_errors(self):
+        """Test validation collects multiple errors."""
+        config = Config()
+        config.data = {
+            # Missing claudefig section
+            "init": "not a dict",  # Wrong type
+            "files": "not a list",  # Wrong type
+            "custom": 123,  # Wrong type
+        }
+
+        result = config.validate_schema()
+
+        assert result.valid is False
+        # Should have multiple errors
+        assert len(result.errors) >= 4
+        assert any("Missing required section" in e for e in result.errors)
+        assert any("'init' must be a dictionary" in e for e in result.errors)
+        assert any("'files' must be a list" in e for e in result.errors)
+        assert any("'custom' must be a dictionary" in e for e in result.errors)

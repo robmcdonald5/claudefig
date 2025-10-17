@@ -1,29 +1,26 @@
 """File instance edit modal screen."""
 
+from typing import Optional
+
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
-from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Select, Switch
 
+from claudefig.error_messages import ErrorMessages
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileInstance, FileType
 from claudefig.preset_manager import PresetManager
+from claudefig.tui.base import BaseModalScreen
 
 
-class FileInstanceEditScreen(Screen):
+class FileInstanceEditScreen(BaseModalScreen):
     """Modal screen to add or edit a file instance."""
-
-    BINDINGS = [
-        ("escape", "dismiss", "Cancel"),
-        ("backspace", "dismiss", "Cancel"),
-    ]
 
     def __init__(
         self,
         instance_manager: FileInstanceManager,
         preset_manager: PresetManager,
-        instance: FileInstance | None = None,
-        file_type: FileType | None = None,
+        instance: Optional[FileInstance] = None,
+        file_type: Optional[FileType] = None,
         **kwargs,
     ) -> None:
         """Initialize file instance edit screen.
@@ -43,69 +40,104 @@ class FileInstanceEditScreen(Screen):
         self.validation_errors: list[str] = []
         self.validation_warnings: list[str] = []
 
-    def compose(self) -> ComposeResult:
-        """Compose the file instance edit screen."""
-        with Container(id="dialog-container"):
-            title = "Edit File Instance" if self.is_edit_mode else "Add File Instance"
-            yield Label(title, classes="dialog-header")
+    def compose_title(self) -> str:
+        """Return the modal title."""
+        return "Edit File Instance" if self.is_edit_mode else "Add File Instance"
 
-            with VerticalScroll(id="dialog-content"):
-                # File Type dropdown
-                yield Label("File Type:", classes="dialog-label")
-                file_type_options = [(ft.display_name, ft.value) for ft in FileType]
-                selected_type = (
-                    self.file_type.value if self.file_type else file_type_options[0][1]
+    def compose_content(self) -> ComposeResult:
+        """Compose the modal content."""
+        # File Type dropdown
+        yield Label("File Type:", classes="dialog-label")
+        file_type_options = [(ft.display_name, ft.value) for ft in FileType]
+        selected_type = (
+            self.file_type.value if self.file_type else file_type_options[0][1]
+        )
+        yield Select(
+            options=file_type_options,
+            value=selected_type,
+            id="select-file-type",
+            allow_blank=False,
+        )
+
+        # Preset dropdown (will be populated based on file type)
+        yield Label("\nPreset:", classes="dialog-label")
+        preset_options = self._get_preset_options_for_type(
+            self.file_type or FileType.CLAUDE_MD
+        )
+        selected_preset = (
+            self.instance.preset
+            if self.instance
+            else (preset_options[0][1] if preset_options else "")
+        )
+        yield Select(
+            options=preset_options,
+            value=selected_preset,
+            id="select-preset",
+            allow_blank=False,
+        )
+
+        # Path input (conditional based on path_customizable)
+        yield Label("\nPath:", classes="dialog-label")
+
+        # Determine default path
+        if self.instance:
+            default_path = self.instance.path
+        elif self.file_type:
+            default_path = self.file_type.default_path
+        else:
+            default_path = ""
+
+        # Check if path is customizable
+        is_path_customizable = (
+            self.file_type.path_customizable if self.file_type else True
+        )
+
+        if is_path_customizable:
+            # Show editable input for CLAUDE.md and .gitignore
+            yield Input(
+                placeholder="e.g., CLAUDE.md or docs/CLAUDE.md",
+                value=default_path,
+                id="input-path",
+            )
+        else:
+            # Show read-only label for fixed location/directory types
+            yield Label(
+                f"  {default_path} (fixed location)",
+                classes="dialog-text setting-description",
+            )
+            # Keep a hidden input to maintain form logic
+            yield Input(
+                value=default_path,
+                id="input-path",
+                classes="hidden",
+            )
+
+        # Add helper text for special behaviors
+        if self.file_type:
+            if self.file_type.append_mode:
+                yield Label(
+                    "ℹ️  This file will be appended to if it already exists",
+                    classes="dialog-text setting-description",
                 )
-                yield Select(
-                    options=file_type_options,
-                    value=selected_type,
-                    id="select-file-type",
-                    allow_blank=False,
+            if self.file_type.is_directory:
+                yield Label(
+                    f"ℹ️  Files will be created in {self.file_type.default_path}",
+                    classes="dialog-text setting-description",
                 )
 
-                # Preset dropdown (will be populated based on file type)
-                yield Label("\nPreset:", classes="dialog-label")
-                preset_options = self._get_preset_options_for_type(
-                    self.file_type or FileType.CLAUDE_MD
-                )
-                selected_preset = (
-                    self.instance.preset
-                    if self.instance
-                    else (preset_options[0][1] if preset_options else "")
-                )
-                yield Select(
-                    options=preset_options,
-                    value=selected_preset,
-                    id="select-preset",
-                    allow_blank=False,
-                )
+        # Enabled checkbox
+        yield Label("\nEnabled:", classes="dialog-label")
+        enabled_value = self.instance.enabled if self.instance else True
+        yield Switch(value=enabled_value, id="switch-enabled")
 
-                # Path input
-                yield Label("\nPath:", classes="dialog-label")
-                if self.instance:
-                    default_path = self.instance.path
-                elif self.file_type:
-                    default_path = self.file_type.default_path
-                else:
-                    default_path = ""
-                yield Input(
-                    placeholder="e.g., CLAUDE.md or .claude/commands/",
-                    value=default_path,
-                    id="input-path",
-                )
+        # Validation feedback area
+        yield Label("", id="validation-feedback", classes="dialog-text")
 
-                # Enabled checkbox
-                yield Label("\nEnabled:", classes="dialog-label")
-                enabled_value = self.instance.enabled if self.instance else True
-                yield Switch(value=enabled_value, id="switch-enabled")
-
-                # Validation feedback area
-                yield Label("", id="validation-feedback", classes="dialog-text")
-
-            with Horizontal(classes="dialog-actions"):
-                save_text = "Save" if self.is_edit_mode else "Add"
-                yield Button(save_text, id="btn-save", variant="primary")
-                yield Button("Cancel", id="btn-cancel")
+    def compose_actions(self) -> ComposeResult:
+        """Compose the action buttons."""
+        save_text = "Save" if self.is_edit_mode else "Add"
+        yield Button(save_text, id="btn-save", variant="primary")
+        yield Button("Cancel", id="btn-cancel")
 
     def _get_preset_options_for_type(
         self, file_type: FileType
@@ -156,7 +188,10 @@ class FileInstanceEditScreen(Screen):
                 self._validate_current_inputs()
 
             except Exception as e:
-                self.notify(f"Error updating file type: {e}", severity="error")
+                self.notify(
+                    ErrorMessages.operation_failed("updating file type", str(e)),
+                    severity="error",
+                )
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle input changes for real-time validation."""
@@ -250,13 +285,15 @@ class FileInstanceEditScreen(Screen):
 
             # Ensure preset_id is a string
             if not isinstance(preset_id_value, str):
-                self.notify("No preset selected", severity="error")
+                self.notify(
+                    ErrorMessages.empty_value("preset selection"), severity="error"
+                )
                 return
             preset_id = preset_id_value
 
             # Validate path not empty
             if not path:
-                self.notify("Path cannot be empty", severity="error")
+                self.notify(ErrorMessages.empty_value("path"), severity="error")
                 return
 
             # Generate instance ID
@@ -286,7 +323,9 @@ class FileInstanceEditScreen(Screen):
             if result.has_errors:
                 # Show errors
                 error_msg = "\n".join(result.errors)
-                self.notify(f"Validation failed:\n{error_msg}", severity="error")
+                self.notify(
+                    ErrorMessages.validation_failed(error_msg), severity="error"
+                )
                 return
 
             # Dismiss with result
@@ -299,4 +338,7 @@ class FileInstanceEditScreen(Screen):
             )
 
         except Exception as e:
-            self.notify(f"Error saving instance: {e}", severity="error")
+            self.notify(
+                ErrorMessages.operation_failed("saving instance", str(e)),
+                severity="error",
+            )

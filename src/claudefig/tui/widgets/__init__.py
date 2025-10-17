@@ -1,11 +1,11 @@
 """Reusable widgets for claudefig TUI."""
 
+from .compact_single_instance import CompactSingleInstanceControl
 from .file_instance_item import FileInstanceItem
-from .file_type_section import FileTypeSection
-from .preset_card import PresetCard
+from .overlay_dropdown import OverlayDropdown
 
 __all__ = [
-    "PresetCard",
+    "CompactSingleInstanceControl",
     "FileInstanceItem",
-    "FileTypeSection",
+    "OverlayDropdown",
 ]

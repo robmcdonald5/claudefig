@@ -11,6 +11,8 @@ else:
 
 import tomli_w
 
+from claudefig.models import ValidationResult
+
 
 class Config:
     """Manages claudefig configuration."""
@@ -42,6 +44,7 @@ class Config:
         self.config_path = config_path or self._find_config()
         self.data = self._load_config()
         self.schema_version = self.get("claudefig.schema_version", "2.0")
+        self._validation_result: Optional[ValidationResult] = None
 
     def _find_config(self) -> Optional[Path]:
         """Search for .claudefig.toml in current directory and home directory.
@@ -188,3 +191,98 @@ class Config:
         config.schema_version = "2.0"
         config.save(path)
         return config
+
+    def get_validation_result(self) -> ValidationResult:
+        """Get cached validation result, or run validation if not cached.
+
+        Returns:
+            ValidationResult from schema validation
+        """
+        if self._validation_result is None:
+            self._validation_result = self.validate_schema()
+        return self._validation_result
+
+    def validate_schema(self) -> ValidationResult:
+        """Validate the configuration schema.
+
+        Returns:
+            ValidationResult with any errors or warnings
+        """
+        result = ValidationResult(valid=True)
+
+        # Validate that data is a dictionary
+        if not isinstance(self.data, dict):
+            result.add_error("Configuration must be a dictionary")
+            return result
+
+        # Validate required sections exist
+        required_sections = ["claudefig"]
+        for section in required_sections:
+            if section not in self.data:
+                result.add_error(f"Missing required section: '{section}'")
+
+        # Validate claudefig section
+        if "claudefig" in self.data:
+            claudefig = self.data["claudefig"]
+            if not isinstance(claudefig, dict):
+                result.add_error("Section 'claudefig' must be a dictionary")
+            else:
+                # Check for required keys
+                if "schema_version" not in claudefig:
+                    result.add_warning(
+                        "Missing 'claudefig.schema_version' - using default"
+                    )
+
+                # Validate schema version
+                schema_version = claudefig.get("schema_version")
+                if schema_version and schema_version != self.SCHEMA_VERSION:
+                    result.add_warning(
+                        f"Schema version mismatch: config has '{schema_version}', "
+                        f"expected '{self.SCHEMA_VERSION}'"
+                    )
+
+        # Validate init section (optional, but must be dict if present)
+        if "init" in self.data:
+            init = self.data["init"]
+            if not isinstance(init, dict):
+                result.add_error("Section 'init' must be a dictionary")
+            else:
+                # Validate known init keys have correct types
+                if "overwrite_existing" in init and not isinstance(
+                    init["overwrite_existing"], bool
+                ):
+                    result.add_error("'init.overwrite_existing' must be a boolean")
+
+                if "create_backup" in init and not isinstance(
+                    init["create_backup"], bool
+                ):
+                    result.add_error("'init.create_backup' must be a boolean")
+
+        # Validate files section (optional, but must be list if present)
+        if "files" in self.data:
+            files = self.data["files"]
+            if not isinstance(files, list):
+                result.add_error("Section 'files' must be a list")
+            else:
+                # Validate each file instance has required fields
+                for i, file_inst in enumerate(files):
+                    if not isinstance(file_inst, dict):
+                        result.add_error(
+                            f"File instance at index {i} must be a dictionary"
+                        )
+                        continue
+
+                    required_fields = ["id", "type", "preset", "path"]
+                    for field in required_fields:
+                        if field not in file_inst:
+                            result.add_error(
+                                f"File instance at index {i} missing required field: '{field}'"
+                            )
+
+        # Validate custom section (optional, but must be dict if present)
+        if "custom" in self.data:
+            custom = self.data["custom"]
+            if not isinstance(custom, dict):
+                result.add_error("Section 'custom' must be a dictionary")
+
+        return result

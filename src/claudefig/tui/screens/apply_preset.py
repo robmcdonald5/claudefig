@@ -3,18 +3,13 @@
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
-from textual.screen import Screen
 from textual.widgets import Button, Label
 
+from claudefig.tui.base import BaseModalScreen
 
-class ApplyPresetScreen(Screen):
+
+class ApplyPresetScreen(BaseModalScreen):
     """Modal screen to confirm applying a preset."""
-
-    BINDINGS = [
-        ("escape", "dismiss", "Cancel"),
-        ("backspace", "dismiss", "Cancel"),
-    ]
 
     def __init__(self, preset_name: str, **kwargs) -> None:
         """Initialize apply preset screen.
@@ -25,32 +20,33 @@ class ApplyPresetScreen(Screen):
         super().__init__(**kwargs)
         self.preset_name = preset_name
 
-    def compose(self) -> ComposeResult:
-        """Compose the apply preset screen."""
-        with Container(id="dialog-container"):
-            yield Label("Apply Preset", classes="dialog-header")
+    def compose_title(self) -> str:
+        """Return the modal title."""
+        return "Apply Preset"
 
-            with VerticalScroll(id="dialog-content"):
-                yield Label(
-                    f"Apply preset '{self.preset_name}' to current directory?",
-                    classes="dialog-text",
-                )
+    def compose_content(self) -> ComposeResult:
+        """Compose the modal content."""
+        yield Label(
+            f"Apply preset '{self.preset_name}' to current directory?",
+            classes="dialog-text",
+        )
 
-                # Check if .claudefig.toml already exists
-                config_path = Path.cwd() / ".claudefig.toml"
-                if config_path.exists():
-                    yield Label(
-                        "\nWARNING: .claudefig.toml already exists in this directory!",
-                        classes="dialog-warning",
-                    )
-                    yield Label(
-                        "Applying this preset will overwrite the existing configuration.",
-                        classes="dialog-warning",
-                    )
+        # Check if .claudefig.toml already exists
+        config_path = Path.cwd() / ".claudefig.toml"
+        if config_path.exists():
+            yield Label(
+                "\nWARNING: .claudefig.toml already exists in this directory!",
+                classes="dialog-warning",
+            )
+            yield Label(
+                "Applying this preset will overwrite the existing configuration.",
+                classes="dialog-warning",
+            )
 
-            with Horizontal(classes="dialog-actions"):
-                yield Button("Apply", id="btn-apply", variant="primary")
-                yield Button("Cancel", id="btn-cancel")
+    def compose_actions(self) -> ComposeResult:
+        """Compose the action buttons."""
+        yield Button("Apply", id="btn-apply", variant="primary")
+        yield Button("Cancel", id="btn-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
