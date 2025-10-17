@@ -428,7 +428,7 @@ class ConfigTemplateManager:
         presets.sort(key=lambda p: p["name"])
         return presets
 
-    def get_preset_config(self, name: str):
+    def get_preset_config(self, name: str) -> "Config":
         """Load a global preset as a Config object.
 
         Args:

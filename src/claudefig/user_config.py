@@ -77,7 +77,7 @@ def ensure_user_config(verbose: bool = True) -> Path:
     return config_dir
 
 
-def initialize_user_directory(config_dir: Path, verbose: bool = True):
+def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
     """Set up default directory structure.
 
     Args:
@@ -108,7 +108,7 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True):
         raise
 
 
-def create_default_user_config(config_path: Path, verbose: bool = True):
+def create_default_user_config(config_path: Path, verbose: bool = True) -> None:
     """Create default user-level config file.
 
     Args:

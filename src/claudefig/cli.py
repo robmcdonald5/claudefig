@@ -10,15 +10,19 @@ from claudefig import __version__
 from claudefig.config import Config
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_success, format_cli_warning
 from claudefig.initializer import Initializer
+from claudefig.logging_config import get_logger, setup_logging
 from claudefig.template_manager import FileTemplateManager
 
 console = Console()
+logger = get_logger("cli")
 
 
 @click.group(invoke_without_command=True)
 @click.version_option(version=__version__, prog_name="claudefig")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
+@click.option("--quiet", "-q", is_flag=True, help="Suppress informational output")
 @click.pass_context
-def main(ctx):
+def main(ctx, verbose, quiet):
     """Universal config CLI tool for setting up Claude Code repositories.
 
     claudefig helps you initialize and manage Claude Code configurations
@@ -27,9 +31,36 @@ def main(ctx):
     Run without arguments to launch interactive mode.
     """
     from claudefig.user_config import ensure_user_config
+    import logging
+
+    # Setup logging based on verbosity flags
+    if verbose and quiet:
+        console.print("[yellow]Warning: Cannot use --verbose and --quiet together. Using normal verbosity.[/yellow]")
+        console_level = logging.WARNING
+    elif verbose:
+        console_level = logging.DEBUG
+    elif quiet:
+        console_level = logging.ERROR
+    else:
+        console_level = logging.WARNING
+
+    # Initialize logging
+    setup_logging(
+        console_level=console_level,
+        file_level=logging.INFO,
+        enable_file_logging=True,
+    )
+
+    logger.debug(f"claudefig v{__version__} starting")
+    logger.debug(f"Verbosity: verbose={verbose}, quiet={quiet}, level={logging.getLevelName(console_level)}")
+
+    # Store flags in context for subcommands
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
 
     # Initialize user config on any command
-    ensure_user_config(verbose=True)
+    ensure_user_config(verbose=verbose)
 
     # If no subcommand provided, launch interactive mode
     if ctx.invoked_subcommand is None:
@@ -59,6 +90,9 @@ def init(path, force):
     """
     repo_path = Path(path).resolve()
 
+    logger.info(f"Initializing Claude Code configuration in: {repo_path}")
+    logger.debug(f"Force mode: {force}")
+
     console.print(
         f"[bold green]Initializing Claude Code configuration in:[/bold green] {repo_path}"
     )
@@ -73,9 +107,13 @@ def init(path, force):
         initializer = Initializer(config)
         success = initializer.initialize(repo_path, force=force)
 
-        if not success:
+        if success:
+            logger.info("Initialization completed successfully")
+        else:
+            logger.warning("Initialization completed with warnings")
             raise click.Abort()
     except Exception as e:
+        logger.error(f"Initialization failed: {e}", exc_info=True)
         console.print(format_cli_error(ErrorMessages.operation_failed("initialization", str(e))))
         raise click.Abort() from e
 
@@ -1309,7 +1347,11 @@ def sync(path, force):
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
+    logger.info(f"Synchronizing files in: {repo_path}")
+    logger.debug(f"Force mode: {force}")
+
     if not config_path.exists():
+        logger.error(f"Config file not found: {config_path}")
         console.print(format_cli_error(ErrorMessages.config_file_not_found(str(repo_path))))
         console.print("[dim]Run 'claudefig init' to initialize configuration first[/dim]")
         raise click.Abort()
@@ -1332,12 +1374,15 @@ def sync(path, force):
         success = initializer.initialize(repo_path, force=force)
 
         if success:
+            logger.info("Files synchronized successfully")
             console.print("\n[green]+[/green] Files synchronized successfully")
         else:
+            logger.warning("File synchronization completed with warnings")
             console.print("\n[yellow]![/yellow] Some files failed to synchronize")
             raise click.Abort()
 
     except Exception as e:
+        logger.error(f"Synchronization failed: {e}", exc_info=True)
         console.print(format_cli_error(ErrorMessages.operation_failed("synchronizing files", str(e))))
         raise click.Abort() from e
 
@@ -1361,7 +1406,10 @@ def validate(path):
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
+    logger.info(f"Validating configuration in: {repo_path}")
+
     if not config_path.exists():
+        logger.error(f"Config file not found: {config_path}")
         console.print(format_cli_error(ErrorMessages.config_file_not_found(str(repo_path))))
         console.print("[dim]Run 'claudefig init' to initialize configuration first[/dim]")
         raise click.Abort()
@@ -1382,8 +1430,11 @@ def validate(path):
         enabled_instances = instance_manager.list_instances(enabled_only=True)
 
         if not enabled_instances:
+            logger.warning("No enabled file instances to validate")
             console.print("[yellow]No enabled file instances to validate[/yellow]")
             return
+
+        logger.debug(f"Validating {len(enabled_instances)} enabled instance(s)")
 
         # Validate each instance
         total_errors = []
@@ -1396,20 +1447,24 @@ def validate(path):
                 total_errors.extend(
                     [f"{instance.id}: {error}" for error in result.errors]
                 )
+                logger.debug(f"Instance {instance.id} has {len(result.errors)} error(s)")
 
             if result.has_warnings:
                 total_warnings.extend(
                     [f"{instance.id}: {warning}" for warning in result.warnings]
                 )
+                logger.debug(f"Instance {instance.id} has {len(result.warnings)} warning(s)")
 
         # Display results
         if total_errors:
+            logger.warning(f"Validation found {len(total_errors)} error(s)")
             console.print(f"[red]✗ Found {len(total_errors)} error(s):[/red]\n")
             for error in total_errors:
                 console.print(f"  • {error}")
             console.print()
 
         if total_warnings:
+            logger.info(f"Validation found {len(total_warnings)} warning(s)")
             console.print(f"[yellow]⚠ Found {len(total_warnings)} warning(s):[/yellow]\n")
             for warning in total_warnings:
                 console.print(f"  • {warning}")
@@ -1417,16 +1472,20 @@ def validate(path):
 
         # Overall health
         if total_errors:
+            logger.error("Validation failed with errors")
             console.print("[red]Health: ✗ Errors detected[/red]")
             raise click.Abort()
         elif total_warnings:
+            logger.info("Validation passed with warnings")
             console.print("[yellow]Health: ⚠ Warnings detected[/yellow]")
         else:
+            logger.info("Validation passed - all checks successful")
             console.print("[green]Health: ✓ All validations passed[/green]")
 
         console.print(f"\n[dim]Validated {len(enabled_instances)} enabled instance(s)[/dim]")
 
     except Exception as e:
+        logger.error(f"Validation failed: {e}", exc_info=True)
         console.print(format_cli_error(ErrorMessages.operation_failed("validation", str(e))))
         raise click.Abort() from e
 
