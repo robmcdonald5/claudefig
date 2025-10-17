@@ -6,6 +6,7 @@ from textual.screen import Screen
 from textual.widgets import Button, Label, TabbedContent, TabPane
 
 from claudefig.config import Config
+from claudefig.error_messages import ErrorMessages
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
@@ -116,7 +117,11 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 file_type = FileType(file_type_value)
                 self._show_add_instance_dialog(file_type)
             except ValueError:
-                self.notify(f"Unknown file type: {file_type_value}", severity="error")
+                valid_types = [ft.value for ft in FileType]
+                self.notify(
+                    ErrorMessages.invalid_type("file type", file_type_value, valid_types),
+                    severity="error"
+                )
         elif button_id.startswith("edit-"):
             # Edit instance
             instance_id = button_id.replace("edit-", "")
@@ -150,7 +155,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     # Refresh screen to show updated data
                     self.refresh(recompose=True)
                 except Exception as e:
-                    self.notify(f"Error adding instance: {e}", severity="error")
+                    self.notify(ErrorMessages.operation_failed("adding instance", str(e)), severity="error")
 
         self.app.push_screen(
             FileInstanceEditScreen(
@@ -172,7 +177,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         # Get the instance
         instance = self.instance_manager.get_instance(instance_id)
         if not instance:
-            self.notify(f"Instance not found: {instance_id}", severity="error")
+            self.notify(ErrorMessages.not_found("file instance", instance_id), severity="error")
             return
 
         def handle_result(result: dict | None) -> None:
@@ -187,7 +192,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     # Refresh screen to show updated data
                     self.refresh(recompose=True)
                 except Exception as e:
-                    self.notify(f"Error updating instance: {e}", severity="error")
+                    self.notify(ErrorMessages.operation_failed("updating instance", str(e)), severity="error")
 
         self.app.push_screen(
             FileInstanceEditScreen(
@@ -207,7 +212,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         # Get the instance for display name
         instance = self.instance_manager.get_instance(instance_id)
         if not instance:
-            self.notify(f"Instance not found: {instance_id}", severity="error")
+            self.notify(ErrorMessages.not_found("file instance", instance_id), severity="error")
             return
 
         # Remove from manager
@@ -218,7 +223,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             # Refresh screen to show updated data
             self.refresh(recompose=True)
         else:
-            self.notify(f"Failed to remove instance: {instance_id}", severity="error")
+            self.notify(ErrorMessages.failed_to_perform("remove", "file instance", instance_id), severity="error")
 
     def _toggle_instance(self, instance_id: str) -> None:
         """Toggle an instance's enabled status.
@@ -228,7 +233,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         """
         instance = self.instance_manager.get_instance(instance_id)
         if not instance:
-            self.notify(f"Instance not found: {instance_id}", severity="error")
+            self.notify(ErrorMessages.not_found("file instance", instance_id), severity="error")
             return
 
         # Toggle enabled status
