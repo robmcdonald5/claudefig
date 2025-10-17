@@ -1,5 +1,7 @@
 """File instance edit modal screen."""
 
+from typing import Optional
+
 from textual.app import ComposeResult
 from textual.widgets import Button, Input, Label, Select, Switch
 
@@ -17,8 +19,8 @@ class FileInstanceEditScreen(BaseModalScreen):
         self,
         instance_manager: FileInstanceManager,
         preset_manager: PresetManager,
-        instance: FileInstance | None = None,
-        file_type: FileType | None = None,
+        instance: Optional[FileInstance] = None,
+        file_type: Optional[FileType] = None,
         **kwargs,
     ) -> None:
         """Initialize file instance edit screen.

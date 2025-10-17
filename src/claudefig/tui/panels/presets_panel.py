@@ -4,6 +4,7 @@ import os
 import platform
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 from textual import work
 from textual.app import ComposeResult
@@ -24,10 +25,10 @@ class PresetsPanel(Container):
     """Panel for managing global preset templates."""
 
     # Class variable for state persistence across panel instances
-    _last_selected_preset: str | None = None
+    _last_selected_preset: Optional[str] = None
 
     # Reactive attribute for tracking selected preset
-    selected_preset: reactive[str | None] = reactive(None)
+    selected_preset: reactive[Optional[str]] = reactive(None)
 
     def __init__(self, **kwargs) -> None:
         """Initialize presets panel."""
@@ -105,7 +106,7 @@ class PresetsPanel(Container):
             self.selected_preset = PresetsPanel._last_selected_preset
 
     def watch_selected_preset(
-        self, _old_value: str | None, new_value: str | None
+        self, _old_value: Optional[str], new_value: Optional[str]
     ) -> None:
         """Watch method called when selected_preset changes.
 

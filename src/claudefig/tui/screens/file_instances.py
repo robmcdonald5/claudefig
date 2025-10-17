@@ -1,5 +1,7 @@
 """File instances screen for managing multi-instance file types."""
 
+from typing import Optional
+
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
@@ -146,7 +148,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         """
         from claudefig.tui.screens.file_instance_edit import FileInstanceEditScreen
 
-        def handle_result(result: dict | None) -> None:
+        def handle_result(result: Optional[dict]) -> None:
             """Handle dialog result."""
             if result and result.get("action") == "save":
                 instance = result["instance"]
@@ -191,7 +193,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             )
             return
 
-        def handle_result(result: dict | None) -> None:
+        def handle_result(result: Optional[dict]) -> None:
             """Handle dialog result."""
             if result and result.get("action") == "save":
                 updated_instance = result["instance"]

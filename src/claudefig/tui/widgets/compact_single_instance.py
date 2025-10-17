@@ -1,6 +1,7 @@
 """Compact single instance control for inline display."""
 
 from pathlib import Path
+from typing import Optional
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal
@@ -23,7 +24,7 @@ class CompactSingleInstanceControl(Horizontal):
     def __init__(
         self,
         file_type: FileType,
-        instance: FileInstance | None,
+        instance: Optional[FileInstance],
         preset_manager: PresetManager,
         **kwargs,
     ) -> None:

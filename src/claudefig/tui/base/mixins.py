@@ -1,6 +1,6 @@
 """Mixins for common TUI screen functionality."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from textual.app import ComposeResult
 from textual.containers import Container
@@ -37,7 +37,7 @@ class BackButtonMixin:
 
     BACK_BUTTON_LABEL = "← Back to Config Menu"
 
-    def compose_back_button(self, label: str | None = None) -> ComposeResult:
+    def compose_back_button(self, label: Optional[str] = None) -> ComposeResult:
         """Compose a standard back button in a footer container.
 
         Args:
