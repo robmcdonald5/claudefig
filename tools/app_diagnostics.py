@@ -61,7 +61,9 @@ class MainScreenDiagnostic(App):
     SUB_TITLE = f"v{__version__}"
 
     config: Config
-    CSS_PATH = Path(__file__).parent.parent / "src" / "claudefig" / "tui" / "styles.tcss"
+    CSS_PATH = (
+        Path(__file__).parent.parent / "src" / "claudefig" / "tui" / "styles.tcss"
+    )
 
     BINDINGS = [
         ("q", "quit", "Quit"),
@@ -107,6 +109,7 @@ class MainScreenDiagnostic(App):
     def on_mount(self) -> None:
         """Set focus to first button on mount."""
         from claudefig.user_config import ensure_user_config
+
         ensure_user_config(verbose=True)
         log_event("APP MOUNTED - focusing init button")
         self.query_one("#init", Button).focus()

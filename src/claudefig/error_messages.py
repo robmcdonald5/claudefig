@@ -142,7 +142,9 @@ class ErrorMessages:
 
     @staticmethod
     def success(
-        action: str, resource_type: Optional[str] = None, identifier: Optional[str] = None
+        action: str,
+        resource_type: Optional[str] = None,
+        identifier: Optional[str] = None,
     ) -> str:
         """Format a success message.
 
