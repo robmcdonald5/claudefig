@@ -268,6 +268,69 @@ def config_set(key, value, path):
         raise click.Abort() from e
 
 
+@config.command("set-init")
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=None,
+    help="Allow overwriting existing files during init",
+)
+@click.option(
+    "--backup/--no-backup",
+    default=None,
+    help="Create backup files before overwriting",
+)
+@click.option(
+    "--path",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path (default: current directory)",
+)
+def config_set_init(overwrite, backup, path):
+    """Manage initialization settings.
+
+    Configure how claudefig behaves during file generation.
+    """
+    repo_path = Path(path).resolve()
+    config_path = repo_path / ".claudefig.toml"
+
+    try:
+        cfg = Config(config_path=config_path if config_path.exists() else None)
+
+        changes = []
+
+        # Update overwrite setting
+        if overwrite is not None:
+            cfg.set("init.overwrite_existing", overwrite)
+            status = "enabled" if overwrite else "disabled"
+            changes.append(f"overwrite_existing: {status}")
+
+        # Update backup setting
+        if backup is not None:
+            cfg.set("init.create_backup", backup)
+            status = "enabled" if backup else "disabled"
+            changes.append(f"create_backup: {status}")
+
+        if not changes:
+            # Show current settings
+            console.print("[bold blue]Current initialization settings:[/bold blue]\n")
+            console.print(f"Overwrite existing: {cfg.get('init.overwrite_existing', False)}")
+            console.print(f"Create backups:     {cfg.get('init.create_backup', True)}")
+            console.print("\n[dim]Use --overwrite/--no-overwrite or --backup/--no-backup to change settings[/dim]")
+            return
+
+        # Save changes
+        cfg.save(config_path)
+
+        console.print(f"\n[green]+[/green] Updated initialization settings:")
+        for change in changes:
+            console.print(f"  {change}")
+        console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error setting init config:[/red] {e}")
+        raise click.Abort() from e
+
+
 @config.command("list")
 @click.option(
     "--path",
@@ -669,6 +732,115 @@ def files_disable(instance_id, path):
         raise click.Abort() from e
 
 
+@files.command("edit")
+@click.argument("instance_id")
+@click.option(
+    "--preset",
+    help="New preset to use (format: preset_name)",
+)
+@click.option(
+    "--path-target",
+    "path_target",
+    help="New target path for the file",
+)
+@click.option(
+    "--enable/--disable",
+    default=None,
+    help="Enable or disable the instance",
+)
+@click.option(
+    "--repo-path",
+    "repo_path_arg",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path (default: current directory)",
+)
+def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
+    """Edit an existing file instance.
+
+    INSTANCE_ID: ID of the instance to edit
+    """
+    from claudefig.file_instance_manager import FileInstanceManager
+    from claudefig.preset_manager import PresetManager
+
+    repo_path = Path(repo_path_arg).resolve()
+    config_path = repo_path / ".claudefig.toml"
+
+    try:
+        cfg = Config(config_path=config_path if config_path.exists() else None)
+        preset_manager = PresetManager()
+        instance_manager = FileInstanceManager(preset_manager, repo_path)
+
+        # Load instances
+        instances_data = cfg.get_file_instances()
+        instance_manager.load_instances(instances_data)
+
+        # Get existing instance
+        instance = instance_manager.get_instance(instance_id)
+        if not instance:
+            console.print(f"[yellow]File instance not found:[/yellow] {instance_id}")
+            raise click.Abort()
+
+        # Track changes
+        changes = []
+
+        # Update preset if provided
+        if preset:
+            old_preset = instance.preset
+            instance.preset = f"{instance.type.value}:{preset}"
+            changes.append(f"preset: {old_preset} → {instance.preset}")
+
+        # Update path if provided
+        if path_target:
+            old_path = instance.path
+            instance.path = path_target
+            changes.append(f"path: {old_path} → {instance.path}")
+
+        # Update enabled state if provided
+        if enable is not None:
+            old_enabled = instance.enabled
+            instance.enabled = enable
+            status = "enabled" if enable else "disabled"
+            old_status = "enabled" if old_enabled else "disabled"
+            changes.append(f"status: {old_status} → {status}")
+
+        if not changes:
+            console.print("[yellow]No changes specified[/yellow]")
+            console.print(
+                "\n[dim]Use --preset, --path-target, or --enable/--disable to make changes[/dim]"
+            )
+            return
+
+        # Validate changes
+        result = instance_manager.update_instance(instance)
+
+        if not result.valid:
+            console.print("[red]Validation failed:[/red]")
+            for error in result.errors:
+                console.print(f"  • {error}")
+            raise click.Abort()
+
+        if result.has_warnings:
+            console.print("[yellow]Warnings:[/yellow]")
+            for warning in result.warnings:
+                console.print(f"  • {warning}")
+
+        # Save to config
+        cfg.set_file_instances(instance_manager.save_instances())
+        cfg.save(config_path)
+
+        console.print(
+            f"\n[green]+[/green] Updated file instance: [cyan]{instance_id}[/cyan]"
+        )
+        for change in changes:
+            console.print(f"  {change}")
+        console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error editing file instance:[/red] {e}")
+        raise click.Abort() from e
+
+
 @main.group()
 def presets():
     """Manage presets (templates for file types)."""
@@ -772,6 +944,61 @@ def presets_show(preset_id):
     except Exception as e:
         console.print(f"[red]Error showing preset:[/red] {e}")
         raise click.Abort() from e
+
+
+@presets.command("open")
+def presets_open():
+    """Open the global presets directory in file explorer.
+
+    Opens ~/.claudefig/presets/ in the system file manager.
+    """
+    import platform
+    import subprocess
+
+    from claudefig.user_config import get_user_config_dir
+
+    presets_dir = get_user_config_dir() / "presets"
+
+    # Ensure directory exists
+    presets_dir.mkdir(parents=True, exist_ok=True)
+
+    console.print(f"[bold blue]Opening presets directory:[/bold blue] {presets_dir}\n")
+
+    try:
+        system = platform.system()
+
+        if system == "Windows":
+            subprocess.run(["explorer", str(presets_dir)], check=True)
+        elif system == "Darwin":  # macOS
+            subprocess.run(["open", str(presets_dir)], check=True)
+        elif system == "Linux":
+            # Try xdg-open first, fall back to alternatives
+            try:
+                subprocess.run(["xdg-open", str(presets_dir)], check=True)
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                # Try other common file managers
+                for cmd in ["nautilus", "dolphin", "thunar", "nemo"]:
+                    try:
+                        subprocess.run([cmd, str(presets_dir)], check=True)
+                        break
+                    except FileNotFoundError:
+                        continue
+                else:
+                    console.print(
+                        f"[yellow]Could not open file manager automatically[/yellow]"
+                    )
+                    console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
+                    return
+        else:
+            console.print(f"[yellow]Unsupported platform:[/yellow] {system}")
+            console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
+            return
+
+        console.print("[green]+[/green] Opened in file manager")
+
+    except Exception as e:
+        console.print(f"[red]Error opening directory:[/red] {e}")
+        console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
 
 
 @main.group()
@@ -1057,6 +1284,149 @@ def setup_mcp(path):
 
     except Exception as e:
         console.print(f"[red]Error setting up MCP servers:[/red] {e}")
+        raise click.Abort() from e
+
+
+@main.command()
+@click.option(
+    "--path",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path (default: current directory)",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Overwrite existing files",
+)
+def sync(path, force):
+    """Regenerate files from current configuration.
+
+    Reads .claudefig.toml and regenerates all enabled file instances.
+    This is useful after modifying configuration or updating presets.
+    """
+    repo_path = Path(path).resolve()
+    config_path = repo_path / ".claudefig.toml"
+
+    if not config_path.exists():
+        console.print(f"[red]Error:[/red] No .claudefig.toml found in {repo_path}")
+        console.print("[dim]Run 'claudefig init' to initialize configuration first[/dim]")
+        raise click.Abort()
+
+    console.print(
+        f"[bold green]Synchronizing files in:[/bold green] {repo_path}"
+    )
+
+    if force:
+        console.print(
+            "[yellow]Force mode enabled - will overwrite existing files[/yellow]"
+        )
+
+    try:
+        # Load existing config
+        config = Config(config_path=config_path)
+        initializer = Initializer(config)
+
+        # Regenerate files
+        success = initializer.initialize(repo_path, force=force)
+
+        if success:
+            console.print("\n[green]+[/green] Files synchronized successfully")
+        else:
+            console.print("\n[yellow]![/yellow] Some files failed to synchronize")
+            raise click.Abort()
+
+    except Exception as e:
+        console.print(f"[red]Error synchronizing files:[/red] {e}")
+        raise click.Abort() from e
+
+
+@main.command()
+@click.option(
+    "--path",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path (default: current directory)",
+)
+def validate(path):
+    """Validate project configuration and file instances.
+
+    Checks for errors and warnings in the current configuration.
+    Shows health status similar to the TUI Overview screen.
+    """
+    from claudefig.file_instance_manager import FileInstanceManager
+    from claudefig.preset_manager import PresetManager
+
+    repo_path = Path(path).resolve()
+    config_path = repo_path / ".claudefig.toml"
+
+    if not config_path.exists():
+        console.print(f"[red]Error:[/red] No .claudefig.toml found in {repo_path}")
+        console.print("[dim]Run 'claudefig init' to initialize configuration first[/dim]")
+        raise click.Abort()
+
+    console.print(f"[bold blue]Validating configuration in:[/bold blue] {repo_path}\n")
+
+    try:
+        # Load config and managers
+        cfg = Config(config_path=config_path)
+        preset_manager = PresetManager()
+        instance_manager = FileInstanceManager(preset_manager, repo_path)
+
+        # Load instances
+        instances_data = cfg.get_file_instances()
+        instance_manager.load_instances(instances_data)
+
+        # Get enabled instances
+        enabled_instances = instance_manager.list_instances(enabled_only=True)
+
+        if not enabled_instances:
+            console.print("[yellow]No enabled file instances to validate[/yellow]")
+            return
+
+        # Validate each instance
+        total_errors = []
+        total_warnings = []
+
+        for instance in enabled_instances:
+            result = instance_manager.validate_instance(instance, is_update=True)
+
+            if result.has_errors:
+                total_errors.extend(
+                    [f"{instance.id}: {error}" for error in result.errors]
+                )
+
+            if result.has_warnings:
+                total_warnings.extend(
+                    [f"{instance.id}: {warning}" for warning in result.warnings]
+                )
+
+        # Display results
+        if total_errors:
+            console.print(f"[red]✗ Found {len(total_errors)} error(s):[/red]\n")
+            for error in total_errors:
+                console.print(f"  • {error}")
+            console.print()
+
+        if total_warnings:
+            console.print(f"[yellow]⚠ Found {len(total_warnings)} warning(s):[/yellow]\n")
+            for warning in total_warnings:
+                console.print(f"  • {warning}")
+            console.print()
+
+        # Overall health
+        if total_errors:
+            console.print("[red]Health: ✗ Errors detected[/red]")
+            raise click.Abort()
+        elif total_warnings:
+            console.print("[yellow]Health: ⚠ Warnings detected[/yellow]")
+        else:
+            console.print("[green]Health: ✓ All validations passed[/green]")
+
+        console.print(f"\n[dim]Validated {len(enabled_instances)} enabled instance(s)[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error during validation:[/red] {e}")
         raise click.Abort() from e
 
 
