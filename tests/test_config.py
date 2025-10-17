@@ -532,7 +532,9 @@ class TestConfigValidation:
         result = config.validate_schema()
 
         assert result.valid is False
-        assert any("Section 'claudefig' must be a dictionary" in e for e in result.errors)
+        assert any(
+            "Section 'claudefig' must be a dictionary" in e for e in result.errors
+        )
 
     def test_validate_schema_missing_schema_version(self, tmp_path):
         """Test validation warns about missing schema_version."""
@@ -592,7 +594,9 @@ class TestConfigValidation:
         result = config.validate_schema()
 
         assert result.valid is False
-        assert any("'init.overwrite_existing' must be a boolean" in e for e in result.errors)
+        assert any(
+            "'init.overwrite_existing' must be a boolean" in e for e in result.errors
+        )
 
     def test_validate_schema_init_create_backup_not_bool(self):
         """Test validation catches init.create_backup as non-boolean."""
@@ -631,7 +635,9 @@ class TestConfigValidation:
         result = config.validate_schema()
 
         assert result.valid is False
-        assert any("File instance at index 0 must be a dictionary" in e for e in result.errors)
+        assert any(
+            "File instance at index 0 must be a dictionary" in e for e in result.errors
+        )
 
     def test_validate_schema_file_instance_missing_fields(self):
         """Test validation catches missing required fields in file instance."""

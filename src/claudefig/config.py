@@ -229,7 +229,9 @@ class Config:
             else:
                 # Check for required keys
                 if "schema_version" not in claudefig:
-                    result.add_warning("Missing 'claudefig.schema_version' - using default")
+                    result.add_warning(
+                        "Missing 'claudefig.schema_version' - using default"
+                    )
 
                 # Validate schema version
                 schema_version = claudefig.get("schema_version")
@@ -265,7 +267,9 @@ class Config:
                 # Validate each file instance has required fields
                 for i, file_inst in enumerate(files):
                     if not isinstance(file_inst, dict):
-                        result.add_error(f"File instance at index {i} must be a dictionary")
+                        result.add_error(
+                            f"File instance at index {i} must be a dictionary"
+                        )
                         continue
 
                     required_fields = ["id", "type", "preset", "path"]

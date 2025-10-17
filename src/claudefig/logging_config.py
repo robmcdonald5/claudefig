@@ -220,7 +220,9 @@ class ClaudefigLogger:
                 if age_days > days:
                     log_file.unlink()
                     deleted_count += 1
-                    self.logger.debug(f"Deleted old log file: {log_file.name} (age: {age_days} days)")
+                    self.logger.debug(
+                        f"Deleted old log file: {log_file.name} (age: {age_days} days)"
+                    )
 
             except (OSError, PermissionError) as e:
                 self.logger.warning(f"Failed to delete log file {log_file}: {e}")

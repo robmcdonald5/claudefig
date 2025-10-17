@@ -65,7 +65,9 @@ class ErrorMessages:
         return "Validation failed"
 
     @staticmethod
-    def invalid_type(type_name: str, value: str, valid_options: list[str] | None = None) -> str:
+    def invalid_type(
+        type_name: str, value: str, valid_options: list[str] | None = None
+    ) -> str:
         """Format an invalid type error message.
 
         Args:
@@ -139,7 +141,9 @@ class ErrorMessages:
     # --- Success Messages ---
 
     @staticmethod
-    def success(action: str, resource_type: str | None = None, identifier: str | None = None) -> str:
+    def success(
+        action: str, resource_type: str | None = None, identifier: str | None = None
+    ) -> str:
         """Format a success message.
 
         Args:

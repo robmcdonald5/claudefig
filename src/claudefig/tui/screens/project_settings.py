@@ -33,7 +33,7 @@ class ProjectSettingsScreen(Screen, BackButtonMixin):
 
             yield Label(
                 "Configure how claudefig initializes and generates files in your project.",
-                classes="screen-description"
+                classes="screen-description",
             )
 
             # Compact settings list (matching Core Files style)
@@ -43,25 +43,25 @@ class ProjectSettingsScreen(Screen, BackButtonMixin):
                     overwrite = self.config.get("init.overwrite_existing", False)
                     yield Switch(value=overwrite, id="switch-overwrite")
                     with Vertical(classes="init-setting-info"):
-                        yield Label("Overwrite Existing Files", classes="init-setting-label")
+                        yield Label(
+                            "Overwrite Existing Files", classes="init-setting-label"
+                        )
                         yield Static(
                             "Allow initialization to overwrite files that already exist",
-                            classes="init-setting-desc"
+                            classes="init-setting-desc",
                         )
 
                 # Backup setting - compact row (disabled when overwrite is off)
                 with Horizontal(classes="init-setting-row"):
                     backup = self.config.get("init.create_backup", True)
                     yield Switch(
-                        value=backup,
-                        id="switch-backup",
-                        disabled=not overwrite
+                        value=backup, id="switch-backup", disabled=not overwrite
                     )
                     with Vertical(classes="init-setting-info"):
                         yield Label("Create Backup Files", classes="init-setting-label")
                         yield Static(
                             "Save original files as .bak before overwriting",
-                            classes="init-setting-desc"
+                            classes="init-setting-desc",
                         )
 
             # Action buttons (matching Core Files style)

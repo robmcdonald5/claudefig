@@ -47,7 +47,7 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
             yield Label(
                 "Single-instance files that can only have one configuration per project.",
-                classes="screen-description"
+                classes="screen-description",
             )
 
             # Get single-instance file types
@@ -62,7 +62,8 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 for file_type in single_instance_types:
                     # Find existing instance for this file type
                     instances = [
-                        inst for inst in self.instance_manager.list_instances()
+                        inst
+                        for inst in self.instance_manager.list_instances()
                         if inst.type == file_type
                     ]
                     instance = instances[0] if instances else None
@@ -94,7 +95,8 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
         # Find existing instance
         instances = [
-            inst for inst in self.instance_manager.list_instances()
+            inst
+            for inst in self.instance_manager.list_instances()
             if inst.type == file_type
         ]
         instance = instances[0] if instances else None
@@ -141,7 +143,8 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
         # Find existing instance
         instances = [
-            inst for inst in self.instance_manager.list_instances()
+            inst
+            for inst in self.instance_manager.list_instances()
             if inst.type == file_type
         ]
         instance = instances[0] if instances else None

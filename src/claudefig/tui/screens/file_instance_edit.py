@@ -186,7 +186,10 @@ class FileInstanceEditScreen(BaseModalScreen):
                 self._validate_current_inputs()
 
             except Exception as e:
-                self.notify(ErrorMessages.operation_failed("updating file type", str(e)), severity="error")
+                self.notify(
+                    ErrorMessages.operation_failed("updating file type", str(e)),
+                    severity="error",
+                )
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle input changes for real-time validation."""
@@ -280,7 +283,9 @@ class FileInstanceEditScreen(BaseModalScreen):
 
             # Ensure preset_id is a string
             if not isinstance(preset_id_value, str):
-                self.notify(ErrorMessages.empty_value("preset selection"), severity="error")
+                self.notify(
+                    ErrorMessages.empty_value("preset selection"), severity="error"
+                )
                 return
             preset_id = preset_id_value
 
@@ -316,7 +321,9 @@ class FileInstanceEditScreen(BaseModalScreen):
             if result.has_errors:
                 # Show errors
                 error_msg = "\n".join(result.errors)
-                self.notify(ErrorMessages.validation_failed(error_msg), severity="error")
+                self.notify(
+                    ErrorMessages.validation_failed(error_msg), severity="error"
+                )
                 return
 
             # Dismiss with result
@@ -329,4 +336,7 @@ class FileInstanceEditScreen(BaseModalScreen):
             )
 
         except Exception as e:
-            self.notify(ErrorMessages.operation_failed("saving instance", str(e)), severity="error")
+            self.notify(
+                ErrorMessages.operation_failed("saving instance", str(e)),
+                severity="error",
+            )

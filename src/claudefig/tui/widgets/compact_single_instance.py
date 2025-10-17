@@ -159,42 +159,44 @@ class CompactSingleInstanceControl(Horizontal):
                 event.prevent_default()
                 event.stop()
         elif event.key == "right":
-            if focused == switch:
+            if focused == switch and not select.disabled:
                 # Move from switch to dropdown (only if enabled)
-                if not select.disabled:
-                    select.can_focus = True
-                    select.focus()
-                    event.prevent_default()
-                    event.stop()
+                select.can_focus = True
+                select.focus()
+                event.prevent_default()
+                event.stop()
 
         # Up/Down navigation - only between switches, never to dropdowns
         elif event.key in ("up", "down"):
-            if focused in (switch, select):
+            # Get all switches in the screen
+            all_switches = list(self.screen.query(Switch))
+
+            if (
+                focused in (switch, select)
+                and switch in all_switches
+                and len(all_switches) > 0
+            ):
                 # Make sure dropdown is not focusable
                 select.can_focus = False
 
-                # Get all switches in the screen
-                all_switches = list(self.screen.query(Switch))
+                current_idx = all_switches.index(switch)
 
-                if switch in all_switches and len(all_switches) > 0:
-                    current_idx = all_switches.index(switch)
-
-                    if event.key == "down":
-                        # If on last switch, allow navigation to escape to other elements (like buttons)
-                        if current_idx == len(all_switches) - 1:
-                            # Don't intercept - let normal navigation continue
-                            return
-                        # Move to next switch
-                        next_idx = current_idx + 1
-                        all_switches[next_idx].focus()
-                    else:
-                        # If on first switch, allow navigation to escape upwards
-                        if current_idx == 0:
-                            # Don't intercept - let normal navigation continue
-                            return
-                        # Move to previous switch
-                        prev_idx = current_idx - 1
-                        all_switches[prev_idx].focus()
+                if event.key == "down":
+                    # If on last switch, allow navigation to escape to other elements (like buttons)
+                    if current_idx == len(all_switches) - 1:
+                        # Don't intercept - let normal navigation continue
+                        return
+                    # Move to next switch
+                    next_idx = current_idx + 1
+                    all_switches[next_idx].focus()
+                else:
+                    # If on first switch, allow navigation to escape upwards
+                    if current_idx == 0:
+                        # Don't intercept - let normal navigation continue
+                        return
+                    # Move to previous switch
+                    prev_idx = current_idx - 1
+                    all_switches[prev_idx].focus()
 
                 event.prevent_default()
                 event.stop()
@@ -202,6 +204,7 @@ class CompactSingleInstanceControl(Horizontal):
     # Custom messages for communication with parent screen
     class ToggleChanged(Message):
         """Posted when the switch is toggled."""
+
         def __init__(self, file_type: FileType, enabled: bool):
             super().__init__()
             self.file_type = file_type
@@ -209,6 +212,7 @@ class CompactSingleInstanceControl(Horizontal):
 
     class PresetChanged(Message):
         """Posted when a preset is selected."""
+
         def __init__(self, file_type: FileType, preset_id: str):
             super().__init__()
             self.file_type = file_type

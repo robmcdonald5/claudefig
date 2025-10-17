@@ -193,9 +193,7 @@ class ConfigPanel(Container):
                 )
             )
         elif button_id == "btn-settings":
-            self.app.push_screen(
-                ProjectSettingsScreen(config=self.config)
-            )
+            self.app.push_screen(ProjectSettingsScreen(config=self.config))
         elif button_id == "btn-core-files":
             self.app.push_screen(
                 CoreFilesScreen(
@@ -213,6 +211,4 @@ class ConfigPanel(Container):
                 )
             )
         elif button_id == "btn-general-config":
-            self.app.push_screen(
-                GeneralConfigScreen(config=self.config)
-            )
+            self.app.push_screen(GeneralConfigScreen(config=self.config))

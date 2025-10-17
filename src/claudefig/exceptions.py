@@ -65,7 +65,9 @@ class InvalidPresetNameError(ValidationError):
         message = f"Invalid preset name: '{name}'"
         if reason:
             message += f" - {reason}"
-        super().__init__(message, error_code="INVALID_PRESET_NAME", details={"name": name})
+        super().__init__(
+            message, error_code="INVALID_PRESET_NAME", details={"name": name}
+        )
 
 
 class InvalidFileTypeError(ValidationError):
@@ -416,7 +418,9 @@ class InitializationRollbackError(InitializationError):
             errors: List of error messages
         """
         error_list = "\n  - ".join(errors)
-        message = f"Initialization failed and was rolled back. Errors:\n  - {error_list}"
+        message = (
+            f"Initialization failed and was rolled back. Errors:\n  - {error_list}"
+        )
         super().__init__(
             message,
             error_code="INIT_ROLLBACK",

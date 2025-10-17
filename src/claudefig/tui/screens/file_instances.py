@@ -52,7 +52,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
             yield Label(
                 "Multi-instance files that can have multiple configurations per project.",
-                classes="screen-description"
+                classes="screen-description",
             )
 
             # Get multi-instance file types
@@ -72,7 +72,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     with TabPane(file_type.display_name, id=f"tab-{file_type.value}"):
                         # Get instances for this file type
                         instances = [
-                            inst for inst in self.instance_manager.list_instances()
+                            inst
+                            for inst in self.instance_manager.list_instances()
                             if inst.type == file_type
                         ]
 
@@ -81,7 +82,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                             yield Button(
                                 f"+ Add {file_type.display_name}",
                                 id=f"btn-add-{file_type.value}",
-                                variant="primary"
+                                variant="primary",
                             )
 
                         # Display instances
@@ -94,7 +95,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                         else:
                             yield Label(
                                 f"No {file_type.display_name} instances configured.",
-                                classes="empty-message"
+                                classes="empty-message",
                             )
 
             # Back button
@@ -119,8 +120,10 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             except ValueError:
                 valid_types = [ft.value for ft in FileType]
                 self.notify(
-                    ErrorMessages.invalid_type("file type", file_type_value, valid_types),
-                    severity="error"
+                    ErrorMessages.invalid_type(
+                        "file type", file_type_value, valid_types
+                    ),
+                    severity="error",
                 )
         elif button_id.startswith("edit-"):
             # Edit instance
@@ -151,11 +154,17 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     self.instance_manager.add_instance(instance)
                     # Sync to config and save
                     self.sync_instances_to_config()
-                    self.notify(f"Added {instance.type.display_name} instance", severity="information")
+                    self.notify(
+                        f"Added {instance.type.display_name} instance",
+                        severity="information",
+                    )
                     # Refresh screen to show updated data
                     self.refresh(recompose=True)
                 except Exception as e:
-                    self.notify(ErrorMessages.operation_failed("adding instance", str(e)), severity="error")
+                    self.notify(
+                        ErrorMessages.operation_failed("adding instance", str(e)),
+                        severity="error",
+                    )
 
         self.app.push_screen(
             FileInstanceEditScreen(
@@ -163,7 +172,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 preset_manager=self.preset_manager,
                 file_type=file_type,
             ),
-            callback=handle_result
+            callback=handle_result,
         )
 
     def _show_edit_instance_dialog(self, instance_id: str) -> None:
@@ -177,7 +186,9 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         # Get the instance
         instance = self.instance_manager.get_instance(instance_id)
         if not instance:
-            self.notify(ErrorMessages.not_found("file instance", instance_id), severity="error")
+            self.notify(
+                ErrorMessages.not_found("file instance", instance_id), severity="error"
+            )
             return
 
         def handle_result(result: dict | None) -> None:
@@ -188,11 +199,17 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     self.instance_manager.update_instance(updated_instance)
                     # Sync to config and save
                     self.sync_instances_to_config()
-                    self.notify(f"Updated {updated_instance.type.display_name} instance", severity="information")
+                    self.notify(
+                        f"Updated {updated_instance.type.display_name} instance",
+                        severity="information",
+                    )
                     # Refresh screen to show updated data
                     self.refresh(recompose=True)
                 except Exception as e:
-                    self.notify(ErrorMessages.operation_failed("updating instance", str(e)), severity="error")
+                    self.notify(
+                        ErrorMessages.operation_failed("updating instance", str(e)),
+                        severity="error",
+                    )
 
         self.app.push_screen(
             FileInstanceEditScreen(
@@ -200,7 +217,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 preset_manager=self.preset_manager,
                 instance=instance,
             ),
-            callback=handle_result
+            callback=handle_result,
         )
 
     def _remove_instance(self, instance_id: str) -> None:
@@ -212,18 +229,25 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         # Get the instance for display name
         instance = self.instance_manager.get_instance(instance_id)
         if not instance:
-            self.notify(ErrorMessages.not_found("file instance", instance_id), severity="error")
+            self.notify(
+                ErrorMessages.not_found("file instance", instance_id), severity="error"
+            )
             return
 
         # Remove from manager
         if self.instance_manager.remove_instance(instance_id):
             # Sync to config and save
             self.sync_instances_to_config()
-            self.notify(f"Removed {instance.type.display_name} instance", severity="information")
+            self.notify(
+                f"Removed {instance.type.display_name} instance", severity="information"
+            )
             # Refresh screen to show updated data
             self.refresh(recompose=True)
         else:
-            self.notify(ErrorMessages.failed_to_perform("remove", "file instance", instance_id), severity="error")
+            self.notify(
+                ErrorMessages.failed_to_perform("remove", "file instance", instance_id),
+                severity="error",
+            )
 
     def _toggle_instance(self, instance_id: str) -> None:
         """Toggle an instance's enabled status.
@@ -233,7 +257,9 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         """
         instance = self.instance_manager.get_instance(instance_id)
         if not instance:
-            self.notify(ErrorMessages.not_found("file instance", instance_id), severity="error")
+            self.notify(
+                ErrorMessages.not_found("file instance", instance_id), severity="error"
+            )
             return
 
         # Toggle enabled status
@@ -244,7 +270,9 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         self.sync_instances_to_config()
 
         status = "enabled" if instance.enabled else "disabled"
-        self.notify(f"{instance.type.display_name} instance {status}", severity="information")
+        self.notify(
+            f"{instance.type.display_name} instance {status}", severity="information"
+        )
 
         # Refresh screen to show updated data
         self.refresh(recompose=True)

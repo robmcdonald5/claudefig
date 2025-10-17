@@ -1,8 +1,5 @@
 """Tests for config management CLI commands."""
 
-from pathlib import Path
-from unittest.mock import Mock, patch
-
 import pytest
 from click.testing import CliRunner
 
@@ -66,7 +63,9 @@ class TestConfigGet:
 
             assert result.exit_code == 0
             # Should show the value (false) or the key name
-            assert "false" in result.output.lower() or "overwrite" in result.output.lower()
+            assert (
+                "false" in result.output.lower() or "overwrite" in result.output.lower()
+            )
 
     def test_get_nonexistent_key(self, cli_runner, tmp_path, config_file):
         """Test getting a key that doesn't exist."""
@@ -74,7 +73,9 @@ class TestConfigGet:
             result = cli_runner.invoke(main, ["config", "get", "nonexistent.key"])
 
             assert result.exit_code == 0
-            assert "not found" in result.output.lower() or "nonexistent" in result.output
+            assert (
+                "not found" in result.output.lower() or "nonexistent" in result.output
+            )
 
     def test_get_without_config_file(self, cli_runner, tmp_path):
         """Test getting config when no config file exists."""
@@ -133,9 +134,7 @@ class TestConfigSet:
     def test_set_integer_value(self, cli_runner, tmp_path, config_file):
         """Test setting an integer value."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            result = cli_runner.invoke(
-                main, ["config", "set", "custom.max_depth", "5"]
-            )
+            result = cli_runner.invoke(main, ["config", "set", "custom.max_depth", "5"])
 
             assert result.exit_code == 0
             # Should parse '5' as integer
@@ -195,7 +194,9 @@ class TestConfigSetInit:
             )
 
             assert result.exit_code == 0
-            assert "Updated" in result.output or "initialization" in result.output.lower()
+            assert (
+                "Updated" in result.output or "initialization" in result.output.lower()
+            )
 
     def test_set_init_no_changes(self, cli_runner, tmp_path, config_file):
         """Test set-init without any flags shows current settings."""
@@ -249,7 +250,9 @@ class TestConfigList:
 
             assert result.exit_code == 0
             # Should handle gracefully
-            assert "Configuration" in result.output or "defaults" in result.output.lower()
+            assert (
+                "Configuration" in result.output or "defaults" in result.output.lower()
+            )
 
     def test_list_with_custom_path(self, cli_runner, tmp_path, config_file):
         """Test listing config from a custom path."""
@@ -284,9 +287,7 @@ class TestConfigEdgeCases:
     def test_set_creates_config_if_missing(self, cli_runner, tmp_path):
         """Test that set creates config file if it doesn't exist."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            result = cli_runner.invoke(
-                main, ["config", "set", "custom.test", "value"]
-            )
+            result = cli_runner.invoke(main, ["config", "set", "custom.test", "value"])
 
             # Should succeed and create config
             assert result.exit_code == 0 or "Error" in result.output
@@ -295,9 +296,7 @@ class TestConfigEdgeCases:
     def test_get_complex_nested_key(self, cli_runner, tmp_path, config_file):
         """Test getting deeply nested configuration key."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            result = cli_runner.invoke(
-                main, ["config", "get", "custom.template_dir"]
-            )
+            result = cli_runner.invoke(main, ["config", "get", "custom.template_dir"])
 
             assert result.exit_code == 0
             # Should show the value or key name
@@ -331,7 +330,10 @@ class TestConfigIntegration:
             list_result = cli_runner.invoke(main, ["config", "list"])
             assert list_result.exit_code == 0
             # Should show the updated setting
-            assert "overwrite" in list_result.output.lower() or "Init" in list_result.output
+            assert (
+                "overwrite" in list_result.output.lower()
+                or "Init" in list_result.output
+            )
 
     def test_multiple_sets(self, cli_runner, tmp_path, config_file):
         """Test setting multiple values in sequence."""

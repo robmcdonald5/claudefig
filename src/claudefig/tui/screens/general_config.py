@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
@@ -40,11 +40,16 @@ class GeneralConfigScreen(Screen, BackButtonMixin):
         with VerticalScroll(classes="content-area"):
             # Current config display
             yield Label("Current Settings", classes="section-title")
-            yield Static(self._format_config(), id="config-display", classes="config-display")
+            yield Static(
+                self._format_config(), id="config-display", classes="config-display"
+            )
 
             # Config editor
             yield Label("\nEdit Configuration", classes="section-title")
-            yield Label("Use dot notation for keys (e.g., 'init.overwrite_existing')", classes="help-text")
+            yield Label(
+                "Use dot notation for keys (e.g., 'init.overwrite_existing')",
+                classes="help-text",
+            )
 
             with Horizontal(classes="input-row"):
                 yield Label("Key:", classes="input-label")

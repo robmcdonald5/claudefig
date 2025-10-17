@@ -259,10 +259,12 @@ class PresetManager:
                         f"Preset defines variable '{var}' but it's not used in the template"
                     )
 
-        except (OSError, IOError) as e:
+        except OSError as e:
             result.add_error(f"Failed to read template file: {e}")
         except Exception as e:
-            result.add_error(f"Unexpected error validating template: {type(e).__name__}: {e}")
+            result.add_error(
+                f"Unexpected error validating template: {type(e).__name__}: {e}"
+            )
 
         return result
 
@@ -474,7 +476,7 @@ class PresetManager:
                 preset.source = source
                 self._preset_cache[preset.id] = preset
 
-            except (OSError, IOError) as e:
+            except OSError as e:
                 # File system errors
                 error_msg = f"Failed to read preset file {preset_file}: {e}"
                 self._load_errors.append(error_msg)
@@ -501,7 +503,9 @@ class PresetManager:
         """
         return self._load_errors.copy()
 
-    def check_circular_dependency(self, preset_id: str, visited: Optional[set[str]] = None) -> None:
+    def check_circular_dependency(
+        self, preset_id: str, visited: Optional[set[str]] = None
+    ) -> None:
         """Check for circular dependencies in preset inheritance chain.
 
         Args:

@@ -508,7 +508,7 @@ class TestInitializeTemplateErrors:
 
         with (
             patch.object(Config, "create_default"),
-            pytest.raises(InitializationRollbackError)
+            pytest.raises(InitializationRollbackError),
         ):
             initializer.initialize(git_repo, force=False)
 
@@ -537,7 +537,7 @@ class TestInitializeTemplateErrors:
                 "write_text",
                 side_effect=PermissionError("Permission denied"),
             ),
-            pytest.raises(InitializationRollbackError)
+            pytest.raises(InitializationRollbackError),
         ):
             initializer.initialize(git_repo, force=False)
 
@@ -608,7 +608,7 @@ class TestInitializeTemplateErrors:
 
         with (
             patch.object(Config, "create_default"),
-            pytest.raises(InitializationRollbackError)
+            pytest.raises(InitializationRollbackError),
         ):
             initializer.initialize(git_repo, force=False)
 

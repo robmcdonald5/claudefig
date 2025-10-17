@@ -44,7 +44,10 @@ class TestInit:
         result = cli_runner.invoke(main, ["init", "--path", str(tmp_path)])
 
         # Test invokes CLI and shows initialization message
-        assert "Initializing Claude Code configuration" in result.output or "init" in result.output.lower()
+        assert (
+            "Initializing Claude Code configuration" in result.output
+            or "init" in result.output.lower()
+        )
 
     @patch("claudefig.config.Config")
     @patch("claudefig.initializer.Initializer")
@@ -110,19 +113,21 @@ class TestInit:
             # Create .git to simulate git repo
             (Path.cwd() / ".git").mkdir()
 
-            with patch("claudefig.config.Config") as mock_config_class:
-                with patch("claudefig.initializer.Initializer") as mock_init_class:
-                    mock_cfg = Mock()
-                    mock_config_class.return_value = mock_cfg
+            with (
+                patch("claudefig.config.Config") as mock_config_class,
+                patch("claudefig.initializer.Initializer") as mock_init_class,
+            ):
+                mock_cfg = Mock()
+                mock_config_class.return_value = mock_cfg
 
-                    mock_init = Mock()
-                    mock_init.initialize.return_value = True
-                    mock_init_class.return_value = mock_init
+                mock_init = Mock()
+                mock_init.initialize.return_value = True
+                mock_init_class.return_value = mock_init
 
-                    result = cli_runner.invoke(main, ["init"])
+                result = cli_runner.invoke(main, ["init"])
 
-                    # Should attempt initialization
-                    assert "Initializing" in result.output or mock_init.initialize.called
+                # Should attempt initialization
+                assert "Initializing" in result.output or mock_init.initialize.called
 
 
 class TestShow:
@@ -228,7 +233,9 @@ class TestListTemplates:
 
     @patch("claudefig.template_manager.FileTemplateManager")
     @patch("claudefig.config.Config")
-    def test_list_templates_shows_templates(self, mock_config_class, mock_template_mgr_class, cli_runner):
+    def test_list_templates_shows_templates(
+        self, mock_config_class, mock_template_mgr_class, cli_runner
+    ):
         """Test listing available templates."""
         mock_cfg = Mock()
         mock_cfg.get.return_value = None
@@ -310,7 +317,7 @@ class TestMainGroup:
             mock_app = Mock()
             mock_app_class.return_value = mock_app
 
-            result = cli_runner.invoke(main, [])
+            cli_runner.invoke(main, [])
 
             # Should have attempted to launch TUI
             mock_app.run.assert_called_once()
@@ -327,38 +334,42 @@ class TestMainGroup:
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             (Path.cwd() / ".git").mkdir()
 
-            with patch("claudefig.config.Config") as mock_config_class:
-                with patch("claudefig.initializer.Initializer") as mock_init_class:
-                    mock_cfg = Mock()
-                    mock_config_class.return_value = mock_cfg
+            with (
+                patch("claudefig.config.Config") as mock_config_class,
+                patch("claudefig.initializer.Initializer") as mock_init_class,
+            ):
+                mock_cfg = Mock()
+                mock_config_class.return_value = mock_cfg
 
-                    mock_init = Mock()
-                    mock_init.initialize.return_value = True
-                    mock_init_class.return_value = mock_init
+                mock_init = Mock()
+                mock_init.initialize.return_value = True
+                mock_init_class.return_value = mock_init
 
-                    result = cli_runner.invoke(main, ["--verbose", "init"])
+                result = cli_runner.invoke(main, ["--verbose", "init"])
 
-                    # Should process verbose flag
-                    assert "init" in result.output.lower() or mock_init.initialize.called
+                # Should process verbose flag
+                assert "init" in result.output.lower() or mock_init.initialize.called
 
     def test_main_with_quiet_flag(self, cli_runner, tmp_path):
         """Test that --quiet flag is processed."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             (Path.cwd() / ".git").mkdir()
 
-            with patch("claudefig.config.Config") as mock_config_class:
-                with patch("claudefig.initializer.Initializer") as mock_init_class:
-                    mock_cfg = Mock()
-                    mock_config_class.return_value = mock_cfg
+            with (
+                patch("claudefig.config.Config") as mock_config_class,
+                patch("claudefig.initializer.Initializer") as mock_init_class,
+            ):
+                mock_cfg = Mock()
+                mock_config_class.return_value = mock_cfg
 
-                    mock_init = Mock()
-                    mock_init.initialize.return_value = True
-                    mock_init_class.return_value = mock_init
+                mock_init = Mock()
+                mock_init.initialize.return_value = True
+                mock_init_class.return_value = mock_init
 
-                    result = cli_runner.invoke(main, ["--quiet", "init"])
+                result = cli_runner.invoke(main, ["--quiet", "init"])
 
-                    # Should process quiet flag
-                    assert mock_init.initialize.called or "init" in result.output.lower()
+                # Should process quiet flag
+                assert mock_init.initialize.called or "init" in result.output.lower()
 
     def test_main_with_verbose_and_quiet_shows_warning(self, cli_runner, tmp_path):
         """Test that using both --verbose and --quiet shows warning."""
@@ -373,4 +384,6 @@ class TestMainGroup:
                 result = cli_runner.invoke(main, ["--verbose", "--quiet", "init"])
 
                 # Should warn about conflicting flags
-                assert "Warning" in result.output or "cannot use" in result.output.lower()
+                assert (
+                    "Warning" in result.output or "cannot use" in result.output.lower()
+                )

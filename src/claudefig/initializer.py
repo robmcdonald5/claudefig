@@ -68,18 +68,25 @@ class Initializer:
                     file_path.unlink()
                     console.print(f"[dim]Removed file: {file_path}[/dim]")
             except Exception as e:
-                console.print(f"[yellow]Warning: Failed to remove {file_path}: {e}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Failed to remove {file_path}: {e}[/yellow]"
+                )
 
         # Remove directories (in reverse order to handle nested directories)
         for dir_path in reversed(self._created_dirs):
             try:
-                if dir_path.exists() and dir_path.is_dir():
+                if (
+                    dir_path.exists()
+                    and dir_path.is_dir()
+                    and not any(dir_path.iterdir())
+                ):
                     # Only remove if empty
-                    if not any(dir_path.iterdir()):
-                        dir_path.rmdir()
-                        console.print(f"[dim]Removed directory: {dir_path}[/dim]")
+                    dir_path.rmdir()
+                    console.print(f"[dim]Removed directory: {dir_path}[/dim]")
             except Exception as e:
-                console.print(f"[yellow]Warning: Failed to remove {dir_path}: {e}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Failed to remove {dir_path}: {e}[/yellow]"
+                )
 
         console.print("[yellow]Rollback complete[/yellow]")
 
@@ -167,7 +174,9 @@ class Initializer:
                 )
 
                 for instance in enabled_instances:
-                    result = self._generate_file_from_instance(instance, repo_path, force)
+                    result = self._generate_file_from_instance(
+                        instance, repo_path, force
+                    )
                     if result:
                         files_created += 1
                     else:
@@ -185,7 +194,11 @@ class Initializer:
                 console.print(f"\n[blue]i[/blue] Config already exists: {config_path}")
 
             # If we had critical failures and rollback is enabled, trigger rollback
-            if not success and self._rollback_enabled and len(failed_files) > len(enabled_instances) // 2:
+            if (
+                not success
+                and self._rollback_enabled
+                and len(failed_files) > len(enabled_instances) // 2
+            ):
                 # More than half failed - this is a critical failure
                 raise InitializationRollbackError(failed_files, errors)
 
@@ -196,9 +209,13 @@ class Initializer:
 
             if success:
                 console.print("\n[bold green]Initialization complete![/bold green]")
-                console.print(f"\nClaude Code configuration initialized in: {repo_path}")
+                console.print(
+                    f"\nClaude Code configuration initialized in: {repo_path}"
+                )
             else:
-                console.print("\n[yellow]Initialization completed with warnings[/yellow]")
+                console.print(
+                    "\n[yellow]Initialization completed with warnings[/yellow]"
+                )
 
             # Clear tracking on success
             self._clear_tracking()
@@ -212,7 +229,9 @@ class Initializer:
 
         except Exception as e:
             # Unexpected error - rollback if enabled
-            error_msg = f"Unexpected error during initialization: {type(e).__name__}: {e}"
+            error_msg = (
+                f"Unexpected error during initialization: {type(e).__name__}: {e}"
+            )
             errors.append(error_msg)
             console.print(f"[red]Error:[/red] {error_msg}")
 
@@ -326,9 +345,7 @@ class Initializer:
         template_path = global_claudefig / template_dir / f"{template_name}{extension}"
 
         if not template_path.exists():
-            console.print(
-                f"[red]x[/red] Template not found: {template_path}"
-            )
+            console.print(f"[red]x[/red] Template not found: {template_path}")
             console.print(
                 f"[yellow]![/yellow] Expected template in global directory: {global_claudefig / template_dir}/"
             )
@@ -756,7 +773,6 @@ class Initializer:
         Returns:
             True if successful, False otherwise.
         """
-        import shutil
         from importlib.resources import files
 
         try:

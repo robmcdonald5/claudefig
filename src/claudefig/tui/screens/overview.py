@@ -48,11 +48,11 @@ class OverviewScreen(Screen, BackButtonMixin):
             if len(config_path) > 50:
                 config_path = "..." + config_path[-47:]
 
-            schema_version = self.config.get('claudefig.schema_version', 'unknown')
+            schema_version = self.config.get("claudefig.schema_version", "unknown")
 
             yield Static(
                 f"Config: {config_path} | Schema: {schema_version}",
-                classes="overview-info-line"
+                classes="overview-info-line",
             )
 
             # SECTION 1: Health Status - OVERLAY DROPDOWN
@@ -62,7 +62,7 @@ class OverviewScreen(Screen, BackButtonMixin):
             yield OverlayDropdown(
                 title=f"STATUS: {status_text.split(':')[1].strip()}",
                 expanded=False,
-                id="status-dropdown"
+                id="status-dropdown",
             )
 
             # SECTION 2: Files - OVERLAY DROPDOWN
@@ -74,14 +74,12 @@ class OverviewScreen(Screen, BackButtonMixin):
             yield OverlayDropdown(
                 title=f"FILES IN CONFIG ({total} total, {enabled} enabled, {disabled} disabled)",
                 expanded=False,
-                id="files-dropdown"
+                id="files-dropdown",
             )
 
             # SECTION 3: Settings - OVERLAY DROPDOWN
             yield OverlayDropdown(
-                title="INITIALIZATION SETTINGS",
-                expanded=False,
-                id="settings-dropdown"
+                title="INITIALIZATION SETTINGS", expanded=False, id="settings-dropdown"
             )
 
             # Back button
@@ -95,19 +93,32 @@ class OverviewScreen(Screen, BackButtonMixin):
         status_content = []
 
         if errors:
-            status_content.append(Static("Errors:", classes="overview-section-header error"))
+            status_content.append(
+                Static("Errors:", classes="overview-section-header error")
+            )
             for error in errors:
-                status_content.append(Static(f"  ✗ {error}", classes="overview-error-item"))
+                status_content.append(
+                    Static(f"  ✗ {error}", classes="overview-error-item")
+                )
 
         if warnings:
             if errors:
                 status_content.append(Static(""))  # Spacer
-            status_content.append(Static("Warnings:", classes="overview-section-header warning"))
+            status_content.append(
+                Static("Warnings:", classes="overview-section-header warning")
+            )
             for warning in warnings:
-                status_content.append(Static(f"  ⚠ {warning}", classes="overview-warning-item"))
+                status_content.append(
+                    Static(f"  ⚠ {warning}", classes="overview-warning-item")
+                )
 
         if not errors and not warnings:
-            status_content.append(Static("✓ All enabled file instances are valid", classes="overview-healthy-item"))
+            status_content.append(
+                Static(
+                    "✓ All enabled file instances are valid",
+                    classes="overview-healthy-item",
+                )
+            )
 
         status_dropdown.set_content(*status_content)
 
@@ -117,24 +128,28 @@ class OverviewScreen(Screen, BackButtonMixin):
         files_content = []
 
         if len(instances) == 0:
-            files_content.append(Static("No file instances configured", classes="file-disabled"))
+            files_content.append(
+                Static("No file instances configured", classes="file-disabled")
+            )
         else:
             for instance in sorted(instances, key=self._file_sort_key):
                 icon = "✓" if instance.enabled else "-"
                 suffix = " (disabled)" if not instance.enabled else ""
                 css_class = "file-enabled" if instance.enabled else "file-disabled"
-                files_content.append(Static(f"{icon} {instance.path}{suffix}", classes=css_class))
+                files_content.append(
+                    Static(f"{icon} {instance.path}{suffix}", classes=css_class)
+                )
 
         files_dropdown.set_content(*files_content)
 
         # Populate SETTINGS dropdown
-        overwrite = "Yes" if self.config.get('init.overwrite_existing') else "No"
-        backup = "Yes" if self.config.get('init.create_backup', True) else "No"
+        overwrite = "Yes" if self.config.get("init.overwrite_existing") else "No"
+        backup = "Yes" if self.config.get("init.create_backup", True) else "No"
 
         settings_dropdown = self.query_one("#settings-dropdown", OverlayDropdown)
         settings_dropdown.set_content(
             Static(f"• Overwrite existing files: {overwrite}"),  # type: ignore[arg-type]
-            Static(f"• Create backup files: {backup}")  # type: ignore[arg-type]
+            Static(f"• Create backup files: {backup}"),  # type: ignore[arg-type]
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -207,7 +222,9 @@ class OverviewScreen(Screen, BackButtonMixin):
         for instance in self.instance_manager.list_instances():
             # Only validate enabled instances
             if instance.enabled:
-                result = self.instance_manager.validate_instance(instance, is_update=True)
+                result = self.instance_manager.validate_instance(
+                    instance, is_update=True
+                )
                 all_errors.extend(result.errors)
                 all_warnings.extend(result.warnings)
 
@@ -218,7 +235,9 @@ class OverviewScreen(Screen, BackButtonMixin):
         else:
             return ("healthy", all_errors, all_warnings)
 
-    def _format_health_status(self, status: str, errors: list[str], warnings: list[str]) -> str:
+    def _format_health_status(
+        self, status: str, errors: list[str], warnings: list[str]
+    ) -> str:
         """Format health status message.
 
         Args:
@@ -230,7 +249,6 @@ class OverviewScreen(Screen, BackButtonMixin):
             Formatted status string
         """
         instances = self.instance_manager.list_instances()
-        total = len(instances)
         enabled = sum(1 for i in instances if i.enabled)
 
         if status == "healthy":
@@ -238,7 +256,9 @@ class OverviewScreen(Screen, BackButtonMixin):
         elif status == "warning":
             return f"STATUS: ⚠ Warning - {len(warnings)} warning(s) found"
         else:
-            return f"STATUS: ✗ Error - {len(errors)} error(s), {len(warnings)} warning(s)"
+            return (
+                f"STATUS: ✗ Error - {len(errors)} error(s), {len(warnings)} warning(s)"
+            )
 
     def _file_sort_key(self, instance: FileInstance) -> tuple:
         """Sort files logically: enabled first, then by type priority, then path.
@@ -266,5 +286,5 @@ class OverviewScreen(Screen, BackButtonMixin):
         return (
             0 if instance.enabled else 1,  # Enabled first
             type_priority.get(instance.type, 99),  # Then by type
-            instance.path  # Then alphabetically
+            instance.path,  # Then alphabetically
         )

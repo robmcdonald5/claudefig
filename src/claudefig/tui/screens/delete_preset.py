@@ -33,7 +33,7 @@ class DeletePresetScreen(BaseModalScreen):
             classes="dialog-warning",
         )
         yield Label(
-            f"The preset file will be permanently removed from ~/.claudefig/presets/",
+            "The preset file will be permanently removed from ~/.claudefig/presets/",
             classes="dialog-warning",
         )
 

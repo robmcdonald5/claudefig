@@ -429,9 +429,7 @@ class TestPresetEdgeCases:
     def test_render_preset_with_unicode_content(self, tmp_path):
         """Test rendering preset with Unicode characters."""
         template_file = tmp_path / "unicode.md"
-        template_file.write_text(
-            "Hello {name}! 你好 {greeting} 🎉", encoding="utf-8"
-        )
+        template_file.write_text("Hello {name}! 你好 {greeting} 🎉", encoding="utf-8")
 
         preset = Preset(
             id="test:unicode",
@@ -474,7 +472,9 @@ class TestPresetManagerListFiltering:
         user_dir.mkdir()
         project_dir.mkdir()
 
-        manager = PresetManager(user_presets_dir=user_dir, project_presets_dir=project_dir)
+        manager = PresetManager(
+            user_presets_dir=user_dir, project_presets_dir=project_dir
+        )
 
         # Try to list USER source presets (should be empty)
         presets = manager.list_presets(source=PresetSource.USER)

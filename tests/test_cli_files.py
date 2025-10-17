@@ -1,6 +1,5 @@
 """Tests for file management CLI commands."""
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -53,7 +52,12 @@ class TestFilesList:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_list_all_files(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test listing all file instances."""
         # Setup mocks
@@ -109,7 +113,12 @@ class TestFilesList:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_list_by_type(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test listing files filtered by type."""
         from claudefig.models import FileInstance, FileType
@@ -143,7 +152,12 @@ class TestFilesList:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_list_enabled_only(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test listing only enabled file instances."""
         from claudefig.models import FileInstance, FileType
@@ -177,7 +191,12 @@ class TestFilesList:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_list_empty(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test listing when no file instances exist."""
         mock_cfg = Mock()
@@ -197,7 +216,12 @@ class TestFilesList:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_list_invalid_type(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test listing with invalid file type."""
         mock_cfg = Mock()
@@ -219,7 +243,12 @@ class TestFilesAdd:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_add_valid_file(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test adding a valid file instance."""
         from claudefig.models import ValidationResult
@@ -257,7 +286,12 @@ class TestFilesAdd:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_add_with_disabled_flag(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test adding a file instance with disabled flag."""
         from claudefig.models import ValidationResult
@@ -295,7 +329,12 @@ class TestFilesAdd:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_add_invalid_file_type(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test adding a file with invalid type."""
         result = cli_runner.invoke(
@@ -310,7 +349,12 @@ class TestFilesAdd:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_add_validation_fails(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test adding a file that fails validation."""
         from claudefig.models import ValidationResult
@@ -338,7 +382,12 @@ class TestFilesAdd:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_add_with_custom_path(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test adding a file with custom path."""
         from claudefig.models import ValidationResult
@@ -390,7 +439,9 @@ class TestFilesRemove:
         )
 
         assert result.exit_code == 0
-        assert "Removed file instance" in result.output or "test-instance" in result.output
+        assert (
+            "Removed file instance" in result.output or "test-instance" in result.output
+        )
 
     @patch("claudefig.config.Config")
     def test_remove_nonexistent_file(self, mock_config_class, cli_runner, tmp_path):
@@ -414,7 +465,12 @@ class TestFilesEnable:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_enable_disabled_file(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test enabling a disabled file instance."""
         mock_cfg = Mock()
@@ -432,13 +488,20 @@ class TestFilesEnable:
         )
 
         assert result.exit_code == 0
-        assert "Enabled file instance" in result.output or "test-instance" in result.output
+        assert (
+            "Enabled file instance" in result.output or "test-instance" in result.output
+        )
 
     @patch("claudefig.file_instance_manager.FileInstanceManager")
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_enable_nonexistent_file(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test enabling a file that doesn't exist."""
         mock_cfg = Mock()
@@ -464,7 +527,12 @@ class TestFilesDisable:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_disable_enabled_file(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test disabling an enabled file instance."""
         mock_cfg = Mock()
@@ -482,13 +550,21 @@ class TestFilesDisable:
         )
 
         assert result.exit_code == 0
-        assert "Disabled file instance" in result.output or "test-instance" in result.output
+        assert (
+            "Disabled file instance" in result.output
+            or "test-instance" in result.output
+        )
 
     @patch("claudefig.file_instance_manager.FileInstanceManager")
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_disable_nonexistent_file(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test disabling a file that doesn't exist."""
         mock_cfg = Mock()
@@ -514,7 +590,12 @@ class TestFilesEdit:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_edit_preset(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test editing a file instance's preset."""
         from claudefig.models import FileInstance, FileType, ValidationResult
@@ -561,7 +642,12 @@ class TestFilesEdit:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_edit_path(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test editing a file instance's path."""
         from claudefig.models import FileInstance, FileType, ValidationResult
@@ -610,7 +696,12 @@ class TestFilesEdit:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_edit_enable_status(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test editing a file instance's enabled status."""
         from claudefig.models import FileInstance, FileType, ValidationResult
@@ -658,7 +749,12 @@ class TestFilesEdit:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_edit_nonexistent_file(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test editing a file that doesn't exist."""
         mock_cfg = Mock()
@@ -689,7 +785,12 @@ class TestFilesEdit:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_edit_no_changes(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test editing without specifying any changes."""
         from claudefig.models import FileInstance, FileType
@@ -722,7 +823,12 @@ class TestFilesEdit:
     @patch("claudefig.preset_manager.PresetManager")
     @patch("claudefig.config.Config")
     def test_edit_validation_fails(
-        self, mock_config_class, mock_preset_mgr_class, mock_inst_mgr_class, cli_runner, tmp_path
+        self,
+        mock_config_class,
+        mock_preset_mgr_class,
+        mock_inst_mgr_class,
+        cli_runner,
+        tmp_path,
     ):
         """Test editing with validation failure."""
         from claudefig.models import FileInstance, FileType, ValidationResult

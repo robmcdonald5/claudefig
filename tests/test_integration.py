@@ -6,7 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from claudefig.cli import main
-from claudefig.user_config import ensure_user_config, get_user_config_dir
+from claudefig.user_config import get_user_config_dir
 
 
 class TestFullInitializationWorkflow:

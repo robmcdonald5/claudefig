@@ -165,7 +165,7 @@ class OverlayDropdown(Widget):
         try:
             header = self.query_one(DropdownHeader)
             header.update(self._format_title())
-        except:
+        except Exception:
             # Widget not yet composed
             pass
 
