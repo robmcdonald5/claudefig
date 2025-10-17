@@ -44,6 +44,7 @@ class PresetManager:
         # Cache for loaded presets
         self._preset_cache: dict[str, Preset] = {}
         self._cache_loaded = False
+        self._load_errors: list[str] = []  # Track errors during preset loading
 
     def list_presets(
         self,
@@ -385,17 +386,37 @@ class PresetManager:
                     data = tomllib.load(f)
 
                 if "preset" not in data:
+                    error_msg = f"Missing 'preset' key in {preset_file}"
+                    self._load_errors.append(error_msg)
                     continue
 
                 preset = Preset.from_dict(data["preset"])
                 preset.source = source
                 self._preset_cache[preset.id] = preset
 
+            except (OSError, IOError) as e:
+                # File system errors
+                error_msg = f"Failed to read preset file {preset_file}: {e}"
+                self._load_errors.append(error_msg)
+            except (KeyError, ValueError, TypeError) as e:
+                # Invalid preset data
+                error_msg = f"Invalid preset data in {preset_file}: {e}"
+                self._load_errors.append(error_msg)
             except Exception as e:
-                # Log error but continue loading other presets
-                print(f"Warning: Failed to load preset from {preset_file}: {e}")
+                # Unexpected errors - still catch but be explicit
+                error_msg = f"Unexpected error loading preset from {preset_file}: {type(e).__name__}: {e}"
+                self._load_errors.append(error_msg)
 
     def clear_cache(self) -> None:
         """Clear the preset cache to force reload."""
         self._preset_cache.clear()
         self._cache_loaded = False
+        self._load_errors.clear()
+
+    def get_load_errors(self) -> list[str]:
+        """Get any errors that occurred during preset loading.
+
+        Returns:
+            List of error messages from preset loading failures
+        """
+        return self._load_errors.copy()
