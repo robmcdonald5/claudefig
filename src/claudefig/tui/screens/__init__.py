@@ -6,7 +6,6 @@ from .create_preset import CreatePresetScreen
 from .delete_preset import DeletePresetScreen
 from .file_instance_edit import FileInstanceEditScreen
 from .file_instances import FileInstancesScreen
-from .general_config import GeneralConfigScreen
 from .overview import OverviewScreen
 from .preset_details import PresetDetailsScreen
 from .project_settings import ProjectSettingsScreen
@@ -21,5 +20,4 @@ __all__ = [
     "ProjectSettingsScreen",
     "CoreFilesScreen",
     "FileInstancesScreen",
-    "GeneralConfigScreen",
 ]
