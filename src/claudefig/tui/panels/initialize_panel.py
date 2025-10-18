@@ -13,6 +13,12 @@ from claudefig.config_template_manager import ConfigTemplateManager
 class InitializePanel(Container):
     """Initialize project panel."""
 
+    # Disable up/down navigation - only left/right for horizontal button row
+    BINDINGS = [
+        ("up", "ignore_up", ""),
+        ("down", "ignore_down", ""),
+    ]
+
     def __init__(self, config: Config, on_switch_to_presets, **kwargs) -> None:
         """Initialize panel.
 
@@ -56,6 +62,14 @@ class InitializePanel(Container):
                 yield Button("Initialize", id="btn-initialize")
                 yield Button("Manage Presets", id="btn-manage-presets")
                 yield Button("Manage Config", id="btn-manage-config")
+
+    def action_ignore_up(self) -> None:
+        """Ignore up navigation - no vertical elements on this page."""
+        pass
+
+    def action_ignore_down(self) -> None:
+        """Ignore down navigation - no vertical elements on this page."""
+        pass
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
