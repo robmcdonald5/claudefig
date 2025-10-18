@@ -10,7 +10,6 @@ from claudefig.preset_manager import PresetManager
 from claudefig.tui.screens import (
     CoreFilesScreen,
     FileInstancesScreen,
-    GeneralConfigScreen,
     OverviewScreen,
     ProjectSettingsScreen,
 )
@@ -18,6 +17,9 @@ from claudefig.tui.screens import (
 
 class ConfigPanel(Container):
     """Main configuration menu panel."""
+
+    # Class variable for state persistence across panel instances
+    _last_focused_button: str = "btn-overview"
 
     # Bindings for 2D grid navigation
     BINDINGS = [
@@ -33,7 +35,6 @@ class ConfigPanel(Container):
         "btn-settings": (0, 1),
         "btn-core-files": (1, 0),
         "btn-file-instances": (1, 1),
-        "btn-general-config": (2, 0),
     }
 
     # Reverse map (row, col) -> button_id
@@ -104,11 +105,22 @@ class ConfigPanel(Container):
                 id="btn-file-instances",
                 classes="config-menu-button",
             )
-            yield Button(
-                "General Config\nEdit any config setting",
-                id="btn-general-config",
-                classes="config-menu-button",
-            )
+
+    def on_mount(self) -> None:
+        """Restore focus to the last focused button."""
+        self.restore_focus()
+
+    def restore_focus(self) -> None:
+        """Restore focus to the last focused button."""
+        try:
+            last_button = self.query_one(f"#{ConfigPanel._last_focused_button}", Button)
+            last_button.focus()
+        except Exception:
+            # Fallback to first button if last focused doesn't exist
+            try:
+                self.query_one("#btn-overview", Button).focus()
+            except Exception:
+                pass
 
     def _navigate_grid(self, row_delta: int, col_delta: int) -> None:
         """Navigate in the grid by moving in a direction.
@@ -137,8 +149,8 @@ class ConfigPanel(Container):
         if row_delta < 0 and row == 0:
             # Already at top row - do nothing
             return
-        if row_delta > 0 and row == 2:
-            # Already at bottom row (row 2) - do nothing
+        if row_delta > 0 and row == 1:
+            # Already at bottom row (row 1) - do nothing
             return
 
         # Horizontal: Escape to main menu when navigating left from leftmost column
@@ -162,6 +174,8 @@ class ConfigPanel(Container):
             try:
                 new_button = self.query_one(f"#{new_button_id}", Button)
                 new_button.focus()
+                # Track this as the last focused button
+                ConfigPanel._last_focused_button = new_button_id
             except Exception:
                 pass  # Button not found
 
@@ -184,6 +198,10 @@ class ConfigPanel(Container):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses and navigate to screens."""
         button_id = event.button.id
+
+        # Track this button as the last focused for when we return
+        if button_id in self.GRID_POSITIONS:
+            ConfigPanel._last_focused_button = button_id
 
         if button_id == "btn-overview":
             self.app.push_screen(
@@ -210,5 +228,3 @@ class ConfigPanel(Container):
                     preset_manager=self.preset_manager,
                 )
             )
-        elif button_id == "btn-general-config":
-            self.app.push_screen(GeneralConfigScreen(config=self.config))
