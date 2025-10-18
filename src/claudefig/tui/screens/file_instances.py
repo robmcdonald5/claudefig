@@ -3,7 +3,8 @@
 from typing import Optional
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.events import DescendantFocus
 from textual.screen import Screen
 from textual.widgets import Button, Label, TabbedContent, TabPane
 
@@ -22,6 +23,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
     BINDINGS = [
         ("escape", "pop_screen", "Back"),
         ("backspace", "pop_screen", "Back"),
+        ("up", "focus_previous", "Focus Previous"),
+        ("down", "focus_next", "Focus Next"),
     ]
 
     def __init__(
@@ -47,9 +50,108 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         """Pop the current screen to return to config menu."""
         self.app.pop_screen()
 
+    def action_focus_previous(self) -> None:
+        """Override up arrow navigation to prevent wrapping.
+
+        Handles focus movement when pressing up arrow:
+        - If at the first focusable element, stay there (no wrap)
+        - Otherwise, move focus to previous element normally
+        """
+        # Use this screen's actual focus_chain instead of building our own list
+        # This ensures we're using the same order Textual uses for navigation
+        focus_chain = self.focus_chain
+
+        if not focus_chain:
+            return
+
+        focused = self.focused
+        if focused is None:
+            # No focus, focus the first element in chain
+            focus_chain[0].focus()
+            return
+
+        if focused not in focus_chain:
+            # Focused widget not in chain, shouldn't happen but handle gracefully
+            return
+
+        current_index = focus_chain.index(focused)
+
+        # At the absolute first element - don't wrap
+        if current_index == 0:
+            # Scroll to the top to reveal title labels
+            try:
+                # Get the title label and scroll it into view (at the top)
+                title_label = self.query("Label.screen-title").first()
+                if title_label:
+                    title_label.scroll_visible(top=True, animate=False)
+            except Exception:
+                pass
+            return
+
+        # Normal navigation - focus previous element in chain
+        # Textual will automatically scroll to keep it visible
+        focus_chain[current_index - 1].focus()
+
+    def action_focus_next(self) -> None:
+        """Override down arrow navigation to prevent wrapping.
+
+        Handles focus movement when pressing down arrow:
+        - If at the last focusable element, stay there (no wrap)
+        - Otherwise, move focus to next element normally
+        """
+        # Use this screen's actual focus_chain instead of building our own list
+        # This ensures we're using the same order Textual uses for navigation
+        focus_chain = self.focus_chain
+
+        if not focus_chain:
+            return
+
+        focused = self.focused
+        if focused is None:
+            # No focus, focus the first element in chain
+            focus_chain[0].focus()
+            return
+
+        if focused not in focus_chain:
+            # Focused widget not in chain, shouldn't happen but handle gracefully
+            return
+
+        current_index = focus_chain.index(focused)
+
+        # At the bottom of the tree (last element, typically the Back button)
+        # Don't wrap, but scroll viewport if there's content below
+        if current_index == len(focus_chain) - 1:
+            # Scroll to ensure the last element (and any content below) is visible
+            try:
+                # Scroll the current focused widget to bottom to reveal content below
+                focused.scroll_visible(top=False, animate=False)
+            except Exception:
+                pass
+            return
+
+        # Normal navigation - focus next element in chain
+        # Textual will automatically scroll to keep it visible
+        focus_chain[current_index + 1].focus()
+
+    def on_descendant_focus(self, event: DescendantFocus) -> None:
+        """Ensure focused widgets are scrolled into view.
+
+        Args:
+            event: The focus event containing the focused widget
+        """
+        # Scroll the VerticalScroll container to keep focused widget visible
+        # This ensures proper scrolling within the container
+        try:
+            scroll_container = self.query_one("#file-instances-screen", VerticalScroll)
+            scroll_container.scroll_to_widget(event.widget, animate=False)
+        except Exception:
+            pass
+
     def compose(self) -> ComposeResult:
         """Compose the file instances screen."""
-        with Container(id="file-instances-screen"):
+        # can_focus=False prevents the container from being in the focus chain
+        # while still allowing it to be scrolled programmatically
+        with VerticalScroll(id="file-instances-screen", can_focus=False):
             yield Label("FILE INSTANCES", classes="screen-title")
 
             yield Label(
