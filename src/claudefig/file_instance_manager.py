@@ -1,10 +1,12 @@
 """File instance management for claudefig."""
 
+import json
 from pathlib import Path
 from typing import Optional
 
 from claudefig.models import FileInstance, FileType, ValidationResult
 from claudefig.preset_manager import PresetManager
+from claudefig.user_config import get_components_dir
 
 
 class FileInstanceManager:
@@ -373,3 +375,137 @@ class FileInstanceManager:
             List of error messages from instance loading failures
         """
         return self._load_errors.copy()
+
+    # Component library methods
+
+    @staticmethod
+    def _get_component_type_dir(file_type: FileType) -> str:
+        """Get the component subdirectory name for a file type.
+
+        Args:
+            file_type: File type
+
+        Returns:
+            Component subdirectory name (e.g., 'claude_md', 'gitignore')
+        """
+        return file_type.value
+
+    def save_as_component(
+        self, instance: FileInstance, component_name: str
+    ) -> tuple[bool, str]:
+        """Save a file instance as a reusable component.
+
+        Args:
+            instance: File instance to save
+            component_name: Name for the component (without extension)
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(instance.type)
+
+            # Ensure directory exists
+            type_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create component file path
+            component_file = type_dir / f"{component_name}.json"
+
+            # Check if component already exists
+            if component_file.exists():
+                return False, f"Component '{component_name}' already exists"
+
+            # Save component as JSON
+            component_data = instance.to_dict()
+            component_file.write_text(json.dumps(component_data, indent=2), encoding="utf-8")
+
+            return True, f"Component saved to {component_file}"
+
+        except Exception as e:
+            return False, f"Failed to save component: {e}"
+
+    def list_components(self, file_type: FileType) -> list[tuple[str, Path]]:
+        """List available components for a file type.
+
+        Args:
+            file_type: File type to list components for
+
+        Returns:
+            List of (component_name, file_path) tuples
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(file_type)
+
+            if not type_dir.exists():
+                return []
+
+            components = []
+            for component_file in type_dir.glob("*.json"):
+                component_name = component_file.stem
+                components.append((component_name, component_file))
+
+            # Sort alphabetically
+            components.sort(key=lambda x: x[0])
+            return components
+
+        except Exception:
+            return []
+
+    def load_component(
+        self, file_type: FileType, component_name: str
+    ) -> Optional[FileInstance]:
+        """Load a component and create a file instance from it.
+
+        Args:
+            file_type: File type of the component
+            component_name: Name of the component to load
+
+        Returns:
+            FileInstance if loaded successfully, None otherwise
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(file_type)
+            component_file = type_dir / f"{component_name}.json"
+
+            if not component_file.exists():
+                return None
+
+            # Load component data
+            component_data = json.loads(component_file.read_text(encoding="utf-8"))
+
+            # Create file instance
+            instance = FileInstance.from_dict(component_data)
+
+            return instance
+
+        except Exception:
+            return None
+
+    def delete_component(
+        self, file_type: FileType, component_name: str
+    ) -> tuple[bool, str]:
+        """Delete a component from the library.
+
+        Args:
+            file_type: File type of the component
+            component_name: Name of the component to delete
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(file_type)
+            component_file = type_dir / f"{component_name}.json"
+
+            if not component_file.exists():
+                return False, f"Component '{component_name}' not found"
+
+            component_file.unlink()
+            return True, f"Component '{component_name}' deleted"
+
+        except Exception as e:
+            return False, f"Failed to delete component: {e}"
