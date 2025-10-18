@@ -9,6 +9,7 @@ from .file_instances import FileInstancesScreen
 from .overview import OverviewScreen
 from .preset_details import PresetDetailsScreen
 from .project_settings import ProjectSettingsScreen
+from .save_component import SaveComponentScreen
 
 __all__ = [
     "CreatePresetScreen",
@@ -20,4 +21,5 @@ __all__ = [
     "ProjectSettingsScreen",
     "CoreFilesScreen",
     "FileInstancesScreen",
+    "SaveComponentScreen",
 ]

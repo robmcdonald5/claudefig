@@ -137,6 +137,7 @@ class FileInstanceEditScreen(BaseModalScreen):
         """Compose the action buttons."""
         save_text = "Save" if self.is_edit_mode else "Add"
         yield Button(save_text, id="btn-save", variant="primary")
+        yield Button("Save as Component", id="btn-save-component")
         yield Button("Cancel", id="btn-cancel")
 
     def _get_preset_options_for_type(
@@ -268,6 +269,8 @@ class FileInstanceEditScreen(BaseModalScreen):
             self.dismiss()
         elif event.button.id == "btn-save":
             self._save_instance()
+        elif event.button.id == "btn-save-component":
+            self._save_as_component()
 
     def _save_instance(self) -> None:
         """Save the file instance and dismiss."""
@@ -340,5 +343,89 @@ class FileInstanceEditScreen(BaseModalScreen):
         except Exception as e:
             self.notify(
                 ErrorMessages.operation_failed("saving instance", str(e)),
+                severity="error",
+            )
+
+    def _save_as_component(self) -> None:
+        """Save the current file instance as a reusable component."""
+        from claudefig.tui.screens.save_component import SaveComponentScreen
+
+        try:
+            # Get current values to build the instance
+            file_type_select = self.query_one("#select-file-type", Select)
+            preset_select = self.query_one("#select-preset", Select)
+            path_input = self.query_one("#input-path", Input)
+            enabled_switch = self.query_one("#switch-enabled", Switch)
+
+            file_type = FileType(file_type_select.value)
+            preset_id_value = preset_select.value
+            path = path_input.value.strip()
+            enabled = enabled_switch.value
+
+            # Ensure preset_id is a string
+            if not isinstance(preset_id_value, str):
+                self.notify(
+                    ErrorMessages.empty_value("preset selection"), severity="error"
+                )
+                return
+            preset_id = preset_id_value
+
+            # Validate path not empty
+            if not path:
+                self.notify(ErrorMessages.empty_value("path"), severity="error")
+                return
+
+            # Generate instance ID
+            preset_name = preset_id.split(":")[-1] if ":" in preset_id else preset_id
+            instance_id = self.instance_manager.generate_instance_id(
+                file_type, preset_name, path
+            )
+
+            # Create file instance
+            instance = FileInstance(
+                id=instance_id,
+                type=file_type,
+                preset=preset_id,
+                path=path,
+                enabled=enabled,
+                variables=self.instance.variables if self.instance else {},
+            )
+
+            # Validate before saving
+            result = self.instance_manager.validate_instance(instance, is_update=False)
+
+            if result.has_errors:
+                error_msg = "\n".join(result.errors)
+                self.notify(
+                    ErrorMessages.validation_failed(error_msg), severity="error"
+                )
+                return
+
+            # Show component name input dialog
+            def handle_save_component_result(result: dict | None) -> None:
+                """Handle the save component dialog result."""
+                if result and result.get("action") == "save":
+                    component_name = result["name"]
+
+                    # Save as component
+                    success, message = self.instance_manager.save_as_component(
+                        instance, component_name
+                    )
+
+                    if success:
+                        self.notify(
+                            f"Component '{component_name}' saved successfully",
+                            severity="information",
+                        )
+                    else:
+                        self.notify(message, severity="error")
+
+            self.app.push_screen(
+                SaveComponentScreen(), callback=handle_save_component_result
+            )
+
+        except Exception as e:
+            self.notify(
+                ErrorMessages.operation_failed("saving component", str(e)),
                 severity="error",
             )
