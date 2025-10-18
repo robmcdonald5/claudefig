@@ -37,6 +37,15 @@ def get_cache_dir() -> Path:
     return get_user_config_dir() / "cache"
 
 
+def get_components_dir() -> Path:
+    """Get user-level components directory.
+
+    Returns:
+        Path to ~/.claudefig/components/ directory.
+    """
+    return get_user_config_dir() / "components"
+
+
 def get_user_config_file() -> Path:
     """Get user-level config file path.
 
@@ -53,7 +62,11 @@ def is_initialized() -> bool:
         True if ~/.claudefig/ exists and has basic structure, False otherwise.
     """
     config_dir = get_user_config_dir()
-    return config_dir.exists() and (config_dir / "presets").exists()
+    return (
+        config_dir.exists()
+        and (config_dir / "presets").exists()
+        and (config_dir / "components").exists()
+    )
 
 
 def ensure_user_config(verbose: bool = True) -> Path:
@@ -90,6 +103,23 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
         (config_dir / "presets").mkdir(parents=True, exist_ok=True)
         (config_dir / "templates").mkdir(parents=True, exist_ok=True)
         (config_dir / "cache").mkdir(parents=True, exist_ok=True)
+
+        # Create components directory with subdirectories for each file type
+        components_dir = config_dir / "components"
+        components_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create subdirectories for each file type component
+        component_types = [
+            "claude_md",
+            "gitignore",
+            "commands",
+            "agents",
+            "hooks",
+            "output_styles",
+            "mcp",
+        ]
+        for component_type in component_types:
+            (components_dir / component_type).mkdir(parents=True, exist_ok=True)
 
         if verbose:
             console.print(f"[green]+[/green] Created directory: {config_dir}")
