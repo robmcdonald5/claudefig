@@ -13,6 +13,9 @@ from claudefig.tui.panels.presets_panel import PresetsPanel
 class ContentPanel(Container):
     """Dynamic content panel that displays based on selection."""
 
+    # Type hints for attributes accessed by child widgets
+    config: Config
+
     def __init__(self, config: Config, **kwargs) -> None:
         """Initialize the content panel."""
         super().__init__(**kwargs)
