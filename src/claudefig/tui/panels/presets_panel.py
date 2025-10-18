@@ -334,3 +334,15 @@ class PresetsPanel(Container):
                     return
             except Exception:
                 pass
+
+        # When on any button in the button row, prevent down from wrapping to main menu
+        if event.key == "down" and isinstance(focused, Button):
+            try:
+                button_row = self.query_one(".button-row")
+                if focused.parent == button_row:
+                    # We're at the bottom of the panel - prevent wrapping
+                    event.prevent_default()
+                    event.stop()
+                    return
+            except Exception:
+                pass
