@@ -487,9 +487,13 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             except ValueError:
                 self.notify(f"Invalid file type: {file_type_value}", severity="error")
         elif button_id.startswith("edit-"):
-            # Edit instance
+            # Open component file in system editor
             instance_id = button_id.replace("edit-", "")
-            self._show_edit_instance_dialog(instance_id)
+            self._open_component_file(instance_id)
+        elif button_id.startswith("path-"):
+            # Show file path selector
+            instance_id = button_id.replace("path-", "")
+            self._show_file_path_selector(instance_id)
         elif button_id.startswith("remove-"):
             # Remove instance
             instance_id = button_id.replace("remove-", "")
@@ -566,7 +570,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     f"Added {instance.type.display_name} from component '{component_name}'",
                     severity="information",
                 )
-                # Refresh screen to show updated data
+                # Refresh screen to add the new widget
+                # Note: We still need refresh(recompose=True) here because we're adding a new widget
                 self.refresh(recompose=True)
             else:
                 # Show validation errors
@@ -579,13 +584,106 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 severity="error",
             )
 
-    def _show_edit_instance_dialog(self, instance_id: str) -> None:
-        """Show the edit instance dialog for an existing instance.
+    def _open_component_file(self, instance_id: str) -> None:
+        """Open the component file in the system editor.
 
         Args:
             instance_id: ID of the instance to edit
         """
-        from claudefig.tui.screens.file_instance_edit import FileInstanceEditScreen
+        # Get the instance
+        instance = self.instance_manager.get_instance(instance_id)
+        if not instance:
+            self.notify(
+                ErrorMessages.not_found("file instance", instance_id), severity="error"
+            )
+            return
+
+        # Determine the file to open based on component type
+        file_to_open = None
+
+        if instance.type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+            # For folder-based components, find the actual file in the folder
+            component_folder = instance.variables.get("component_folder")
+            if not component_folder:
+                self.notify(
+                    f"No component folder found in variables. Available: {list(instance.variables.keys())}",
+                    severity="error",
+                )
+                return
+
+            folder_path = Path(component_folder)
+            if not folder_path.exists():
+                self.notify(
+                    f"Component folder does not exist: {folder_path}",
+                    severity="error",
+                )
+                return
+
+            if not folder_path.is_dir():
+                self.notify(
+                    f"Component folder is not a directory: {folder_path}",
+                    severity="error",
+                )
+                return
+
+            # Find the actual CLAUDE.md or .gitignore file in the folder
+            actual_filename = Path(instance.path).name
+            file_to_open = folder_path / actual_filename
+
+            if not file_to_open.exists():
+                self.notify(
+                    f"Component file does not exist: {file_to_open}",
+                    severity="error",
+                )
+                return
+        else:
+            # For other types, use component_file
+            component_file = instance.variables.get("component_file")
+            if not component_file:
+                self.notify(
+                    f"No component file found in variables. Available: {list(instance.variables.keys())}",
+                    severity="error",
+                )
+                return
+
+            file_to_open = Path(component_file)
+
+            if not file_to_open.exists():
+                self.notify(
+                    f"Component file does not exist: {file_to_open}",
+                    severity="error",
+                )
+                return
+
+        try:
+            # Open in system editor based on platform
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["start", "", str(file_to_open)], shell=True, check=False)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", str(file_to_open)], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", str(file_to_open)], check=False)
+
+            self.notify(
+                f"Opened {instance.type.display_name} file in editor",
+                severity="information",
+            )
+
+        except Exception as e:
+            self.notify(
+                f"Failed to open file: {e}",
+                severity="error",
+            )
+
+    def _show_file_path_selector(self, instance_id: str) -> None:
+        """Open OS file picker to select path for CLAUDE.md or .gitignore instances.
+
+        Args:
+            instance_id: ID of the instance to edit path for
+        """
+        import tkinter as tk
+        from tkinter import filedialog
 
         # Get the instance
         instance = self.instance_manager.get_instance(instance_id)
@@ -595,34 +693,69 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             )
             return
 
-        def handle_result(result: Optional[dict]) -> None:
-            """Handle dialog result."""
-            if result and result.get("action") == "save":
-                updated_instance = result["instance"]
-                try:
-                    self.instance_manager.update_instance(updated_instance)
-                    # Sync to config and save
-                    self.sync_instances_to_config()
-                    self.notify(
-                        f"Updated {updated_instance.type.display_name} instance",
-                        severity="information",
-                    )
-                    # Refresh screen to show updated data
-                    self.refresh(recompose=True)
-                except Exception as e:
-                    self.notify(
-                        ErrorMessages.operation_failed("updating instance", str(e)),
-                        severity="error",
-                    )
+        try:
+            # Create a hidden tkinter root window
+            root = tk.Tk()
+            root.withdraw()  # Hide the root window
+            root.attributes("-topmost", True)  # Bring dialog to front
 
-        self.app.push_screen(
-            FileInstanceEditScreen(
-                instance_manager=self.instance_manager,
-                preset_manager=self.preset_manager,
-                instance=instance,
-            ),
-            callback=handle_result,
-        )
+            # Get the project directory as the initial directory
+            # The project directory is the parent of the config file
+            if self.config.config_path:
+                project_dir = self.config.config_path.parent.resolve()
+            else:
+                # Fallback to current working directory if no config path
+                project_dir = Path.cwd()
+
+            # Determine the filename based on file type
+            default_filename = Path(instance.path).name
+
+            # Open file dialog
+            selected_path = filedialog.asksaveasfilename(
+                parent=root,
+                title=f"Select path for {instance.type.display_name}",
+                initialdir=str(project_dir),
+                initialfile=default_filename,
+                defaultextension="",
+                filetypes=[("All files", "*.*")],
+            )
+
+            # Clean up tkinter
+            root.destroy()
+
+            if selected_path:
+                # Convert to path relative to project directory
+                selected_path = Path(selected_path)
+                try:
+                    # Try to make it relative to project dir
+                    relative_path = selected_path.relative_to(project_dir)
+                    new_path = str(relative_path)
+                except ValueError:
+                    # If path is outside project, use absolute path
+                    new_path = str(selected_path)
+
+                # Update the instance path
+                instance.path = new_path
+                self.instance_manager.update_instance(instance)
+
+                # Sync to config and save
+                self.sync_instances_to_config()
+                self.notify(
+                    f"Updated path for {instance.type.display_name} instance",
+                    severity="information",
+                )
+
+                # Update the widget's reactive attribute - triggers watch method for smooth update
+                for item in self.query(FileInstanceItem):
+                    if item.instance_id == instance_id:
+                        item.file_path = new_path
+                        break
+
+        except Exception as e:
+            self.notify(
+                ErrorMessages.operation_failed("selecting path", str(e)),
+                severity="error",
+            )
 
     def _remove_instance(self, instance_id: str) -> None:
         """Remove a file instance.
@@ -645,7 +778,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             self.notify(
                 f"Removed {instance.type.display_name} instance", severity="information"
             )
-            # Refresh screen to show updated data
+            # Refresh screen to remove the widget - this is necessary for removal
+            # Note: We still need refresh(recompose=True) here because we're removing a widget
             self.refresh(recompose=True)
         else:
             self.notify(
@@ -678,8 +812,17 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             f"{instance.type.display_name} instance {status}", severity="information"
         )
 
-        # Refresh screen to show updated data
-        self.refresh(recompose=True)
+        # Update the widget's reactive attribute - triggers watch method for smooth update
+        try:
+            item_widget = self.query_one(f"FileInstanceItem", FileInstanceItem)
+            # Find the specific item by checking instance_id
+            for item in self.query(FileInstanceItem):
+                if item.instance_id == instance_id:
+                    item.is_enabled = instance.enabled
+                    break
+        except Exception:
+            # Widget not found, ignore
+            pass
 
     def _open_component_directory(self, file_type: FileType) -> None:
         """Open the component directory in the system file explorer.
