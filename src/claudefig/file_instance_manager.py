@@ -442,9 +442,18 @@ class FileInstanceManager:
                 return []
 
             components = []
+
+            # Look for .json component definition files
             for component_file in type_dir.glob("*.json"):
                 component_name = component_file.stem
                 components.append((component_name, component_file))
+
+            # Also look for actual files (e.g., CLAUDE.md, .gitignore)
+            # These are simplified components without full metadata
+            for component_file in type_dir.iterdir():
+                if component_file.is_file() and component_file.suffix != ".json":
+                    component_name = component_file.stem
+                    components.append((component_name, component_file))
 
             # Sort alphabetically
             components.sort(key=lambda x: x[0])
@@ -468,18 +477,35 @@ class FileInstanceManager:
         try:
             components_dir = get_components_dir()
             type_dir = components_dir / self._get_component_type_dir(file_type)
-            component_file = type_dir / f"{component_name}.json"
 
-            if not component_file.exists():
-                return None
+            # Try to find the component file (could be .json or actual file)
+            json_file = type_dir / f"{component_name}.json"
 
-            # Load component data
-            component_data = json.loads(component_file.read_text(encoding="utf-8"))
+            if json_file.exists():
+                # Load from .json metadata file
+                component_data = json.loads(json_file.read_text(encoding="utf-8"))
+                instance = FileInstance.from_dict(component_data)
+                return instance
+            else:
+                # Look for actual file (e.g., CLAUDE.md)
+                # Try to find any file with this stem
+                for component_file in type_dir.iterdir():
+                    if component_file.stem == component_name and component_file.suffix != ".json":
+                        # Create a FileInstance with sensible defaults
+                        # Use default preset for this file type
+                        preset_id = f"{file_type.value}:default"
 
-            # Create file instance
-            instance = FileInstance.from_dict(component_data)
+                        instance = FileInstance(
+                            id=f"{file_type.value}-{component_name}",
+                            type=file_type,
+                            preset=preset_id,
+                            path=file_type.default_path,
+                            enabled=True,
+                            variables={"component_file": str(component_file)},
+                        )
+                        return instance
 
-            return instance
+            return None
 
         except Exception:
             return None

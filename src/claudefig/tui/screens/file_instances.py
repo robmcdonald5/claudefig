@@ -1,12 +1,15 @@
 """File instances screen for managing multi-instance file types."""
 
+import platform
+import subprocess
+from pathlib import Path
 from typing import Optional
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.events import DescendantFocus
+from textual.events import DescendantFocus, Key
 from textual.screen import Screen
-from textual.widgets import Button, Label, TabbedContent, TabPane
+from textual.widgets import Button, Label, Select, TabbedContent, TabPane
 
 from claudefig.config import Config
 from claudefig.error_messages import ErrorMessages
@@ -15,6 +18,7 @@ from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
 from claudefig.tui.base import BackButtonMixin, FileInstanceMixin
 from claudefig.tui.widgets.file_instance_item import FileInstanceItem
+from claudefig.user_config import get_components_dir
 
 
 class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
@@ -49,6 +53,30 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
         self.app.pop_screen()
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for Select navigation.
+
+        Prevents up/down arrows from opening component Select dropdowns.
+        Only Enter opens dropdowns, backspace/esc closes them.
+
+        Args:
+            event: The key event
+        """
+        focused = self.focused
+
+        # If a component Select is focused
+        if isinstance(focused, Select) and focused.id and focused.id.startswith("select-add-"):
+            # Prevent up/down from opening the dropdown
+            if event.key in ("up", "down") and not focused.expanded:
+                # Don't let Select handle it - let it bubble for navigation
+                event.prevent_default()
+                # Manually trigger navigation
+                if event.key == "up":
+                    self.action_focus_previous()
+                else:
+                    self.action_focus_next()
+                event.stop()
 
     def action_focus_previous(self) -> None:
         """Override up arrow navigation to prevent wrapping.
@@ -181,12 +209,36 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                             if inst.type == file_type
                         ]
 
-                        # Action buttons
+                        # Component selector
                         with Horizontal(classes="tab-actions"):
+                            # Get available components for this file type
+                            components = self.instance_manager.list_components(file_type)
+
+                            if components:
+                                # Build options: (display_name, component_name)
+                                component_options = [
+                                    (f"+ Add {name}", name) for name, _ in components
+                                ]
+
+                                yield Select(
+                                    options=component_options,
+                                    prompt="Select a component to add...",
+                                    id=f"select-add-{file_type.value}",
+                                    allow_blank=True,
+                                    classes="component-select",
+                                )
+                            else:
+                                # No components available - show info message
+                                yield Label(
+                                    f"No {file_type.display_name} components found.",
+                                    classes="empty-message component-select",
+                                )
+
+                            # Always show button to open component directory
                             yield Button(
-                                f"+ Add {file_type.display_name}",
-                                id=f"btn-add-{file_type.value}",
-                                variant="primary",
+                                "Open Folder",
+                                id=f"btn-open-components-{file_type.value}",
+                                classes="component-folder-btn",
                             )
 
                         # Display instances
@@ -205,6 +257,34 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             # Back button
             yield from self.compose_back_button()
 
+    def on_select_changed(self, event: Select.Changed) -> None:
+        """Handle component selection."""
+        select_id = event.select.id
+        if not select_id or not select_id.startswith("select-add-"):
+            return
+
+        # Extract file type from select id
+        file_type_value = select_id.replace("select-add-", "")
+        component_name = event.value
+
+        # Ignore if blank/prompt selected or not a string
+        if not component_name or not isinstance(component_name, str):
+            return
+
+        try:
+            file_type = FileType(file_type_value)
+            self._add_component_instance(file_type, component_name)
+
+            # Reset select back to prompt
+            event.select.value = Select.BLANK
+
+        except ValueError:
+            valid_types = [ft.value for ft in FileType]
+            self.notify(
+                ErrorMessages.invalid_type("file type", file_type_value, valid_types),
+                severity="error",
+            )
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         # Handle back button first
@@ -215,20 +295,14 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         if not button_id:
             return
 
-        if button_id.startswith("btn-add-"):
-            # Extract file type from button id
-            file_type_value = button_id.replace("btn-add-", "")
+        if button_id.startswith("btn-open-components-"):
+            # Open component directory in system file explorer
+            file_type_value = button_id.replace("btn-open-components-", "")
             try:
                 file_type = FileType(file_type_value)
-                self._show_add_instance_dialog(file_type)
+                self._open_component_directory(file_type)
             except ValueError:
-                valid_types = [ft.value for ft in FileType]
-                self.notify(
-                    ErrorMessages.invalid_type(
-                        "file type", file_type_value, valid_types
-                    ),
-                    severity="error",
-                )
+                self.notify(f"Invalid file type: {file_type_value}", severity="error")
         elif button_id.startswith("edit-"):
             # Edit instance
             instance_id = button_id.replace("edit-", "")
@@ -242,42 +316,53 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             instance_id = button_id.replace("toggle-", "")
             self._toggle_instance(instance_id)
 
-    def _show_add_instance_dialog(self, file_type: FileType) -> None:
-        """Show the add instance dialog for a file type.
+    def _add_component_instance(
+        self, file_type: FileType, component_name: str
+    ) -> None:
+        """Load a component and add it as a file instance.
 
         Args:
-            file_type: Type of file to add
+            file_type: Type of file
+            component_name: Name of the component to load
         """
-        from claudefig.tui.screens.file_instance_edit import FileInstanceEditScreen
+        try:
+            # Load component from library
+            instance = self.instance_manager.load_component(file_type, component_name)
 
-        def handle_result(result: Optional[dict]) -> None:
-            """Handle dialog result."""
-            if result and result.get("action") == "save":
-                instance = result["instance"]
-                try:
-                    self.instance_manager.add_instance(instance)
-                    # Sync to config and save
-                    self.sync_instances_to_config()
-                    self.notify(
-                        f"Added {instance.type.display_name} instance",
-                        severity="information",
-                    )
-                    # Refresh screen to show updated data
-                    self.refresh(recompose=True)
-                except Exception as e:
-                    self.notify(
-                        ErrorMessages.operation_failed("adding instance", str(e)),
-                        severity="error",
-                    )
+            if not instance:
+                self.notify(
+                    f"Component '{component_name}' not found", severity="error"
+                )
+                return
 
-        self.app.push_screen(
-            FileInstanceEditScreen(
-                instance_manager=self.instance_manager,
-                preset_manager=self.preset_manager,
-                file_type=file_type,
-            ),
-            callback=handle_result,
-        )
+            # Generate new ID for this project (in case same component added multiple times)
+            preset_name = instance.preset.split(":")[-1] if ":" in instance.preset else instance.preset
+            instance.id = self.instance_manager.generate_instance_id(
+                file_type, preset_name, instance.path
+            )
+
+            # Add instance
+            result = self.instance_manager.add_instance(instance)
+
+            if result.valid:
+                # Sync to config and save
+                self.sync_instances_to_config()
+                self.notify(
+                    f"Added {instance.type.display_name} from component '{component_name}'",
+                    severity="information",
+                )
+                # Refresh screen to show updated data
+                self.refresh(recompose=True)
+            else:
+                # Show validation errors
+                error_msg = "\n".join(result.errors) if result.errors else "Validation failed"
+                self.notify(error_msg, severity="error")
+
+        except Exception as e:
+            self.notify(
+                ErrorMessages.operation_failed("adding component", str(e)),
+                severity="error",
+            )
 
     def _show_edit_instance_dialog(self, instance_id: str) -> None:
         """Show the edit instance dialog for an existing instance.
@@ -380,3 +465,34 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
         # Refresh screen to show updated data
         self.refresh(recompose=True)
+
+    def _open_component_directory(self, file_type: FileType) -> None:
+        """Open the component directory in the system file explorer.
+
+        Args:
+            file_type: File type to open component directory for
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / file_type.value
+
+            # Ensure directory exists
+            type_dir.mkdir(parents=True, exist_ok=True)
+
+            # Open in file explorer based on platform
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["explorer", str(type_dir)], check=False)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", str(type_dir)], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", str(type_dir)], check=False)
+
+            self.notify(
+                f"Opened component folder: {type_dir}", severity="information"
+            )
+
+        except Exception as e:
+            self.notify(
+                f"Failed to open component folder: {e}", severity="error"
+            )

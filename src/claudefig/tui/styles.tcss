@@ -1295,6 +1295,20 @@ CompactSingleInstanceControl {
     padding: 0 1;
 }
 
+.component-select {
+    width: 1fr;
+    max-width: 60;
+}
+
+.component-select.empty-message {
+    text-align: left;
+}
+
+.component-folder-btn {
+    width: auto;
+    margin-left: 1;
+}
+
 .instance-list {
     width: 100%;
     height: auto;
