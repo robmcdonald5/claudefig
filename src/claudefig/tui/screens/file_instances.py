@@ -326,6 +326,38 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             component_name: Name of the component to load
         """
         try:
+            # Check if this component has already been added
+            existing_instances = self.instance_manager.list_instances()
+
+            for existing in existing_instances:
+                # Skip if different type
+                if existing.type != file_type:
+                    continue
+
+                # For CLAUDE.md and .gitignore (folder-based), check folder name
+                if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                    component_folder = existing.variables.get("component_folder", "")
+                    if component_folder:
+                        # Extract the component folder name from the path
+                        folder_name = Path(component_folder).name
+                        if folder_name == component_name:
+                            self.notify(
+                                f"Component '{component_name}' has already been added",
+                                severity="warning",
+                            )
+                            return
+                else:
+                    # For other types, check component file name (stem without extension)
+                    component_file = existing.variables.get("component_file", "")
+                    if component_file:
+                        file_stem = Path(component_file).stem
+                        if file_stem == component_name:
+                            self.notify(
+                                f"Component '{component_name}' has already been added",
+                                severity="warning",
+                            )
+                            return
+
             # Load component from library
             instance = self.instance_manager.load_component(file_type, component_name)
 
@@ -335,7 +367,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 )
                 return
 
-            # Generate new ID for this project (in case same component added multiple times)
+            # Generate new ID for this project
             preset_name = instance.preset.split(":")[-1] if ":" in instance.preset else instance.preset
             instance.id = self.instance_manager.generate_instance_id(
                 file_type, preset_name, instance.path
