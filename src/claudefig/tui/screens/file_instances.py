@@ -59,6 +59,7 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
         Prevents up/down arrows from opening component Select dropdowns.
         Only Enter opens dropdowns, backspace/esc closes them.
+        Adds left/right navigation for horizontal button groups.
 
         Args:
             event: The key event
@@ -78,13 +79,114 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                     self.action_focus_next()
                 event.stop()
 
+        # Handle left/right navigation for horizontal groups
+        if event.key in ("left", "right"):
+            if focused:
+                # Try to handle horizontal navigation
+                if self._handle_horizontal_navigation(event.key, focused):
+                    event.prevent_default()
+                    event.stop()
+
+    def _handle_horizontal_navigation(self, key: str, focused) -> bool:
+        """Handle left/right navigation within horizontal groups.
+
+        Supports navigation in:
+        1. Tab actions (Select dropdown <-> Open Folder button)
+        2. Instance actions (Edit <-> Remove <-> Toggle buttons per instance)
+
+        Args:
+            key: Either "left" or "right"
+            focused: The currently focused widget
+
+        Returns:
+            True if navigation was handled, False otherwise
+        """
+        from textual.containers import Horizontal
+
+        # Find the horizontal parent container
+        horizontal_parent = None
+        current = focused.parent
+
+        # Walk up the tree to find a Horizontal container
+        while current:
+            if isinstance(current, Horizontal):
+                # Check if it's a navigation group we care about
+                if hasattr(current, "classes") and (
+                    "tab-actions" in current.classes or
+                    "instance-actions" in current.classes
+                ):
+                    horizontal_parent = current
+                    break
+            current = current.parent
+
+        if not horizontal_parent:
+            return False
+
+        # Get all focusable widgets in this horizontal container
+        focusable_widgets = [
+            widget for widget in horizontal_parent.query("Select, Button")
+            if widget.can_focus and widget.display and not widget.disabled
+        ]
+
+        if len(focusable_widgets) <= 1:
+            return False
+
+        try:
+            current_index = focusable_widgets.index(focused)
+        except ValueError:
+            return False
+
+        # Navigate left or right
+        if key == "left":
+            new_index = current_index - 1
+            if new_index >= 0:
+                focusable_widgets[new_index].focus()
+                return True
+        elif key == "right":
+            new_index = current_index + 1
+            if new_index < len(focusable_widgets):
+                focusable_widgets[new_index].focus()
+                return True
+
+        return False
+
+    def _get_horizontal_nav_parent(self, widget):
+        """Get the horizontal navigation parent for a widget, if any.
+
+        Args:
+            widget: The widget to check
+
+        Returns:
+            The Horizontal parent container if widget is in a navigation group,
+            None otherwise
+        """
+        from textual.containers import Horizontal
+
+        current = widget.parent
+
+        # Walk up the tree to find a Horizontal container
+        while current:
+            if isinstance(current, Horizontal):
+                # Check if it's a navigation group we care about
+                if hasattr(current, "classes") and (
+                    "tab-actions" in current.classes or
+                    "instance-actions" in current.classes
+                ):
+                    return current
+            current = current.parent
+
+        return None
+
     def action_focus_previous(self) -> None:
         """Override up arrow navigation to prevent wrapping.
 
         Handles focus movement when pressing up arrow:
         - If at the first focusable element, stay there (no wrap)
+        - Skips siblings within horizontal groups
         - Otherwise, move focus to previous element normally
         """
+        from textual.containers import Horizontal
+
         # Use this screen's actual focus_chain instead of building our own list
         # This ensures we're using the same order Textual uses for navigation
         focus_chain = self.focus_chain
@@ -116,17 +218,67 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 pass
             return
 
-        # Normal navigation - focus previous element in chain
-        # Textual will automatically scroll to keep it visible
-        focus_chain[current_index - 1].focus()
+        # Find the target index, skipping siblings in horizontal groups
+        target_index = current_index - 1
+
+        # Check if current widget is in a horizontal group
+        horizontal_parent = self._get_horizontal_nav_parent(focused)
+
+        if horizontal_parent:
+            # Skip all siblings in this horizontal group
+            while target_index >= 0:
+                candidate = focus_chain[target_index]
+                candidate_parent = self._get_horizontal_nav_parent(candidate)
+
+                # Stop if we found a widget not in the same horizontal group
+                if candidate_parent != horizontal_parent:
+                    break
+
+                target_index -= 1
+
+        # Ensure we don't go below 0
+        if target_index < 0:
+            # Already at top, scroll to reveal title
+            try:
+                title_label = self.query("Label.screen-title").first()
+                if title_label:
+                    title_label.scroll_visible(top=True, animate=False)
+            except Exception:
+                pass
+            return
+
+        # If the target widget is in a horizontal group, find the FIRST widget in that group
+        target_widget = focus_chain[target_index]
+        target_horizontal_parent = self._get_horizontal_nav_parent(target_widget)
+
+        if target_horizontal_parent:
+            # Walk backwards to find the first widget in this horizontal group
+            first_in_group_index = target_index
+            while first_in_group_index > 0:
+                prev_widget = focus_chain[first_in_group_index - 1]
+                prev_horizontal_parent = self._get_horizontal_nav_parent(prev_widget)
+
+                # Stop if previous widget is not in the same horizontal group
+                if prev_horizontal_parent != target_horizontal_parent:
+                    break
+
+                first_in_group_index -= 1
+
+            target_index = first_in_group_index
+
+        # Focus the target element
+        focus_chain[target_index].focus()
 
     def action_focus_next(self) -> None:
         """Override down arrow navigation to prevent wrapping.
 
         Handles focus movement when pressing down arrow:
         - If at the last focusable element, stay there (no wrap)
+        - Skips siblings within horizontal groups
         - Otherwise, move focus to next element normally
         """
+        from textual.containers import Horizontal
+
         # Use this screen's actual focus_chain instead of building our own list
         # This ensures we're using the same order Textual uses for navigation
         focus_chain = self.focus_chain
@@ -145,10 +297,11 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             return
 
         current_index = focus_chain.index(focused)
+        max_index = len(focus_chain) - 1
 
         # At the bottom of the tree (last element, typically the Back button)
         # Don't wrap, but scroll viewport if there's content below
-        if current_index == len(focus_chain) - 1:
+        if current_index == max_index:
             # Scroll to ensure the last element (and any content below) is visible
             try:
                 # Scroll the current focused widget to bottom to reveal content below
@@ -157,9 +310,39 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 pass
             return
 
-        # Normal navigation - focus next element in chain
-        # Textual will automatically scroll to keep it visible
-        focus_chain[current_index + 1].focus()
+        # Find the target index, skipping siblings in horizontal groups
+        target_index = current_index + 1
+
+        # Check if current widget is in a horizontal group
+        horizontal_parent = self._get_horizontal_nav_parent(focused)
+
+        if horizontal_parent:
+            # Skip all siblings in this horizontal group
+            while target_index <= max_index:
+                candidate = focus_chain[target_index]
+                candidate_parent = self._get_horizontal_nav_parent(candidate)
+
+                # Stop if we found a widget not in the same horizontal group
+                if candidate_parent != horizontal_parent:
+                    break
+
+                target_index += 1
+
+        # Ensure we don't exceed max
+        if target_index > max_index:
+            # Already at bottom, scroll to reveal content below
+            try:
+                focused.scroll_visible(top=False, animate=False)
+            except Exception:
+                pass
+            return
+
+        # If the target widget is in a horizontal group, we're already on the first one
+        # (because focus_chain is in DOM order, left-to-right, top-to-bottom)
+        # So no adjustment needed for down navigation
+
+        # Focus the target element
+        focus_chain[target_index].focus()
 
     def on_descendant_focus(self, event: DescendantFocus) -> None:
         """Ensure focused widgets are scrolled into view.
