@@ -384,7 +384,7 @@ InitializePanel VerticalScroll {
     width: 100%;
     height: auto;
     align: left middle;
-    margin-top: 0;
+    margin-top: 1;
 }
 
 .instance-button {
@@ -1265,7 +1265,6 @@ CompactSingleInstanceControl {
 #file-instances-tabs {
     width: 100%;
     height: auto;
-    max-height: 20;
     margin-top: 1;
     margin-bottom: 1;
 }
@@ -1273,7 +1272,6 @@ CompactSingleInstanceControl {
 #file-instances-tabs ContentSwitcher {
     width: 100%;
     height: auto;
-    max-height: 18;
 }
 
 #file-instances-tabs TabPane {
@@ -1312,13 +1310,13 @@ CompactSingleInstanceControl {
 .instance-list {
     width: 100%;
     height: auto;
-    max-height: 12;
-    overflow-y: auto;
     padding: 0;
 }
 
 .instance-list FileInstanceItem {
     width: 100%;
+    height: auto;
+    layout: vertical;
     margin-bottom: 1;
     padding: 1;
     border: round $primary-lighten-1;
