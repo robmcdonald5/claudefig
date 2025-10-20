@@ -554,6 +554,11 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
                 )
                 return
 
+            # Store the component name in variables for later reference
+            # This is needed to reconstruct paths if component_folder gets lost
+            instance.variables = instance.variables or {}
+            instance.variables["component_name"] = component_name
+
             # Generate new ID for this project
             preset_name = instance.preset.split(":")[-1] if ":" in instance.preset else instance.preset
             instance.id = self.instance_manager.generate_instance_id(
@@ -604,12 +609,33 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
         if instance.type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
             # For folder-based components, find the actual file in the folder
             component_folder = instance.variables.get("component_folder")
+
+            # If component_folder is missing, try to find it from component_name variable
             if not component_folder:
-                self.notify(
-                    f"No component folder found in variables. Available: {list(instance.variables.keys())}",
-                    severity="error",
-                )
-                return
+                component_name = instance.variables.get("component_name")
+
+                # If component_name is also missing, try to extract from preset
+                # Preset format: "claude_md:default" or "gitignore:standard"
+                if not component_name and ":" in instance.preset:
+                    component_name = instance.preset.split(":")[-1]
+
+                if component_name:
+                    # Reconstruct the component folder path
+                    components_dir = get_components_dir()
+                    type_dir = components_dir / instance.type.value
+                    component_folder = str(type_dir / component_name)
+                    # Update the instance to cache both values for next time
+                    instance.variables = instance.variables or {}
+                    instance.variables["component_name"] = component_name
+                    instance.variables["component_folder"] = component_folder
+                    self.instance_manager.update_instance(instance)
+                    self.sync_instances_to_config()
+                else:
+                    self.notify(
+                        f"Cannot determine component folder - no component_name or component_folder in variables, and cannot extract from preset '{instance.preset}'. Available: {list(instance.variables.keys())}",
+                        severity="error",
+                    )
+                    return
 
             folder_path = Path(component_folder)
             if not folder_path.exists():
@@ -710,14 +736,24 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
             # Determine the filename based on file type
             default_filename = Path(instance.path).name
 
-            # Open file dialog
-            selected_path = filedialog.asksaveasfilename(
+            # Set initial directory to the directory containing the current path
+            current_full_path = project_dir / instance.path
+            if current_full_path.parent.exists():
+                initial_dir = str(current_full_path.parent)
+            else:
+                initial_dir = str(project_dir)
+
+            # Open file dialog - use askopenfilename to avoid overwrite warnings
+            # since we're just selecting a path, not actually writing to the file
+            # Users can select existing file OR type a new path
+            selected_path = filedialog.askopenfilename(
                 parent=root,
-                title=f"Select path for {instance.type.display_name}",
-                initialdir=str(project_dir),
-                initialfile=default_filename,
-                defaultextension="",
-                filetypes=[("All files", "*.*")],
+                title=f"Select or type location for {instance.type.display_name}",
+                initialdir=initial_dir,
+                filetypes=[
+                    (f"{default_filename}", default_filename),
+                    ("All files", "*.*"),
+                ],
             )
 
             # Clean up tkinter
