@@ -28,16 +28,10 @@ class FileInstanceItem(Container):
         self.instance_id = instance.id
         self.instance_type = instance.type
 
-        # Extract component name from preset or variables
-        # Preset format: "component:{name}" or just use component_name from variables
-        component_name = instance.variables.get("component_name", "")
-        if not component_name and ":" in instance.preset:
-            component_name = instance.preset.split(":")[-1]
-
         # Store initial values to set after mounting
         self._initial_enabled = instance.enabled
         self._initial_path = instance.path
-        self._initial_component_name = component_name
+        self._initial_component_name = instance.get_component_name()
 
     def compose(self) -> ComposeResult:
         """Compose the file instance item."""

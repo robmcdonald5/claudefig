@@ -283,6 +283,38 @@ class FileInstance:
         status = "enabled" if self.enabled else "disabled"
         return f"FileInstance(id={self.id}, type={self.type.value}, path={self.path}, {status})"
 
+    def get_component_name(self) -> str:
+        """Extract component name from instance variables or preset.
+
+        Component name extraction follows this priority:
+        1. Check 'component_name' in variables dict
+        2. Extract from preset field (format: "type:component_name")
+        3. Return empty string if not found
+
+        Returns:
+            Component name string, or empty string if not found
+
+        Examples:
+            >>> instance.variables = {"component_name": "my-component"}
+            >>> instance.get_component_name()
+            'my-component'
+
+            >>> instance.preset = "claude_md:default"
+            >>> instance.get_component_name()
+            'default'
+        """
+        # Priority 1: Check component_name in variables
+        component_name = self.variables.get("component_name", "")
+        if component_name:
+            return component_name
+
+        # Priority 2: Extract from preset field
+        if ":" in self.preset:
+            return self.preset.split(":")[-1]
+
+        # Priority 3: No component name found
+        return ""
+
 
 @dataclass
 class ValidationResult:
