@@ -1,8 +1,7 @@
 """Project overview screen showing stats and quick actions."""
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, VerticalScroll
-from textual.events import DescendantFocus, Key
+from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Label, Static
 

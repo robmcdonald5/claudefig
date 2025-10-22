@@ -224,7 +224,9 @@ class ScrollNavigationMixin:
         focus_chain: Any  # Provided by Screen
 
         def query(self, selector: str) -> Any: ...  # Provided by DOMNode
-        def query_one(self, selector: Any, expect_type: Any = None) -> Any: ...  # Provided by DOMNode
+        def query_one(
+            self, selector: Any, expect_type: Any = None
+        ) -> Any: ...  # Provided by DOMNode
 
     def _get_horizontal_nav_parent(self, widget):
         """Get the horizontal navigation parent for a widget, if any.
@@ -507,7 +509,7 @@ class SystemUtilityMixin:
                 subprocess.run(["xdg-open", str(file_path)], check=False)
 
             self.notify(
-                f"Opened file in editor",
+                "Opened file in editor",
                 severity="information",
             )
             return True

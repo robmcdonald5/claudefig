@@ -13,7 +13,9 @@ from claudefig.tui.base import BackButtonMixin, FileInstanceMixin, ScrollNavigat
 from claudefig.tui.widgets.compact_single_instance import CompactSingleInstanceControl
 
 
-class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin):
+class CoreFilesScreen(
+    Screen, BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin
+):
     """Screen for managing single-instance core files."""
 
     BINDINGS = [

@@ -982,7 +982,9 @@ class TestSaveAsComponent:
         )
 
         # Execute
-        success, message = instance_manager.save_as_component(instance, "backend-focused")
+        success, message = instance_manager.save_as_component(
+            instance, "backend-focused"
+        )
 
         # Verify success
         assert success is True, f"Expected success but got: {message}"
@@ -1012,7 +1014,6 @@ class TestSaveAsComponent:
 
     def test_save_component_gitignore(self, instance_manager, tmp_path, monkeypatch):
         """Test saving .gitignore component with folder-based storage."""
-        import json
 
         # Mock get_components_dir to use tmp_path
         test_components_dir = tmp_path / "test_components"
@@ -1035,7 +1036,9 @@ class TestSaveAsComponent:
         )
 
         # Execute
-        success, message = instance_manager.save_as_component(instance, "python-project")
+        success, message = instance_manager.save_as_component(
+            instance, "python-project"
+        )
 
         # Verify success
         assert success is True
@@ -1049,7 +1052,9 @@ class TestSaveAsComponent:
         gitignore_file = component_folder / ".gitignore"
         assert gitignore_file.exists()
 
-    def test_save_component_already_exists(self, instance_manager, tmp_path, monkeypatch):
+    def test_save_component_already_exists(
+        self, instance_manager, tmp_path, monkeypatch
+    ):
         """Test error when component already exists."""
         # Mock get_components_dir to use tmp_path
         test_components_dir = tmp_path / "test_components"
@@ -1069,7 +1074,9 @@ class TestSaveAsComponent:
             preset="claude_md:default",
             path="CLAUDE.md",
         )
-        success1, _ = instance_manager.save_as_component(instance1, "existing-component")
+        success1, _ = instance_manager.save_as_component(
+            instance1, "existing-component"
+        )
         assert success1 is True
 
         # Try to save another component with same name
@@ -1115,7 +1122,9 @@ class TestSaveAsComponent:
         )
 
         # Execute
-        success, message = instance_manager.save_as_component(instance, "python-commands")
+        success, message = instance_manager.save_as_component(
+            instance, "python-commands"
+        )
 
         # Verify success
         assert success is True
@@ -1131,7 +1140,9 @@ class TestSaveAsComponent:
         assert data["type"] == "commands"
         assert data["variables"]["language"] == "python"
 
-    def test_save_component_json_already_exists(self, instance_manager, tmp_path, monkeypatch):
+    def test_save_component_json_already_exists(
+        self, instance_manager, tmp_path, monkeypatch
+    ):
         """Test error when JSON component already exists."""
         # Mock get_components_dir to use tmp_path
         test_components_dir = tmp_path / "test_components"
@@ -1163,13 +1174,17 @@ class TestSaveAsComponent:
         )
 
         # Execute
-        success2, message = instance_manager.save_as_component(instance2, "duplicate-json")
+        success2, message = instance_manager.save_as_component(
+            instance2, "duplicate-json"
+        )
 
         # Verify failure
         assert success2 is False
         assert "already exists" in message
 
-    def test_save_component_error_handling(self, instance_manager, tmp_path, monkeypatch):
+    def test_save_component_error_handling(
+        self, instance_manager, tmp_path, monkeypatch
+    ):
         """Test exception handling in save_component."""
         # Create instance
         instance = FileInstance(
@@ -1180,15 +1195,15 @@ class TestSaveAsComponent:
         )
 
         # Mock Path.mkdir to raise exception
-        original_mkdir = Path.mkdir
-
         def mock_mkdir(*args, **kwargs):
             raise PermissionError("Permission denied")
 
         monkeypatch.setattr(Path, "mkdir", mock_mkdir)
 
         # Execute
-        success, message = instance_manager.save_as_component(instance, "error-component")
+        success, message = instance_manager.save_as_component(
+            instance, "error-component"
+        )
 
         # Verify failure
         assert success is False
@@ -1200,7 +1215,6 @@ class TestLoadComponent:
 
     def test_load_component_from_folder(self, instance_manager, tmp_path, monkeypatch):
         """Test loading CLAUDE.md component from folder storage."""
-        import json
 
         # Mock get_components_dir to use tmp_path
         test_components_dir = tmp_path / "test_components"

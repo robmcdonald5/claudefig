@@ -1,11 +1,10 @@
 """File instances screen for managing multi-instance file types."""
 
 from pathlib import Path
-from typing import Optional
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.events import DescendantFocus, Key
+from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import Button, Label, Select, TabbedContent, TabPane
 
@@ -76,7 +75,11 @@ class FileInstancesScreen(
         focused = self.focused
 
         # If a component Select is focused
-        if isinstance(focused, Select) and focused.id and focused.id.startswith("select-add-"):
+        if (
+            isinstance(focused, Select)
+            and focused.id
+            and focused.id.startswith("select-add-")
+        ):
             # Prevent up/down from opening the dropdown
             if event.key in ("up", "down") and not focused.expanded:
                 # Don't let Select handle it - let it bubble for navigation
@@ -121,8 +124,8 @@ class FileInstancesScreen(
             if isinstance(current, Horizontal):
                 # Check if it's a navigation group we care about
                 if hasattr(current, "classes") and (
-                    "tab-actions" in current.classes or
-                    "instance-actions" in current.classes
+                    "tab-actions" in current.classes
+                    or "instance-actions" in current.classes
                 ):
                     horizontal_parent = current
                     break
@@ -133,7 +136,8 @@ class FileInstancesScreen(
 
         # Get all focusable widgets in this horizontal container
         focusable_widgets = [
-            widget for widget in horizontal_parent.query("Select, Button")
+            widget
+            for widget in horizontal_parent.query("Select, Button")
             if widget.can_focus and widget.display and not widget.disabled
         ]
 
@@ -196,7 +200,9 @@ class FileInstancesScreen(
                         # Component selector
                         with Horizontal(classes="tab-actions"):
                             # Get available components for this file type
-                            components = self.instance_manager.list_components(file_type)
+                            components = self.instance_manager.list_components(
+                                file_type
+                            )
 
                             if components:
                                 # Build options: (display_name, component_name)
@@ -304,9 +310,7 @@ class FileInstancesScreen(
             instance_id = button_id.replace("toggle-", "")
             self._toggle_instance(instance_id)
 
-    def _add_component_instance(
-        self, file_type: FileType, component_name: str
-    ) -> None:
+    def _add_component_instance(self, file_type: FileType, component_name: str) -> None:
         """Load a component and add it as a file instance.
 
         Args:
@@ -350,9 +354,7 @@ class FileInstancesScreen(
             instance = self.instance_manager.load_component(file_type, component_name)
 
             if not instance:
-                self.notify(
-                    f"Component '{component_name}' not found", severity="error"
-                )
+                self.notify(f"Component '{component_name}' not found", severity="error")
                 return
 
             # Store the component name in variables for later reference
@@ -361,7 +363,11 @@ class FileInstancesScreen(
             instance.variables["component_name"] = component_name
 
             # Generate new ID for this project
-            preset_name = instance.preset.split(":")[-1] if ":" in instance.preset else instance.preset
+            preset_name = (
+                instance.preset.split(":")[-1]
+                if ":" in instance.preset
+                else instance.preset
+            )
             instance.id = self.instance_manager.generate_instance_id(
                 file_type, preset_name, instance.path
             )
@@ -381,7 +387,9 @@ class FileInstancesScreen(
                 self.refresh(recompose=True)
             else:
                 # Show validation errors
-                error_msg = "\n".join(result.errors) if result.errors else "Validation failed"
+                error_msg = (
+                    "\n".join(result.errors) if result.errors else "Validation failed"
+                )
                 self.notify(error_msg, severity="error")
 
         except Exception as e:
@@ -633,7 +641,7 @@ class FileInstancesScreen(
 
         # Update the widget's reactive attribute - triggers watch method for smooth update
         try:
-            item_widget = self.query_one(f"FileInstanceItem", FileInstanceItem)
+            item_widget = self.query_one("FileInstanceItem", FileInstanceItem)
             # Find the specific item by checking instance_id
             for item in self.query(FileInstanceItem):
                 if item.instance_id == instance_id:

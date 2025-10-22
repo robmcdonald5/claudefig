@@ -1,7 +1,6 @@
 """Tests for TUI mixins."""
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -25,7 +24,13 @@ class TestSystemUtilityMixin:
             def __init__(self):
                 self.notifications = []
 
-            def notify(self, message: str, *, severity: str = "information", timeout: float = 2.0):
+            def notify(
+                self,
+                message: str,
+                *,
+                severity: str = "information",
+                timeout: float = 2.0,
+            ):
                 """Mock notify method that records notifications."""
                 self.notifications.append(
                     {"message": message, "severity": severity, "timeout": timeout}
@@ -385,7 +390,9 @@ class TestFileInstanceMixin:
 
         # Verify step 2: Sync manager → config
         mixin_instance.instance_manager.save_instances.assert_called_once()
-        mixin_instance.config.set_file_instances.assert_called_once_with([{"id": "test"}])
+        mixin_instance.config.set_file_instances.assert_called_once_with(
+            [{"id": "test"}]
+        )
 
         # Verify step 3: Sync config → disk
         mixin_instance.config.save.assert_called_once()
@@ -443,8 +450,8 @@ class TestScrollNavigationMixin:
     @pytest.fixture
     def mixin_instance(self, create_mock_widget):
         """Create a mock instance that uses ScrollNavigationMixin."""
+
         from claudefig.tui.base.mixins import ScrollNavigationMixin
-        from textual.containers import Horizontal, VerticalScroll
 
         class TestScreen(ScrollNavigationMixin):
             """Test screen with ScrollNavigationMixin."""
@@ -544,9 +551,7 @@ class TestScrollNavigationMixin:
         # Note: This test validates the concept, actual implementation may vary
         # based on how _get_horizontal_nav_parent works
 
-    def test_action_focus_next_last_element(
-        self, mixin_instance, create_mock_widget
-    ):
+    def test_action_focus_next_last_element(self, mixin_instance, create_mock_widget):
         """Test action_focus_next at last element doesn't wrap."""
         # Setup
         widget1 = create_mock_widget("widget1")
@@ -566,9 +571,7 @@ class TestScrollNavigationMixin:
         # Should scroll to reveal content below
         widget3.scroll_visible.assert_called_once()
 
-    def test_action_focus_next_middle_element(
-        self, mixin_instance, create_mock_widget
-    ):
+    def test_action_focus_next_middle_element(self, mixin_instance, create_mock_widget):
         """Test action_focus_next from middle element moves to next."""
         # Setup
         widget1 = create_mock_widget("widget1")

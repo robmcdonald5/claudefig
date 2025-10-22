@@ -99,9 +99,7 @@ class InitializePanel(Container):
         try:
             # Step 1: If no config exists, apply default preset first
             if not config_path.exists():
-                self.app.notify(
-                    "Applying default preset...", severity="information"
-                )
+                self.app.notify("Applying default preset...", severity="information")
                 self.config_template_manager.apply_preset_to_project("default")
                 # Reload config after applying preset
                 self.config = Config()

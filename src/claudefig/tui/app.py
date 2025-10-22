@@ -201,7 +201,9 @@ class MainScreen(App):
                     try:
                         from claudefig.tui.panels.config_panel import ConfigPanel
 
-                        config_panel = content_panel.query_one("#config-panel", ConfigPanel)
+                        config_panel = content_panel.query_one(
+                            "#config-panel", ConfigPanel
+                        )
                         config_panel.restore_focus()
                     except Exception:
                         # Fallback if config panel not found
