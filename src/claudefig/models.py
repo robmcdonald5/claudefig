@@ -185,19 +185,30 @@ class Preset:
         """Convert preset to dictionary format.
 
         Returns:
-            Dictionary representation of the preset
+            Dictionary representation of the preset (filters out None values for TOML compatibility)
         """
-        return {
+        result = {
             "id": self.id,
             "type": self.type.value,
             "name": self.name,
             "description": self.description,
             "source": self.source.value,
-            "template_path": str(self.template_path) if self.template_path else None,
             "variables": self.variables,
-            "extends": self.extends,
-            "tags": self.tags,
         }
+
+        # Only include template_path if not None (TOML doesn't support None)
+        if self.template_path:
+            result["template_path"] = str(self.template_path)
+
+        # Only include extends if not None
+        if self.extends:
+            result["extends"] = self.extends
+
+        # Only include tags if not empty
+        if self.tags:
+            result["tags"] = self.tags
+
+        return result
 
     def __repr__(self) -> str:
         """String representation of preset."""
