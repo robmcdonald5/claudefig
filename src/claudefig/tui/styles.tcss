@@ -1134,23 +1134,7 @@ CompactSingleInstanceControl {
     margin: 0 1;
 }
 
-/* Project settings screen styles - OLD (deprecated) */
-.settings-section {
-    width: 100%;
-    height: auto;
-    margin-bottom: 2;
-    padding: 2;
-    background: $panel;
-    border: round $primary-lighten-1;
-}
-
-.setting-item {
-    width: 100%;
-    height: auto;
-    margin-bottom: 2;
-}
-
-/* Project settings screen styles - NEW COMPACT */
+/* Project settings screen styles - COMPACT */
 .compact-settings-list {
     width: 100%;
     height: auto;
