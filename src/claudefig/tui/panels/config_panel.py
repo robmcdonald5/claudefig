@@ -1,5 +1,7 @@
 """Config panel - main menu for configuration options."""
 
+import contextlib
+
 from textual.app import ComposeResult
 from textual.containers import Container, Grid
 from textual.widgets import Button, Label
@@ -117,10 +119,8 @@ class ConfigPanel(Container):
             last_button.focus()
         except Exception:
             # Fallback to first button if last focused doesn't exist
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one("#btn-overview", Button).focus()
-            except Exception:
-                pass
 
     def _navigate_grid(self, row_delta: int, col_delta: int) -> None:
         """Navigate in the grid by moving in a direction.

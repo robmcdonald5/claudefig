@@ -74,30 +74,31 @@ class FileInstancesScreen(
         """
         focused = self.focused
 
-        # If a component Select is focused
+        # If a component Select is focused and prevent up/down from opening the dropdown
         if (
             isinstance(focused, Select)
             and focused.id
             and focused.id.startswith("select-add-")
+            and event.key in ("up", "down")
+            and not focused.expanded
         ):
-            # Prevent up/down from opening the dropdown
-            if event.key in ("up", "down") and not focused.expanded:
-                # Don't let Select handle it - let it bubble for navigation
-                event.prevent_default()
-                # Manually trigger navigation
-                if event.key == "up":
-                    self.action_focus_previous()
-                else:
-                    self.action_focus_next()
-                event.stop()
+            # Don't let Select handle it - let it bubble for navigation
+            event.prevent_default()
+            # Manually trigger navigation
+            if event.key == "up":
+                self.action_focus_previous()
+            else:
+                self.action_focus_next()
+            event.stop()
 
         # Handle left/right navigation for horizontal groups
-        if event.key in ("left", "right"):
-            if focused:
-                # Try to handle horizontal navigation
-                if self._handle_horizontal_navigation(event.key, focused):
-                    event.prevent_default()
-                    event.stop()
+        if (
+            event.key in ("left", "right")
+            and focused
+            and self._handle_horizontal_navigation(event.key, focused)
+        ):
+            event.prevent_default()
+            event.stop()
 
     def _handle_horizontal_navigation(self, key: str, focused) -> bool:
         """Handle left/right navigation within horizontal groups.
@@ -121,14 +122,13 @@ class FileInstancesScreen(
 
         # Walk up the tree to find a Horizontal container
         while current:
-            if isinstance(current, Horizontal):
-                # Check if it's a navigation group we care about
-                if hasattr(current, "classes") and (
-                    "tab-actions" in current.classes
-                    or "instance-actions" in current.classes
-                ):
-                    horizontal_parent = current
-                    break
+            # Check if it's a Horizontal navigation group we care about
+            if isinstance(current, Horizontal) and hasattr(current, "classes") and (
+                "tab-actions" in current.classes
+                or "instance-actions" in current.classes
+            ):
+                horizontal_parent = current
+                break
             current = current.parent
 
         if not horizontal_parent:
@@ -641,7 +641,6 @@ class FileInstancesScreen(
 
         # Update the widget's reactive attribute - triggers watch method for smooth update
         try:
-            item_widget = self.query_one("FileInstanceItem", FileInstanceItem)
             # Find the specific item by checking instance_id
             for item in self.query(FileInstanceItem):
                 if item.instance_id == instance_id:

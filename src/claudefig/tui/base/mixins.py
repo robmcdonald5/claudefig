@@ -54,6 +54,7 @@ See FileInstanceItem.py for excellent reactive attribute examples.
 See FileInstancesScreen._remove_instance() for recompose examples.
 """
 
+import contextlib
 import platform
 import subprocess
 from pathlib import Path
@@ -242,13 +243,12 @@ class ScrollNavigationMixin:
 
         # Walk up the tree to find a Horizontal container
         while current:
-            if isinstance(current, Horizontal):
-                # Check if it's a navigation group we care about
-                if hasattr(current, "classes") and (
-                    "tab-actions" in current.classes
-                    or "instance-actions" in current.classes
-                ):
-                    return current
+            # Check if it's a Horizontal navigation group we care about
+            if isinstance(current, Horizontal) and hasattr(current, "classes") and (
+                "tab-actions" in current.classes
+                or "instance-actions" in current.classes
+            ):
+                return current
             current = current.parent
 
         return None
@@ -375,11 +375,9 @@ class ScrollNavigationMixin:
         # Don't wrap, but scroll viewport if there's content below
         if current_index == max_index:
             # Scroll to ensure the last element (and any content below) is visible
-            try:
-                # Scroll the current focused widget to bottom to reveal content below
+            # Scroll the current focused widget to bottom to reveal content below
+            with contextlib.suppress(Exception):
                 focused.scroll_visible(top=False, animate=False)
-            except Exception:
-                pass
             return
 
         # Find the target index, skipping siblings in horizontal groups
@@ -403,10 +401,8 @@ class ScrollNavigationMixin:
         # Ensure we don't exceed max
         if target_index > max_index:
             # Already at bottom, scroll to reveal content below
-            try:
+            with contextlib.suppress(Exception):
                 focused.scroll_visible(top=False, animate=False)
-            except Exception:
-                pass
             return
 
         # If the target widget is in a horizontal group, we're already on the first one
