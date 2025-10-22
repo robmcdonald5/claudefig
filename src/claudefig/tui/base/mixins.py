@@ -244,9 +244,13 @@ class ScrollNavigationMixin:
         # Walk up the tree to find a Horizontal container
         while current:
             # Check if it's a Horizontal navigation group we care about
-            if isinstance(current, Horizontal) and hasattr(current, "classes") and (
-                "tab-actions" in current.classes
-                or "instance-actions" in current.classes
+            if (
+                isinstance(current, Horizontal)
+                and hasattr(current, "classes")
+                and (
+                    "tab-actions" in current.classes
+                    or "instance-actions" in current.classes
+                )
             ):
                 return current
             current = current.parent
