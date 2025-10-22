@@ -88,7 +88,9 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin, ScrollNavigati
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        self.handle_back_button(event)
+        # Check if back button was pressed and return early if handled
+        if self.handle_back_button(event):
+            return
 
     def on_compact_single_instance_control_toggle_changed(
         self, event: CompactSingleInstanceControl.ToggleChanged
