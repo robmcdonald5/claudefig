@@ -1,7 +1,5 @@
 """File instances screen for managing multi-instance file types."""
 
-import platform
-import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -16,12 +14,23 @@ from claudefig.error_messages import ErrorMessages
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
-from claudefig.tui.base import BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin
+from claudefig.tui.base import (
+    BackButtonMixin,
+    FileInstanceMixin,
+    ScrollNavigationMixin,
+    SystemUtilityMixin,
+)
 from claudefig.tui.widgets.file_instance_item import FileInstanceItem
 from claudefig.user_config import get_components_dir
 
 
-class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin):
+class FileInstancesScreen(
+    Screen,
+    BackButtonMixin,
+    FileInstanceMixin,
+    ScrollNavigationMixin,
+    SystemUtilityMixin,
+):
     """Screen for managing multi-instance file types with tabs."""
 
     BINDINGS = [
@@ -473,26 +482,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin, ScrollNavi
                 )
                 return
 
-        try:
-            # Open in system editor based on platform
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["start", "", str(file_to_open)], shell=True, check=False)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", str(file_to_open)], check=False)
-            else:  # Linux
-                subprocess.run(["xdg-open", str(file_to_open)], check=False)
-
-            self.notify(
-                f"Opened {instance.type.display_name} file in editor",
-                severity="information",
-            )
-
-        except Exception as e:
-            self.notify(
-                f"Failed to open file: {e}",
-                severity="error",
-            )
+        # Open file using SystemUtilityMixin method
+        self.open_file_in_editor(file_to_open)
 
     def _show_file_path_selector(self, instance_id: str) -> None:
         """Open OS file picker to select path for CLAUDE.md or .gitignore instances.
@@ -658,27 +649,8 @@ class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin, ScrollNavi
         Args:
             file_type: File type to open component directory for
         """
-        try:
-            components_dir = get_components_dir()
-            type_dir = components_dir / file_type.value
+        components_dir = get_components_dir()
+        type_dir = components_dir / file_type.value
 
-            # Ensure directory exists
-            type_dir.mkdir(parents=True, exist_ok=True)
-
-            # Open in file explorer based on platform
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["explorer", str(type_dir)], check=False)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", str(type_dir)], check=False)
-            else:  # Linux
-                subprocess.run(["xdg-open", str(type_dir)], check=False)
-
-            self.notify(
-                f"Opened component folder: {type_dir}", severity="information"
-            )
-
-        except Exception as e:
-            self.notify(
-                f"Failed to open component folder: {e}", severity="error"
-            )
+        # Open folder using SystemUtilityMixin method
+        self.open_folder_in_explorer(type_dir)
