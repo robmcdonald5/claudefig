@@ -15,7 +15,7 @@ class FileInstanceItem(Container):
     # init=False prevents watch methods from being called during __init__
     is_enabled = reactive(True, init=False)
     file_path = reactive("", init=False)
-    preset_name = reactive("", init=False)
+    component_name = reactive("", init=False)
 
     def __init__(self, instance: FileInstance, **kwargs) -> None:
         """Initialize file instance item.
@@ -28,16 +28,22 @@ class FileInstanceItem(Container):
         self.instance_id = instance.id
         self.instance_type = instance.type
 
+        # Extract component name from preset or variables
+        # Preset format: "component:{name}" or just use component_name from variables
+        component_name = instance.variables.get("component_name", "")
+        if not component_name and ":" in instance.preset:
+            component_name = instance.preset.split(":")[-1]
+
         # Store initial values to set after mounting
         self._initial_enabled = instance.enabled
         self._initial_path = instance.path
-        self._initial_preset = instance.preset
+        self._initial_component_name = component_name
 
     def compose(self) -> ComposeResult:
         """Compose the file instance item."""
         # Use Static widgets with IDs so we can update them in watch methods
         yield Static(id="path-label", classes="instance-path")
-        yield Static(id="preset-label", classes="instance-preset")
+        yield Static(id="component-label", classes="instance-component")
         yield Static(id="status-label", classes="instance-status")
 
         with Horizontal(classes="instance-actions"):
@@ -65,7 +71,7 @@ class FileInstanceItem(Container):
         # Set reactive attributes - this will trigger watch methods to update the UI
         self.is_enabled = self._initial_enabled
         self.file_path = self._initial_path
-        self.preset_name = self._initial_preset
+        self.component_name = self._initial_component_name
 
     def watch_is_enabled(self, new_value: bool) -> None:
         """Called automatically when is_enabled changes.
@@ -97,14 +103,14 @@ class FileInstanceItem(Container):
         """
         self._update_path_label()
 
-    def watch_preset_name(self, new_value: str) -> None:
-        """Called automatically when preset_name changes.
+    def watch_component_name(self, new_value: str) -> None:
+        """Called automatically when component_name changes.
 
         Args:
-            new_value: New preset name
+            new_value: New component name
         """
-        preset_label = self.query_one("#preset-label", Static)
-        preset_label.update(f"Preset: {new_value}")
+        component_label = self.query_one("#component-label", Static)
+        component_label.update(f"Component: {new_value}")
 
     def _update_path_label(self) -> None:
         """Update the path label with current path and disabled indicator."""

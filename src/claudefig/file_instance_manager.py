@@ -429,9 +429,15 @@ class FileInstanceManager:
                 actual_filename = Path(instance.path).name
                 component_file = component_folder / actual_filename
 
-                # Save component metadata as JSON (for variables, preset info, etc.)
+                # Save minimal component metadata as JSON
+                # Components are templates - only store type and default path
+                # enabled, preset, variables are instance-specific (per-project)
                 metadata_file = component_folder / "component.json"
-                component_data = instance.to_dict()
+                component_data = {
+                    "type": instance.type.value,
+                    "path": instance.path,
+                    "component_name": component_name,
+                }
                 metadata_file.write_text(
                     json.dumps(component_data, indent=2), encoding="utf-8"
                 )
@@ -545,29 +551,41 @@ class FileInstanceManager:
                 if not component_folder.exists() or not component_folder.is_dir():
                     return None
 
-                # Check for metadata file first
+                # Check for metadata file
                 metadata_file = component_folder / "component.json"
                 if metadata_file.exists():
-                    # Load from metadata
+                    # Load minimal component metadata
                     component_data = json.loads(
                         metadata_file.read_text(encoding="utf-8")
                     )
-                    instance = FileInstance.from_dict(component_data)
 
-                    # Store the component folder path for later reference
-                    instance.variables = instance.variables or {}
-                    instance.variables["component_folder"] = str(component_folder)
-                    return instance
-                else:
-                    # Legacy folder without metadata - create instance from defaults
-                    preset_id = f"{file_type.value}:default"
+                    # Create FileInstance with instance-specific defaults
+                    # Components only store: type, path, component_name
+                    # We add instance-specific fields: id, enabled, preset, variables
                     instance = FileInstance(
                         id=f"{file_type.value}-{component_name}",
                         type=file_type,
-                        preset=preset_id,
+                        preset=f"component:{component_name}",  # Preset is now just component reference
+                        path=component_data.get("path", file_type.default_path),
+                        enabled=True,  # Default enabled (user can toggle per-project)
+                        variables={
+                            "component_folder": str(component_folder),
+                            "component_name": component_name,
+                        },
+                    )
+                    return instance
+                else:
+                    # Folder without metadata - create instance from defaults
+                    instance = FileInstance(
+                        id=f"{file_type.value}-{component_name}",
+                        type=file_type,
+                        preset=f"component:{component_name}",
                         path=file_type.default_path,
                         enabled=True,
-                        variables={"component_folder": str(component_folder)},
+                        variables={
+                            "component_folder": str(component_folder),
+                            "component_name": component_name,
+                        },
                     )
                     return instance
             else:

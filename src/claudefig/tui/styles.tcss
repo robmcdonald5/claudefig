@@ -363,7 +363,7 @@ InitializePanel VerticalScroll {
     margin-bottom: 0;
 }
 
-.instance-preset {
+.instance-component {
     color: $text-muted;
     margin-bottom: 0;
 }
