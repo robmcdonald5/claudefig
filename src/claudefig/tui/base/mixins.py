@@ -1,6 +1,63 @@
-"""Mixins for common TUI screen functionality."""
+"""Mixins for common TUI screen functionality.
 
-from typing import TYPE_CHECKING, Optional
+UI UPDATE PATTERNS - WHEN TO USE WHAT:
+======================================
+
+The TUI uses two main patterns for updating the UI:
+
+1. REACTIVE ATTRIBUTES (Recommended for property changes):
+   - Use for: Simple property updates (text, enabled state, visibility)
+   - Benefits: Smooth updates, no widget rebuilding, efficient
+   - Performance: Fast - only affected elements update
+   - Example: FileInstanceItem updating path or enabled state
+
+   Pattern:
+   ```python
+   from textual.reactive import reactive
+
+   class MyWidget(Widget):
+       my_value = reactive("default", init=False)
+
+       def watch_my_value(self, new_value: str) -> None:
+           '''Called automatically when my_value changes.'''
+           label = self.query_one("#my-label", Static)
+           label.update(new_value)
+
+   # Later, update the reactive attribute:
+   widget.my_value = "new value"  # Triggers watch_my_value()
+   ```
+
+2. REFRESH WITH RECOMPOSE (Use sparingly for structural changes):
+   - Use for: Adding/removing widgets, major layout changes
+   - Drawbacks: Expensive, rebuilds entire widget tree, loses focus
+   - Performance: Slow - full screen recomposition
+   - Example: FileInstancesScreen adding/removing instances
+
+   Pattern:
+   ```python
+   def some_handler(self):
+       # Modify data that affects compose()
+       self.instances.append(new_instance)
+
+       # Force full widget rebuild
+       self.refresh(recompose=True)
+   ```
+
+DECISION TREE:
+- Adding/removing widgets? → Use refresh(recompose=True)
+- Changing widget properties? → Use reactive attributes
+- Updating text content? → Use reactive attributes
+- Changing enabled/disabled state? → Use reactive attributes
+- Modifying CSS classes? → Direct manipulation (add_class/remove_class)
+
+See FileInstanceItem.py for excellent reactive attribute examples.
+See FileInstancesScreen._remove_instance() for recompose examples.
+"""
+
+import platform
+import subprocess
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional, Union
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
@@ -371,3 +428,143 @@ class ScrollNavigationMixin:
             scroll_container.scroll_to_widget(event.widget, animate=False)
         except Exception:
             pass
+
+
+class SystemUtilityMixin:
+    """Mixin providing platform-specific system operations.
+
+    Provides cross-platform methods for:
+    - Opening files in system editor
+    - Opening folders in system file explorer
+
+    Usage:
+        class MyScreen(Screen, SystemUtilityMixin):
+            def some_handler(self):
+                self.open_file_in_editor(Path("/path/to/file.txt"))
+                self.open_folder_in_explorer(Path("/path/to/folder"))
+
+    Note: These methods handle platform detection (Windows, macOS, Linux)
+    automatically and use appropriate system commands.
+    """
+
+    if TYPE_CHECKING:
+        from typing import Literal
+
+        from textual.app import App
+
+        SeverityLevel = Literal["information", "warning", "error"]
+        app: "App[object]"
+
+        def notify(
+            self,
+            message: str,
+            *,
+            severity: SeverityLevel = "information",
+            timeout: float = 2.0,
+        ) -> None:
+            """Provided by Screen/Widget."""
+            ...
+
+    def open_file_in_editor(self, file_path: Union[Path, str]) -> bool:
+        """Open a file in the system's default editor.
+
+        Args:
+            file_path: Path to the file to open
+
+        Returns:
+            True if successful, False otherwise
+
+        Note:
+            This method automatically:
+            - Validates file exists
+            - Detects platform (Windows/macOS/Linux)
+            - Uses appropriate system command
+            - Shows notification to user
+        """
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            self.notify(
+                f"File does not exist: {file_path}",
+                severity="error",
+            )
+            return False
+
+        if not file_path.is_file():
+            self.notify(
+                f"Path is not a file: {file_path}",
+                severity="error",
+            )
+            return False
+
+        try:
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["start", "", str(file_path)], shell=True, check=False)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", str(file_path)], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", str(file_path)], check=False)
+
+            self.notify(
+                f"Opened file in editor",
+                severity="information",
+            )
+            return True
+
+        except Exception as e:
+            self.notify(
+                f"Failed to open file: {e}",
+                severity="error",
+            )
+            return False
+
+    def open_folder_in_explorer(self, folder_path: Union[Path, str]) -> bool:
+        """Open a folder in the system's file explorer.
+
+        Args:
+            folder_path: Path to the folder to open
+
+        Returns:
+            True if successful, False otherwise
+
+        Note:
+            This method automatically:
+            - Creates folder if it doesn't exist
+            - Detects platform (Windows/macOS/Linux)
+            - Uses appropriate system command
+            - Shows notification to user
+        """
+        folder_path = Path(folder_path)
+
+        # Ensure directory exists
+        try:
+            folder_path.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            self.notify(
+                f"Failed to create folder: {e}",
+                severity="error",
+            )
+            return False
+
+        try:
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["explorer", str(folder_path)], check=False)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", str(folder_path)], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", str(folder_path)], check=False)
+
+            self.notify(
+                f"Opened folder: {folder_path}",
+                severity="information",
+            )
+            return True
+
+        except Exception as e:
+            self.notify(
+                f"Failed to open folder: {e}",
+                severity="error",
+            )
+            return False
