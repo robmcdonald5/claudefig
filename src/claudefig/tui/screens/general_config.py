@@ -11,15 +11,17 @@ from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
 from claudefig.config import Config
-from claudefig.tui.base import BackButtonMixin
+from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 
 
-class GeneralConfigScreen(Screen, BackButtonMixin):
+class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
     """Screen for editing general configuration settings."""
 
     BINDINGS = [
         ("escape", "go_back", "Back"),
         ("backspace", "go_back", "Back"),
+        ("up", "focus_previous", "Focus Previous"),
+        ("down", "focus_next", "Focus Next"),
     ]
 
     config: reactive[Config] = reactive(lambda: Config())
@@ -35,10 +37,11 @@ class GeneralConfigScreen(Screen, BackButtonMixin):
 
     def compose(self) -> ComposeResult:
         """Compose the general config editor."""
-        yield Label("General Configuration", classes="screen-title")
-        yield Label("Edit any configuration setting", classes="screen-subtitle")
-
-        with VerticalScroll(classes="content-area"):
+        # can_focus=False prevents the container from being in the focus chain
+        # while still allowing it to be scrolled programmatically
+        with VerticalScroll(id="general-config-screen", can_focus=False):
+            yield Label("General Configuration", classes="screen-title")
+            yield Label("Edit any configuration setting", classes="screen-subtitle")
             # Current config display
             yield Label("Current Settings", classes="section-title")
             yield Static(
@@ -68,6 +71,9 @@ class GeneralConfigScreen(Screen, BackButtonMixin):
             with Horizontal(classes="button-row"):
                 yield Button("Set Value", id="btn-set", variant="primary")
                 yield Button("Refresh Display", id="btn-refresh")
+
+            # Back button
+            yield from self.compose_back_button()
 
     def _format_config(self) -> str:
         """Format config data for display.
