@@ -95,7 +95,9 @@ class Initializer:
         self._created_files.clear()
         self._created_dirs.clear()
 
-    def initialize(self, repo_path: Path, force: bool = False) -> bool:
+    def initialize(
+        self, repo_path: Path, force: bool = False, skip_prompts: bool = False
+    ) -> bool:
         """Initialize Claude Code configuration in repository.
 
         Uses the file instance system to generate files based on configuration.
@@ -103,6 +105,7 @@ class Initializer:
         Args:
             repo_path: Path to repository to initialize
             force: If True, overwrite existing files
+            skip_prompts: If True, skip interactive prompts (for TUI/non-interactive use)
 
         Returns:
             True if initialization successful, False otherwise.
@@ -123,7 +126,7 @@ class Initializer:
             return False
 
         # Check if it's a git repository
-        if not is_git_repository(repo_path):
+        if not is_git_repository(repo_path) and not skip_prompts:
             console.print(
                 f"[yellow]Warning:[/yellow] {repo_path} is not a git repository"
             )

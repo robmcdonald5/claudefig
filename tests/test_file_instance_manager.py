@@ -525,6 +525,106 @@ class TestValidatePath:
         # May have other warnings but not about overwriting
 
 
+class TestValidateInstance:
+    """Tests for validate_instance method."""
+
+    def test_validate_instance_path_errors(self, instance_manager):
+        """Test validation when path validation returns errors."""
+        # Create instance with path containing parent references
+        instance = FileInstance(
+            id="test-invalid-path",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="../../../etc/passwd",  # Parent references not allowed
+            enabled=True,
+        )
+
+        # Execute
+        result = instance_manager.validate_instance(instance)
+
+        # Verify - should have errors from path validation
+        assert not result.valid
+        assert result.has_errors
+        # Error message should mention parent directory or similar
+        assert len(result.errors) > 0
+
+    def test_validate_instance_path_conflict_warning(self, instance_manager):
+        """Test path conflict detection between instances."""
+        # Add first instance
+        instance1 = FileInstance(
+            id="first-instance",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+        instance_manager.add_instance(instance1)
+
+        # Create second instance with same path
+        instance2 = FileInstance(
+            id="second-instance",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",  # Same path
+            enabled=True,
+        )
+
+        # Execute
+        result = instance_manager.validate_instance(instance2)
+
+        # Verify - should have warning about path conflict
+        assert result.has_warnings
+        assert any("already used" in warn for warn in result.warnings)
+        assert any("first-instance" in warn for warn in result.warnings)
+
+    def test_validate_instance_preset_type_mismatch(self, instance_manager):
+        """Test validation when preset type doesn't match instance type."""
+        # Create instance with mismatched preset type
+        # preset is for SETTINGS_JSON but instance is CLAUDE_MD
+        instance = FileInstance(
+            id="test-mismatch",
+            type=FileType.CLAUDE_MD,
+            preset="settings_json:default",  # Wrong type!
+            path="CLAUDE.md",
+            enabled=True,
+        )
+
+        # Execute
+        result = instance_manager.validate_instance(instance)
+
+        # Verify - should have error about type mismatch
+        assert not result.valid
+        assert result.has_errors
+        assert any("type mismatch" in err.lower() for err in result.errors)
+
+    def test_validate_instance_duplicate_id_error(self, instance_manager):
+        """Test validation rejects duplicate instance IDs."""
+        # Add first instance
+        instance1 = FileInstance(
+            id="duplicate-id",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+        )
+        instance_manager.add_instance(instance1)
+
+        # Try to add second instance with same ID
+        instance2 = FileInstance(
+            id="duplicate-id",  # Duplicate!
+            type=FileType.GITIGNORE,
+            preset="gitignore:standard",
+            path=".gitignore",
+        )
+
+        # Execute
+        result = instance_manager.validate_instance(instance2, is_update=False)
+
+        # Verify - should have error about duplicate ID
+        assert not result.valid
+        assert result.has_errors
+        assert any("already exists" in err for err in result.errors)
+
+
 class TestGenerateInstanceId:
     """Tests for generate_instance_id method."""
 
@@ -852,3 +952,352 @@ class TestGetDefaultPath:
         assert (
             instance_manager.get_default_path(FileType.COMMANDS) == ".claude/commands/"
         )
+
+
+class TestSaveAsComponent:
+    """Tests for save_as_component method."""
+
+    def test_save_component_claude_md(self, instance_manager, tmp_path, monkeypatch):
+        """Test saving CLAUDE.md component with folder-based storage."""
+        import json
+
+        # Mock get_components_dir to use tmp_path instead of ~/.claudefig
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # Create instance
+        instance = FileInstance(
+            id="test-claude",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:backend",
+            path="docs/CLAUDE.md",
+            enabled=True,
+        )
+
+        # Execute
+        success, message = instance_manager.save_as_component(
+            instance, "backend-focused"
+        )
+
+        # Verify success
+        assert success is True, f"Expected success but got: {message}"
+        assert "Component saved" in message
+
+        # Verify folder structure was created
+        components_dir = test_components_dir
+        component_folder = components_dir / "claude_md" / "backend-focused"
+        assert component_folder.exists()
+        assert component_folder.is_dir()
+
+        # Verify metadata file exists
+        metadata_file = component_folder / "component.json"
+        assert metadata_file.exists()
+
+        # Verify metadata content
+        metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
+        assert metadata["type"] == "claude_md"
+        assert metadata["path"] == "docs/CLAUDE.md"
+        assert metadata["component_name"] == "backend-focused"
+
+        # Verify placeholder file was created
+        actual_file = component_folder / "CLAUDE.md"
+        assert actual_file.exists()
+        content = actual_file.read_text(encoding="utf-8")
+        assert "backend-focused" in content
+
+    def test_save_component_gitignore(self, instance_manager, tmp_path, monkeypatch):
+        """Test saving .gitignore component with folder-based storage."""
+
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # Create instance
+        instance = FileInstance(
+            id="test-gitignore",
+            type=FileType.GITIGNORE,
+            preset="gitignore:python",
+            path=".gitignore",
+            enabled=True,
+        )
+
+        # Execute
+        success, message = instance_manager.save_as_component(
+            instance, "python-project"
+        )
+
+        # Verify success
+        assert success is True
+
+        # Verify folder structure
+        components_dir = test_components_dir
+        component_folder = components_dir / "gitignore" / "python-project"
+        assert component_folder.exists()
+
+        # Verify .gitignore file was created
+        gitignore_file = component_folder / ".gitignore"
+        assert gitignore_file.exists()
+
+    def test_save_component_already_exists(
+        self, instance_manager, tmp_path, monkeypatch
+    ):
+        """Test error when component already exists."""
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # Create and save first component
+        instance1 = FileInstance(
+            id="test-1",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+        )
+        success1, _ = instance_manager.save_as_component(
+            instance1, "existing-component"
+        )
+        assert success1 is True
+
+        # Try to save another component with same name
+        instance2 = FileInstance(
+            id="test-2",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:other",
+            path="other/CLAUDE.md",
+        )
+
+        # Execute
+        success2, message = instance_manager.save_as_component(
+            instance2, "existing-component"
+        )
+
+        # Verify failure
+        assert success2 is False
+        assert "already exists" in message
+
+    def test_save_component_json_storage(self, instance_manager, tmp_path, monkeypatch):
+        """Test saving component with JSON storage for non-customizable types."""
+        import json
+
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # Create instance for non-customizable type (COMMANDS)
+        instance = FileInstance(
+            id="test-commands",
+            type=FileType.COMMANDS,
+            preset="commands:default",
+            path=".claude/commands/",
+            enabled=True,
+            variables={"language": "python"},
+        )
+
+        # Execute
+        success, message = instance_manager.save_as_component(
+            instance, "python-commands"
+        )
+
+        # Verify success
+        assert success is True
+
+        # Verify JSON file was created
+        components_dir = test_components_dir
+        component_file = components_dir / "commands" / "python-commands.json"
+        assert component_file.exists()
+
+        # Verify JSON content
+        data = json.loads(component_file.read_text(encoding="utf-8"))
+        assert data["id"] == "test-commands"
+        assert data["type"] == "commands"
+        assert data["variables"]["language"] == "python"
+
+    def test_save_component_json_already_exists(
+        self, instance_manager, tmp_path, monkeypatch
+    ):
+        """Test error when JSON component already exists."""
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # Save first component
+        instance1 = FileInstance(
+            id="test-1",
+            type=FileType.COMMANDS,
+            preset="commands:default",
+            path=".claude/commands/",
+        )
+        success1, _ = instance_manager.save_as_component(instance1, "duplicate-json")
+        assert success1 is True
+
+        # Try to save duplicate
+        instance2 = FileInstance(
+            id="test-2",
+            type=FileType.COMMANDS,
+            preset="commands:other",
+            path=".claude/commands/",
+        )
+
+        # Execute
+        success2, message = instance_manager.save_as_component(
+            instance2, "duplicate-json"
+        )
+
+        # Verify failure
+        assert success2 is False
+        assert "already exists" in message
+
+    def test_save_component_error_handling(
+        self, instance_manager, tmp_path, monkeypatch
+    ):
+        """Test exception handling in save_component."""
+        # Create instance
+        instance = FileInstance(
+            id="test-error",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+        )
+
+        # Mock Path.mkdir to raise exception
+        def mock_mkdir(*args, **kwargs):
+            raise PermissionError("Permission denied")
+
+        monkeypatch.setattr(Path, "mkdir", mock_mkdir)
+
+        # Execute
+        success, message = instance_manager.save_as_component(
+            instance, "error-component"
+        )
+
+        # Verify failure
+        assert success is False
+        assert "Failed" in message or "Error" in message or "error" in message
+
+
+class TestLoadComponent:
+    """Tests for load_component method."""
+
+    def test_load_component_from_folder(self, instance_manager, tmp_path, monkeypatch):
+        """Test loading CLAUDE.md component from folder storage."""
+
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # First save a component to load
+        instance = FileInstance(
+            id="test-save",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:backend",
+            path="docs/CLAUDE.md",
+        )
+        instance_manager.save_as_component(instance, "test-load-folder")
+
+        # Execute - load the component
+        loaded_instance = instance_manager.load_component(
+            FileType.CLAUDE_MD, "test-load-folder"
+        )
+
+        # Verify
+        assert loaded_instance is not None
+        assert loaded_instance.type == FileType.CLAUDE_MD
+        assert loaded_instance.path == "docs/CLAUDE.md"
+        assert loaded_instance.variables.get("component_name") == "test-load-folder"
+
+    def test_load_component_from_json(self, instance_manager, tmp_path, monkeypatch):
+        """Test loading component from JSON storage."""
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # First save a JSON component
+        instance = FileInstance(
+            id="test-json-save",
+            type=FileType.COMMANDS,
+            preset="commands:default",
+            path=".claude/commands/",
+            variables={"test": "value"},
+        )
+        instance_manager.save_as_component(instance, "test-load-json")
+
+        # Execute - load the component
+        loaded_instance = instance_manager.load_component(
+            FileType.COMMANDS, "test-load-json"
+        )
+
+        # Verify
+        assert loaded_instance is not None
+        assert loaded_instance.type == FileType.COMMANDS
+        assert loaded_instance.path == ".claude/commands/"
+        assert loaded_instance.variables.get("test") == "value"
+
+    def test_load_component_not_found(self, instance_manager, tmp_path, monkeypatch):
+        """Test loading component that doesn't exist."""
+        # Mock get_components_dir to use tmp_path
+        test_components_dir = tmp_path / "test_components"
+
+        def mock_get_components_dir():
+            return test_components_dir
+
+        monkeypatch.setattr(
+            "claudefig.file_instance_manager.get_components_dir",
+            mock_get_components_dir,
+        )
+
+        # Execute - try to load non-existent component
+        loaded_instance = instance_manager.load_component(
+            FileType.CLAUDE_MD, "does-not-exist"
+        )
+
+        # Verify
+        assert loaded_instance is None

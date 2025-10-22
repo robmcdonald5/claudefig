@@ -67,6 +67,7 @@ class TestInitializationChecks:
         config_dir = get_user_config_dir()
         config_dir.mkdir()
         (config_dir / "presets").mkdir()
+        (config_dir / "components").mkdir()  # is_initialized() requires this too
 
         assert is_initialized()
 

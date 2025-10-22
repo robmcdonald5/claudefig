@@ -1,8 +1,5 @@
 """Presets panel for managing global preset templates."""
 
-import os
-import platform
-import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +11,7 @@ from textual.widgets import Button, Label, Select
 
 from claudefig.config import Config
 from claudefig.config_template_manager import ConfigTemplateManager
+from claudefig.tui.base import SystemUtilityMixin
 from claudefig.tui.screens import (
     ApplyPresetScreen,
     CreatePresetScreen,
@@ -21,7 +19,7 @@ from claudefig.tui.screens import (
 )
 
 
-class PresetsPanel(Container):
+class PresetsPanel(Container, SystemUtilityMixin):
     """Panel for managing global preset templates."""
 
     # Class variable for state persistence across panel instances
@@ -175,36 +173,8 @@ class PresetsPanel(Container):
         """Open the presets folder in the system file explorer."""
         presets_path = Path(self.config_template_manager.global_presets_dir)
 
-        # Ensure the directory exists
-        if not presets_path.exists():
-            self.app.notify(
-                f"Presets folder does not exist: {presets_path}",
-                severity="warning",
-            )
-            return
-
-        try:
-            system = platform.system()
-
-            if system == "Windows":
-                # Windows: use os.startfile
-                os.startfile(str(presets_path))
-            elif system == "Darwin":
-                # macOS: use 'open' command
-                subprocess.call(["open", str(presets_path)])
-            else:
-                # Linux: use 'xdg-open' command
-                subprocess.call(["xdg-open", str(presets_path)])
-
-            self.app.notify(
-                "Opened presets folder in file explorer",
-                severity="information",
-            )
-        except Exception as e:
-            self.app.notify(
-                f"Error opening folder: {e}",
-                severity="error",
-            )
+        # Open folder using SystemUtilityMixin method
+        self.open_folder_in_explorer(presets_path)
 
     @work
     async def _apply_preset(self, preset_name: str) -> None:
@@ -331,6 +301,18 @@ class PresetsPanel(Container):
                     # Move to Select dropdown
                     select = self.query_one("#preset-select", Select)
                     select.focus()
+                    return
+            except Exception:
+                pass
+
+        # When on any button in the button row, prevent down from wrapping to main menu
+        if event.key == "down" and isinstance(focused, Button):
+            try:
+                button_row = self.query_one(".button-row")
+                if focused.parent == button_row:
+                    # We're at the bottom of the panel - prevent wrapping
+                    event.prevent_default()
+                    event.stop()
                     return
             except Exception:
                 pass

@@ -139,6 +139,54 @@ class TestFileTypeEnum:
             assert isinstance(file_type.is_directory, bool)
             assert isinstance(file_type.append_mode, bool)
 
+    def test_template_directory_property(self):
+        """Test template_directory property returns correct subdirectories."""
+        # Types with template directories
+        assert FileType.SETTINGS_JSON.template_directory == "settingsteam"
+        assert FileType.SETTINGS_LOCAL_JSON.template_directory == "settingslocal"
+        assert FileType.STATUSLINE.template_directory == "statuslines"
+
+        # Types without template directories should return None
+        assert FileType.CLAUDE_MD.template_directory is None
+        assert FileType.GITIGNORE.template_directory is None
+        assert FileType.COMMANDS.template_directory is None
+        assert FileType.AGENTS.template_directory is None
+        assert FileType.HOOKS.template_directory is None
+        assert FileType.OUTPUT_STYLES.template_directory is None
+        assert FileType.MCP.template_directory is None
+
+    def test_template_file_extension_property(self):
+        """Test template_file_extension property returns correct extensions."""
+        # Types with template extensions
+        assert FileType.SETTINGS_JSON.template_file_extension == ".json"
+        assert FileType.SETTINGS_LOCAL_JSON.template_file_extension == ".json"
+        assert FileType.STATUSLINE.template_file_extension == ".py"
+
+        # Types without template extensions should return None
+        assert FileType.CLAUDE_MD.template_file_extension is None
+        assert FileType.GITIGNORE.template_file_extension is None
+        assert FileType.COMMANDS.template_file_extension is None
+        assert FileType.AGENTS.template_file_extension is None
+        assert FileType.HOOKS.template_file_extension is None
+        assert FileType.OUTPUT_STYLES.template_file_extension is None
+        assert FileType.MCP.template_file_extension is None
+
+    def test_path_customizable_property(self):
+        """Test path_customizable property identifies customizable types."""
+        # Only CLAUDE.md and .gitignore allow custom paths
+        assert FileType.CLAUDE_MD.path_customizable
+        assert FileType.GITIGNORE.path_customizable
+
+        # All other types have fixed paths/directories
+        assert not FileType.SETTINGS_JSON.path_customizable
+        assert not FileType.SETTINGS_LOCAL_JSON.path_customizable
+        assert not FileType.COMMANDS.path_customizable
+        assert not FileType.AGENTS.path_customizable
+        assert not FileType.HOOKS.path_customizable
+        assert not FileType.OUTPUT_STYLES.path_customizable
+        assert not FileType.STATUSLINE.path_customizable
+        assert not FileType.MCP.path_customizable
+
 
 class TestPresetSourceEnum:
     """Tests for PresetSource enum."""
@@ -226,7 +274,7 @@ class TestPreset:
         }
 
     def test_preset_to_dict_minimal(self):
-        """Test converting minimal Preset to dictionary."""
+        """Test converting minimal Preset to dictionary (None values are filtered out)."""
         preset = Preset(
             id="test:minimal",
             type=FileType.GITIGNORE,
@@ -237,16 +285,15 @@ class TestPreset:
 
         preset_dict = preset.to_dict()
 
+        # After Phase 2 fix: to_dict() filters out None values for TOML compatibility
         assert preset_dict == {
             "id": "test:minimal",
             "type": "gitignore",
             "name": "Minimal",
             "description": "",
             "source": "built-in",
-            "template_path": None,
             "variables": {},
-            "extends": None,
-            "tags": [],
+            # template_path, extends, and tags are omitted when None/empty
         }
 
     def test_preset_from_dict(self):
@@ -516,6 +563,55 @@ class TestFileInstance:
             repr_str
             == "FileInstance(id=disabled-test, type=gitignore, path=.gitignore, disabled)"
         )
+
+    def test_get_component_name_from_variables(self):
+        """Test get_component_name() extracts from variables dict (Priority 1)."""
+        instance = FileInstance(
+            id="test-instance",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            variables={"component_name": "my-custom-component"},
+        )
+
+        assert instance.get_component_name() == "my-custom-component"
+
+    def test_get_component_name_from_preset(self):
+        """Test get_component_name() extracts from preset field (Priority 2)."""
+        instance = FileInstance(
+            id="test-instance",
+            type=FileType.COMMANDS,
+            preset="commands:backend-focused",
+            path=".claude/commands/",
+        )
+
+        # No component_name in variables, should extract from preset
+        assert instance.get_component_name() == "backend-focused"
+
+    def test_get_component_name_empty(self):
+        """Test get_component_name() returns empty string when not found (Priority 3)."""
+        instance = FileInstance(
+            id="test-instance",
+            type=FileType.SETTINGS_JSON,
+            preset="no_colon_preset",  # No colon separator
+            path=".claude/settings.json",
+        )
+
+        # No component_name in variables, no colon in preset
+        assert instance.get_component_name() == ""
+
+    def test_get_component_name_priority(self):
+        """Test get_component_name() prioritizes variables over preset."""
+        instance = FileInstance(
+            id="test-instance",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            variables={"component_name": "from-variables"},
+        )
+
+        # Should prefer variables over preset extraction
+        assert instance.get_component_name() == "from-variables"
 
 
 class TestValidationResult:

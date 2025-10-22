@@ -1,7 +1,7 @@
 """Core files screen for managing single-instance file types."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Vertical
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Label
 
@@ -9,16 +9,20 @@ from claudefig.config import Config
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
-from claudefig.tui.base import BackButtonMixin, FileInstanceMixin
+from claudefig.tui.base import BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin
 from claudefig.tui.widgets.compact_single_instance import CompactSingleInstanceControl
 
 
-class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
+class CoreFilesScreen(
+    Screen, BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin
+):
     """Screen for managing single-instance core files."""
 
     BINDINGS = [
         ("escape", "pop_screen", "Back"),
         ("backspace", "pop_screen", "Back"),
+        ("up", "focus_previous", "Focus Previous"),
+        ("down", "focus_next", "Focus Next"),
     ]
 
     def __init__(
@@ -42,7 +46,9 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
     def compose(self) -> ComposeResult:
         """Compose the core files screen."""
-        with Container(id="core-files-screen"):
+        # can_focus=False prevents the container from being in the focus chain
+        # while still allowing it to be scrolled programmatically
+        with VerticalScroll(id="core-files-screen", can_focus=False):
             yield Label("CORE FILES", classes="screen-title")
 
             yield Label(
@@ -84,7 +90,9 @@ class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        self.handle_back_button(event)
+        # Check if back button was pressed and return early if handled
+        if self.handle_back_button(event):
+            return
 
     def on_compact_single_instance_control_toggle_changed(
         self, event: CompactSingleInstanceControl.ToggleChanged

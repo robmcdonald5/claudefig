@@ -1,23 +1,25 @@
 """Project overview screen showing stats and quick actions."""
 
 from textual.app import ComposeResult
-from textual.containers import Container
+from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Label, Static
 
 from claudefig.config import Config
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileInstance, FileType
-from claudefig.tui.base import BackButtonMixin
+from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 from claudefig.tui.widgets import OverlayDropdown
 
 
-class OverviewScreen(Screen, BackButtonMixin):
+class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
     """Screen displaying project overview with stats and quick actions."""
 
     BINDINGS = [
         ("escape", "collapse_or_back", "Collapse/Back"),
         ("backspace", "collapse_or_back", "Collapse/Back"),
+        ("up", "focus_previous", "Focus Previous"),
+        ("down", "focus_next", "Focus Next"),
     ]
 
     def __init__(
@@ -38,7 +40,9 @@ class OverviewScreen(Screen, BackButtonMixin):
 
     def compose(self) -> ComposeResult:
         """Compose the overview screen."""
-        with Container(id="overview-screen"):
+        # can_focus=False prevents the container from being in the focus chain
+        # while still allowing it to be scrolled programmatically
+        with VerticalScroll(id="overview-screen", can_focus=False):
             # Title
             yield Label("PROJECT OVERVIEW", classes="screen-title")
 
@@ -154,7 +158,9 @@ class OverviewScreen(Screen, BackButtonMixin):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        self.handle_back_button(event)
+        # Check if back button was pressed and return early if handled
+        if self.handle_back_button(event):
+            return
 
     def on_click(self, event) -> None:
         """Handle clicks on the screen - close other dropdowns when one opens."""

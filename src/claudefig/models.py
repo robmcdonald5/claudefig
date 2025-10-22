@@ -185,19 +185,30 @@ class Preset:
         """Convert preset to dictionary format.
 
         Returns:
-            Dictionary representation of the preset
+            Dictionary representation of the preset (filters out None values for TOML compatibility)
         """
-        return {
+        result = {
             "id": self.id,
             "type": self.type.value,
             "name": self.name,
             "description": self.description,
             "source": self.source.value,
-            "template_path": str(self.template_path) if self.template_path else None,
             "variables": self.variables,
-            "extends": self.extends,
-            "tags": self.tags,
         }
+
+        # Only include template_path if not None (TOML doesn't support None)
+        if self.template_path:
+            result["template_path"] = str(self.template_path)
+
+        # Only include extends if not None
+        if self.extends:
+            result["extends"] = self.extends
+
+        # Only include tags if not empty
+        if self.tags:
+            result["tags"] = self.tags
+
+        return result
 
     def __repr__(self) -> str:
         """String representation of preset."""
@@ -282,6 +293,38 @@ class FileInstance:
         """String representation of file instance."""
         status = "enabled" if self.enabled else "disabled"
         return f"FileInstance(id={self.id}, type={self.type.value}, path={self.path}, {status})"
+
+    def get_component_name(self) -> str:
+        """Extract component name from instance variables or preset.
+
+        Component name extraction follows this priority:
+        1. Check 'component_name' in variables dict
+        2. Extract from preset field (format: "type:component_name")
+        3. Return empty string if not found
+
+        Returns:
+            Component name string, or empty string if not found
+
+        Examples:
+            >>> instance.variables = {"component_name": "my-component"}
+            >>> instance.get_component_name()
+            'my-component'
+
+            >>> instance.preset = "claude_md:default"
+            >>> instance.get_component_name()
+            'default'
+        """
+        # Priority 1: Check component_name in variables
+        component_name = self.variables.get("component_name", "")
+        if component_name:
+            return component_name
+
+        # Priority 2: Extract from preset field
+        if ":" in self.preset:
+            return self.preset.split(":")[-1]
+
+        # Priority 3: No component name found
+        return ""
 
 
 @dataclass

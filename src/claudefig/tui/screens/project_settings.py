@@ -1,20 +1,22 @@
 """Initialization settings screen for editing init behavior."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Label, Static, Switch
 
 from claudefig.config import Config
-from claudefig.tui.base import BackButtonMixin
+from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 
 
-class ProjectSettingsScreen(Screen, BackButtonMixin):
+class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
     """Screen for editing initialization settings."""
 
     BINDINGS = [
         ("escape", "pop_screen", "Back"),
         ("backspace", "pop_screen", "Back"),
+        ("up", "focus_previous", "Focus Previous"),
+        ("down", "focus_next", "Focus Next"),
     ]
 
     def __init__(self, config: Config, **kwargs) -> None:
@@ -28,7 +30,9 @@ class ProjectSettingsScreen(Screen, BackButtonMixin):
 
     def compose(self) -> ComposeResult:
         """Compose the initialization settings screen."""
-        with Container(id="project-settings-screen"):
+        # can_focus=False prevents the container from being in the focus chain
+        # while still allowing it to be scrolled programmatically
+        with VerticalScroll(id="project-settings-screen", can_focus=False):
             yield Label("INITIALIZATION SETTINGS", classes="screen-title")
 
             yield Label(
@@ -73,7 +77,9 @@ class ProjectSettingsScreen(Screen, BackButtonMixin):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        self.handle_back_button(event)
+        # Check if back button was pressed and return early if handled
+        if self.handle_back_button(event):
+            return
 
     def on_switch_changed(self, event: Switch.Changed) -> None:
         """Handle switch changes and auto-save."""

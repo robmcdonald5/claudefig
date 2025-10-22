@@ -1,10 +1,12 @@
 """File instance management for claudefig."""
 
+import json
 from pathlib import Path
 from typing import Optional
 
 from claudefig.models import FileInstance, FileType, ValidationResult
 from claudefig.preset_manager import PresetManager
+from claudefig.user_config import get_components_dir
 
 
 class FileInstanceManager:
@@ -373,3 +375,302 @@ class FileInstanceManager:
             List of error messages from instance loading failures
         """
         return self._load_errors.copy()
+
+    # Component library methods
+
+    @staticmethod
+    def _get_component_type_dir(file_type: FileType) -> str:
+        """Get the component subdirectory name for a file type.
+
+        Args:
+            file_type: File type
+
+        Returns:
+            Component subdirectory name (e.g., 'claude_md', 'gitignore')
+        """
+        return file_type.value
+
+    def save_as_component(
+        self, instance: FileInstance, component_name: str
+    ) -> tuple[bool, str]:
+        """Save a file instance as a reusable component.
+
+        For CLAUDE.md and .gitignore files, components are saved in folders:
+        ~/.claudefig/components/{file_type}/{component_name}/{actual_filename}
+
+        For other file types, components are still saved as JSON metadata files.
+
+        Args:
+            instance: File instance to save
+            component_name: Name for the component (without extension)
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(instance.type)
+
+            # Ensure type directory exists
+            type_dir.mkdir(parents=True, exist_ok=True)
+
+            # For CLAUDE.md and .gitignore, use folder-based storage
+            if instance.type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                # Create component folder
+                component_folder = type_dir / component_name
+
+                # Check if component folder already exists
+                if component_folder.exists():
+                    return False, f"Component '{component_name}' already exists"
+
+                component_folder.mkdir(parents=True, exist_ok=True)
+
+                # Determine the actual filename to use
+                actual_filename = Path(instance.path).name
+                component_file = component_folder / actual_filename
+
+                # Save minimal component metadata as JSON
+                # Components are templates - only store type and default path
+                # enabled, preset, variables are instance-specific (per-project)
+                metadata_file = component_folder / "component.json"
+                component_data = {
+                    "type": instance.type.value,
+                    "path": instance.path,
+                    "component_name": component_name,
+                }
+                metadata_file.write_text(
+                    json.dumps(component_data, indent=2), encoding="utf-8"
+                )
+
+                # Create placeholder file (user will edit this directly)
+                component_file.write_text(
+                    f"# Component: {component_name}\n"
+                    f"# Edit this file to customize your {instance.type.display_name} component\n",
+                    encoding="utf-8",
+                )
+
+                return True, f"Component saved to {component_folder}"
+            else:
+                # For other file types, use legacy JSON storage
+                component_file = type_dir / f"{component_name}.json"
+
+                # Check if component already exists
+                if component_file.exists():
+                    return False, f"Component '{component_name}' already exists"
+
+                # Save component as JSON
+                component_data = instance.to_dict()
+                component_file.write_text(
+                    json.dumps(component_data, indent=2), encoding="utf-8"
+                )
+
+                return True, f"Component saved to {component_file}"
+
+        except Exception as e:
+            return False, f"Failed to save component: {e}"
+
+    def list_components(self, file_type: FileType) -> list[tuple[str, Path]]:
+        """List available components for a file type.
+
+        For CLAUDE.md and .gitignore, looks for component folders.
+        For other file types, looks for .json component files.
+
+        Args:
+            file_type: File type to list components for
+
+        Returns:
+            List of (component_name, path) tuples where path is:
+            - For folder-based: path to the component folder
+            - For JSON-based: path to the .json file
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(file_type)
+
+            if not type_dir.exists():
+                return []
+
+            components = []
+
+            # For CLAUDE.md and .gitignore, look for component folders
+            if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                for item in type_dir.iterdir():
+                    # Only include directories (component folders)
+                    if item.is_dir():
+                        component_name = item.name
+                        components.append((component_name, item))
+            else:
+                # For other file types, collect component names (avoiding duplicates)
+                # Priority: .json files > raw files
+                component_names = set()
+
+                # First, collect all .json component files (these have priority)
+                for component_file in type_dir.glob("*.json"):
+                    component_name = component_file.stem
+                    component_names.add(component_name)
+                    components.append((component_name, component_file))
+
+                # Then, look for raw files (only if no .json exists for that name)
+                for component_file in type_dir.iterdir():
+                    if component_file.is_file() and component_file.suffix != ".json":
+                        component_name = component_file.stem
+                        if component_name not in component_names:
+                            component_names.add(component_name)
+                            components.append((component_name, component_file))
+
+            # Sort alphabetically
+            components.sort(key=lambda x: x[0])
+            return components
+
+        except Exception:
+            return []
+
+    def load_component(
+        self, file_type: FileType, component_name: str
+    ) -> Optional[FileInstance]:
+        """Load a component and create a file instance from it.
+
+        For CLAUDE.md and .gitignore, loads from folder structure.
+        For other file types, loads from .json files.
+
+        Args:
+            file_type: File type of the component
+            component_name: Name of the component to load
+
+        Returns:
+            FileInstance if loaded successfully, None otherwise
+        """
+        try:
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(file_type)
+
+            # For CLAUDE.md and .gitignore, load from folder structure
+            if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                component_folder = type_dir / component_name
+
+                if not component_folder.exists() or not component_folder.is_dir():
+                    return None
+
+                # Check for metadata file
+                metadata_file = component_folder / "component.json"
+                if metadata_file.exists():
+                    # Load minimal component metadata
+                    component_data = json.loads(
+                        metadata_file.read_text(encoding="utf-8")
+                    )
+
+                    # Create FileInstance with instance-specific defaults
+                    # Components only store: type, path, component_name
+                    # We add instance-specific fields: id, enabled, preset, variables
+                    instance = FileInstance(
+                        id=f"{file_type.value}-{component_name}",
+                        type=file_type,
+                        preset=f"component:{component_name}",  # Preset is now just component reference
+                        path=component_data.get("path", file_type.default_path),
+                        enabled=True,  # Default enabled (user can toggle per-project)
+                        variables={
+                            "component_folder": str(component_folder),
+                            "component_name": component_name,
+                        },
+                    )
+                    return instance
+                else:
+                    # Folder without metadata - create instance from defaults
+                    instance = FileInstance(
+                        id=f"{file_type.value}-{component_name}",
+                        type=file_type,
+                        preset=f"component:{component_name}",
+                        path=file_type.default_path,
+                        enabled=True,
+                        variables={
+                            "component_folder": str(component_folder),
+                            "component_name": component_name,
+                        },
+                    )
+                    return instance
+            else:
+                # For other file types, load from .json file or raw file
+                json_file = type_dir / f"{component_name}.json"
+
+                if json_file.exists():
+                    # Load from .json metadata file
+                    component_data = json.loads(json_file.read_text(encoding="utf-8"))
+                    instance = FileInstance.from_dict(component_data)
+                    return instance
+                else:
+                    # Look for raw file (simplified component)
+                    for component_file in type_dir.iterdir():
+                        if (
+                            component_file.stem == component_name
+                            and component_file.suffix != ".json"
+                        ):
+                            # Create a FileInstance with sensible defaults
+                            preset_id = f"{file_type.value}:default"
+                            instance = FileInstance(
+                                id=f"{file_type.value}-{component_name}",
+                                type=file_type,
+                                preset=preset_id,
+                                path=file_type.default_path,
+                                enabled=True,
+                                variables={"component_file": str(component_file)},
+                            )
+                            return instance
+
+            return None
+
+        except Exception:
+            return None
+
+    def delete_component(
+        self, file_type: FileType, component_name: str
+    ) -> tuple[bool, str]:
+        """Delete a component from the library.
+
+        For CLAUDE.md and .gitignore, deletes the component folder.
+        For other file types, deletes the .json file.
+
+        Args:
+            file_type: File type of the component
+            component_name: Name of the component to delete
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            import shutil
+
+            components_dir = get_components_dir()
+            type_dir = components_dir / self._get_component_type_dir(file_type)
+
+            # For CLAUDE.md and .gitignore, delete the folder
+            if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                component_folder = type_dir / component_name
+
+                if not component_folder.exists():
+                    return False, f"Component '{component_name}' not found"
+
+                # Remove the entire folder
+                shutil.rmtree(component_folder)
+                return True, f"Component '{component_name}' deleted"
+            else:
+                # For other file types, try to delete .json first, then raw file
+                json_file = type_dir / f"{component_name}.json"
+
+                if json_file.exists():
+                    json_file.unlink()
+                    return True, f"Component '{component_name}' deleted"
+
+                # If no .json, look for raw file
+                for component_file in type_dir.iterdir():
+                    if (
+                        component_file.is_file()
+                        and component_file.stem == component_name
+                        and component_file.suffix != ".json"
+                    ):
+                        component_file.unlink()
+                        return True, f"Component '{component_name}' deleted"
+
+                return False, f"Component '{component_name}' not found"
+
+        except Exception as e:
+            return False, f"Failed to delete component: {e}"

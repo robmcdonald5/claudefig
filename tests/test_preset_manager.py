@@ -212,6 +212,140 @@ class TestAddDeletePreset:
         result = manager.delete_preset("nonexistent:preset")
         assert result is False
 
+    def test_add_user_preset_success(self, preset_manager, tmp_path):
+        """Test successfully adding a user preset (Priority 4)."""
+        new_preset = Preset(
+            id="claude_md:my_user_preset",
+            type=FileType.CLAUDE_MD,
+            name="My User Preset",
+            description="Custom user preset",
+            source=PresetSource.USER,
+            template_path=None,
+            variables={"key": "value"},
+            extends=None,
+            tags=[],
+        )
+
+        # Add preset as user preset
+        preset_manager.add_preset(new_preset, source=PresetSource.USER)
+
+        # Verify preset was added to cache
+        assert "claude_md:my_user_preset" in preset_manager._preset_cache
+        cached_preset = preset_manager._preset_cache["claude_md:my_user_preset"]
+        assert cached_preset.name == "My User Preset"
+        assert cached_preset.source == PresetSource.USER
+
+        # Verify preset file was created
+        expected_file = (
+            preset_manager.user_presets_dir / "claude_md_my_user_preset.toml"
+        )
+        assert expected_file.exists()
+
+        # Verify preset is in list
+        presets = preset_manager.list_presets()
+        assert any(p.id == "claude_md:my_user_preset" for p in presets)
+
+    def test_add_project_preset_success(self, preset_manager, tmp_path):
+        """Test successfully adding a project preset (Priority 4)."""
+        new_preset = Preset(
+            id="settings_json:my_project_preset",
+            type=FileType.SETTINGS_JSON,
+            name="My Project Preset",
+            description="Custom project preset",
+            source=PresetSource.PROJECT,
+            template_path=None,
+            variables={"feature": "enabled"},
+            extends=None,
+            tags=[],
+        )
+
+        # Add preset as project preset
+        preset_manager.add_preset(new_preset, source=PresetSource.PROJECT)
+
+        # Verify preset was added to cache
+        assert "settings_json:my_project_preset" in preset_manager._preset_cache
+        cached_preset = preset_manager._preset_cache["settings_json:my_project_preset"]
+        assert cached_preset.name == "My Project Preset"
+        assert cached_preset.source == PresetSource.PROJECT
+
+        # Verify preset file was created
+        expected_file = (
+            preset_manager.project_presets_dir / "settings_json_my_project_preset.toml"
+        )
+        assert expected_file.exists()
+
+        # Verify preset is in list
+        presets = preset_manager.list_presets()
+        assert any(p.id == "settings_json:my_project_preset" for p in presets)
+
+    def test_delete_user_preset_success(self, preset_manager, tmp_path):
+        """Test successfully deleting a user preset (Priority 4)."""
+        # First, add a user preset
+        new_preset = Preset(
+            id="claude_md:delete_me",
+            type=FileType.CLAUDE_MD,
+            name="Delete Me",
+            description="Preset to delete",
+            source=PresetSource.USER,
+            template_path=None,
+            variables={},
+            extends=None,
+            tags=[],
+        )
+        preset_manager.add_preset(new_preset, source=PresetSource.USER)
+
+        # Verify it exists
+        assert "claude_md:delete_me" in preset_manager._preset_cache
+        preset_file = preset_manager.user_presets_dir / "claude_md_delete_me.toml"
+        assert preset_file.exists()
+
+        # Delete the preset
+        result = preset_manager.delete_preset("claude_md:delete_me")
+
+        # Verify deletion was successful
+        assert result is True
+        assert "claude_md:delete_me" not in preset_manager._preset_cache
+        assert not preset_file.exists()
+
+        # Verify it's not in list
+        presets = preset_manager.list_presets()
+        assert not any(p.id == "claude_md:delete_me" for p in presets)
+
+    def test_delete_project_preset_success(self, preset_manager, tmp_path):
+        """Test successfully deleting a project preset (Priority 4)."""
+        # First, add a project preset
+        new_preset = Preset(
+            id="gitignore:delete_me_project",
+            type=FileType.GITIGNORE,
+            name="Delete Me Project",
+            description="Project preset to delete",
+            source=PresetSource.PROJECT,
+            template_path=None,
+            variables={},
+            extends=None,
+            tags=[],
+        )
+        preset_manager.add_preset(new_preset, source=PresetSource.PROJECT)
+
+        # Verify it exists
+        assert "gitignore:delete_me_project" in preset_manager._preset_cache
+        preset_file = (
+            preset_manager.project_presets_dir / "gitignore_delete_me_project.toml"
+        )
+        assert preset_file.exists()
+
+        # Delete the preset
+        result = preset_manager.delete_preset("gitignore:delete_me_project")
+
+        # Verify deletion was successful
+        assert result is True
+        assert "gitignore:delete_me_project" not in preset_manager._preset_cache
+        assert not preset_file.exists()
+
+        # Verify it's not in list
+        presets = preset_manager.list_presets()
+        assert not any(p.id == "gitignore:delete_me_project" for p in presets)
+
 
 class TestRenderPreset:
     """Tests for render_preset method."""
@@ -548,3 +682,188 @@ class TestPresetCaching:
         # Should now include the new preset
         assert len(presets3) == initial_count + 1
         assert any(p.id == "claude_md:custom" for p in presets3)
+
+
+class TestValidateTemplateVariables:
+    """Tests for validate_template_variables method (Phase 2 - Priority 3)."""
+
+    def test_validate_template_missing_variables(self, preset_manager, tmp_path):
+        """Test warning when template uses undefined variables."""
+        # Create template with variables
+        template_file = tmp_path / "template.md"
+        template_file.write_text(
+            "Hello {name}! Version: {version}, Environment: {env}",
+            encoding="utf-8",
+        )
+
+        # Preset only defines 'name' and 'version', missing 'env'
+        preset = Preset(
+            id="test:missing_vars",
+            type=FileType.CLAUDE_MD,
+            name="Missing Variables",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={"name": "World", "version": "1.0"},
+        )
+
+        # Validate - should have warning about missing 'env'
+        result = preset_manager.validate_template_variables(preset)
+
+        assert result.valid is True  # Still valid, just a warning
+        assert result.has_warnings is True
+        assert len(result.warnings) == 1
+        assert "env" in result.warnings[0]
+        assert "no default value is provided" in result.warnings[0]
+
+    def test_validate_template_unused_variables(self, preset_manager, tmp_path):
+        """Test warning when preset defines unused variables."""
+        # Create template with only {name}
+        template_file = tmp_path / "template.md"
+        template_file.write_text("Hello {name}!", encoding="utf-8")
+
+        # Preset defines extra variables not used in template
+        preset = Preset(
+            id="test:unused_vars",
+            type=FileType.CLAUDE_MD,
+            name="Unused Variables",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={
+                "name": "World",
+                "unused_var1": "value1",
+                "unused_var2": "value2",
+            },
+        )
+
+        # Validate - should have warnings about unused variables
+        result = preset_manager.validate_template_variables(preset)
+
+        assert result.valid is True  # Still valid, just warnings
+        assert result.has_warnings is True
+        assert len(result.warnings) == 2
+        # Check both unused variables are mentioned
+        warnings_text = " ".join(result.warnings)
+        assert "unused_var1" in warnings_text
+        assert "unused_var2" in warnings_text
+        assert "not used in the template" in warnings_text
+
+    def test_validate_template_with_user_variables(self, preset_manager, tmp_path):
+        """Test that user-provided variables are considered available."""
+        # Template uses {name} and {env}
+        template_file = tmp_path / "template.md"
+        template_file.write_text("Hello {name} in {env}!", encoding="utf-8")
+
+        # Preset only defines {name}
+        preset = Preset(
+            id="test:user_vars",
+            type=FileType.CLAUDE_MD,
+            name="User Variables",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={"name": "World"},
+        )
+
+        # Pass {env} as user variable - should not warn about missing
+        result = preset_manager.validate_template_variables(
+            preset, variables={"env": "production"}
+        )
+
+        assert result.valid is True
+        assert not result.has_warnings
+        assert not result.has_errors
+
+    def test_validate_template_no_template_path(self, preset_manager):
+        """Test validation when preset has no template path."""
+        preset = Preset(
+            id="test:no_template",
+            type=FileType.CLAUDE_MD,
+            name="No Template",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=None,
+            variables={},
+        )
+
+        # Should return valid result with no errors/warnings
+        result = preset_manager.validate_template_variables(preset)
+
+        assert result.valid is True
+        assert not result.has_errors
+        assert not result.has_warnings
+
+    def test_validate_template_file_not_found(self, preset_manager, tmp_path):
+        """Test validation when template file doesn't exist."""
+        nonexistent_file = tmp_path / "does_not_exist.md"
+
+        preset = Preset(
+            id="test:missing_file",
+            type=FileType.CLAUDE_MD,
+            name="Missing File",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=nonexistent_file,
+            variables={},
+        )
+
+        # Should return error about missing file
+        result = preset_manager.validate_template_variables(preset)
+
+        assert result.valid is False
+        assert result.has_errors is True
+        assert len(result.errors) == 1
+        assert "Template file not found" in result.errors[0]
+
+    def test_validate_template_read_error(self, preset_manager, tmp_path, monkeypatch):
+        """Test OSError handling when reading template fails."""
+        template_file = tmp_path / "template.md"
+        template_file.write_text("Hello {name}!", encoding="utf-8")
+
+        preset = Preset(
+            id="test:read_error",
+            type=FileType.CLAUDE_MD,
+            name="Read Error",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={},
+        )
+
+        # Mock read_text to raise OSError
+        def mock_read_text(*args, **kwargs):
+            raise OSError("Permission denied")
+
+        monkeypatch.setattr("pathlib.Path.read_text", mock_read_text)
+
+        # Should catch OSError and add error
+        result = preset_manager.validate_template_variables(preset)
+
+        assert result.valid is False
+        assert result.has_errors is True
+        assert len(result.errors) == 1
+        assert "Failed to read template file" in result.errors[0]
+        assert "Permission denied" in result.errors[0]
+
+    def test_validate_template_all_valid(self, preset_manager, tmp_path):
+        """Test successful validation with all variables properly defined."""
+        template_file = tmp_path / "template.md"
+        template_file.write_text("Name: {name}, Version: {version}", encoding="utf-8")
+
+        preset = Preset(
+            id="test:all_valid",
+            type=FileType.CLAUDE_MD,
+            name="All Valid",
+            description="Test",
+            source=PresetSource.USER,
+            template_path=template_file,
+            variables={"name": "Project", "version": "1.0.0"},
+        )
+
+        # Should validate successfully
+        result = preset_manager.validate_template_variables(preset)
+
+        assert result.valid is True
+        assert not result.has_errors
+        assert not result.has_warnings

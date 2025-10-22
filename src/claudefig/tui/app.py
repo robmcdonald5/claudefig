@@ -110,7 +110,9 @@ class MainScreen(App):
         content_panel.add_class("visible")
 
         # Auto-focus first item in the new content tree
-        self.set_timer(0.05, self._focus_first_in_content)
+        # ConfigPanel handles its own focus restoration, so skip for config section
+        if section_id != "config":
+            self.set_timer(0.05, self._focus_first_in_content)
 
     def _focus_first_in_content(self) -> None:
         """Focus the first focusable widget in the content panel."""
@@ -193,12 +195,30 @@ class MainScreen(App):
             # Only move to content panel if a section is already active
             if self.active_button:
                 content_panel = self.query_one("#content-panel", ContentPanel)
-                # Try to focus the first focusable widget in content
-                focusables = [
-                    w for w in content_panel.query("Button, Switch") if w.focusable
-                ]
-                if focusables:
-                    focusables[0].focus()
+
+                # ConfigPanel handles its own focus restoration
+                if self.active_button == "config":
+                    try:
+                        from claudefig.tui.panels.config_panel import ConfigPanel
+
+                        config_panel = content_panel.query_one(
+                            "#config-panel", ConfigPanel
+                        )
+                        config_panel.restore_focus()
+                    except Exception:
+                        # Fallback if config panel not found
+                        focusables = [
+                            w for w in content_panel.query("Button") if w.focusable
+                        ]
+                        if focusables:
+                            focusables[0].focus()
+                else:
+                    # For other panels, focus the first item
+                    focusables = [
+                        w for w in content_panel.query("Button, Switch") if w.focusable
+                    ]
+                    if focusables:
+                        focusables[0].focus()
             # Don't activate section with right arrow - require Enter
             return
 

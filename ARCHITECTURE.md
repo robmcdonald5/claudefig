@@ -462,7 +462,6 @@ State synchronization follows the three-layer pattern (see State Synchronization
 | `tui/screens/core_files.py` | Single-instance files | ~156 | CoreFilesScreen |
 | `tui/screens/file_instances.py` | Multi-instance files | ~241 | FileInstancesScreen |
 | `tui/screens/project_settings.py` | Init settings | ~97 | ProjectSettingsScreen |
-| `tui/screens/file_instance_edit.py` | Add/Edit modal | ~332 | FileInstanceEditScreen |
 | `tui/widgets/compact_single_instance.py` | Inline file control | ~216 | CompactSingleInstanceControl |
 | `tui/widgets/file_instance_item.py` | File instance card | ~52 | FileInstanceItem |
 | `tui/widgets/overlay_dropdown.py` | Collapsible section | ~213 | OverlayDropdown |
@@ -855,7 +854,7 @@ User Action → Screen Handler → Manager Update → Config Sync → Disk Save
 - `widgets/` - Reusable components (used by screens)
 
 **Naming Conventions:**
-- Screens: `*Screen` (e.g., `OverviewScreen`, `FileInstanceEditScreen`)
+- Screens: `*Screen` (e.g., `OverviewScreen`, `CoreFilesScreen`)
 - Panels: `*Panel` (e.g., `ConfigPanel`, `PresetsPanel`)
 - Widgets: Descriptive noun (e.g., `FileInstanceItem`, `OverlayDropdown`)
 - Mixins: `*Mixin` (e.g., `BackButtonMixin`, `FileInstanceMixin`)
