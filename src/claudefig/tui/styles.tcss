@@ -457,7 +457,7 @@ InitializePanel VerticalScroll {
 .dialog-actions {
     width: 100%;
     height: auto;
-    align: center middle;
+    align: left middle;
 }
 
 .dialog-actions Button {
