@@ -197,6 +197,7 @@ class ScrollNavigationMixin:
     - Automatic scrolling to reveal title when at top
     - Automatic scrolling to reveal content when at bottom
     - Horizontal group navigation support (skips siblings in horizontal containers)
+    - Focus memory for horizontal groups (remembers last focused button)
     - Auto-scroll focused widgets into view
 
     Requires:
@@ -229,6 +230,15 @@ class ScrollNavigationMixin:
             self, selector: Any, expect_type: Any = None
         ) -> Any: ...  # Provided by DOMNode
 
+    def _ensure_focus_memory_initialized(self):
+        """Ensure the focus memory dict exists (lazy initialization).
+
+        This is needed because the mixin's __init__ may not be called
+        depending on the inheritance chain of the using class.
+        """
+        if not hasattr(self, "_horizontal_group_focus_memory"):
+            self._horizontal_group_focus_memory = {}
+
     def _get_horizontal_nav_parent(self, widget):
         """Get the horizontal navigation parent for a widget, if any.
 
@@ -250,12 +260,37 @@ class ScrollNavigationMixin:
                 and (
                     "tab-actions" in current.classes
                     or "instance-actions" in current.classes
+                    or "dialog-actions" in current.classes
                 )
             ):
                 return current
             current = current.parent
 
         return None
+
+    def _update_horizontal_focus_memory(self, widget):
+        """Update focus memory for a widget's horizontal group.
+
+        Args:
+            widget: The widget that was focused
+        """
+        self._ensure_focus_memory_initialized()
+        horizontal_parent = self._get_horizontal_nav_parent(widget)
+        if horizontal_parent:
+            # Use id() to get unique identifier for the parent container
+            self._horizontal_group_focus_memory[id(horizontal_parent)] = widget
+
+    def _get_remembered_focus_in_group(self, horizontal_parent):
+        """Get the last focused widget in a horizontal group.
+
+        Args:
+            horizontal_parent: The horizontal container
+
+        Returns:
+            The last focused widget in this group, or None if no memory
+        """
+        self._ensure_focus_memory_initialized()
+        return self._horizontal_group_focus_memory.get(id(horizontal_parent))
 
     def action_focus_previous(self) -> None:
         """Override up arrow navigation to prevent wrapping.
@@ -325,27 +360,39 @@ class ScrollNavigationMixin:
                 pass
             return
 
-        # If the target widget is in a horizontal group, find the FIRST widget in that group
+        # If the target widget is in a horizontal group, use focus memory if available
         target_widget = focus_chain[target_index]
         target_horizontal_parent = self._get_horizontal_nav_parent(target_widget)
 
         if target_horizontal_parent:
-            # Walk backwards to find the first widget in this horizontal group
-            first_in_group_index = target_index
-            while first_in_group_index > 0:
-                prev_widget = focus_chain[first_in_group_index - 1]
-                prev_horizontal_parent = self._get_horizontal_nav_parent(prev_widget)
+            # Check if we have a remembered focus in this group
+            remembered_widget = self._get_remembered_focus_in_group(
+                target_horizontal_parent
+            )
 
-                # Stop if previous widget is not in the same horizontal group
-                if prev_horizontal_parent != target_horizontal_parent:
-                    break
+            if remembered_widget and remembered_widget in focus_chain:
+                # Use the remembered widget
+                target_widget = remembered_widget
+            else:
+                # No memory, find the first widget in this horizontal group
+                first_in_group_index = target_index
+                while first_in_group_index > 0:
+                    prev_widget = focus_chain[first_in_group_index - 1]
+                    prev_horizontal_parent = self._get_horizontal_nav_parent(
+                        prev_widget
+                    )
 
-                first_in_group_index -= 1
+                    # Stop if previous widget is not in the same horizontal group
+                    if prev_horizontal_parent != target_horizontal_parent:
+                        break
 
-            target_index = first_in_group_index
+                    first_in_group_index -= 1
 
-        # Focus the target element
-        focus_chain[target_index].focus()
+                target_widget = focus_chain[first_in_group_index]
+
+        # Focus the target element and update memory
+        target_widget.focus()
+        self._update_horizontal_focus_memory(target_widget)
 
     def action_focus_next(self) -> None:
         """Override down arrow navigation to prevent wrapping.
@@ -409,12 +456,24 @@ class ScrollNavigationMixin:
                 focused.scroll_visible(top=False, animate=False)
             return
 
-        # If the target widget is in a horizontal group, we're already on the first one
-        # (because focus_chain is in DOM order, left-to-right, top-to-bottom)
-        # So no adjustment needed for down navigation
+        # If the target widget is in a horizontal group, use focus memory if available
+        target_widget = focus_chain[target_index]
+        target_horizontal_parent = self._get_horizontal_nav_parent(target_widget)
 
-        # Focus the target element
-        focus_chain[target_index].focus()
+        if target_horizontal_parent:
+            # Check if we have a remembered focus in this group
+            remembered_widget = self._get_remembered_focus_in_group(
+                target_horizontal_parent
+            )
+
+            if remembered_widget and remembered_widget in focus_chain:
+                # Use the remembered widget
+                target_widget = remembered_widget
+            # Otherwise just use the first widget in the group (target_widget is already set)
+
+        # Focus the target element and update memory
+        target_widget.focus()
+        self._update_horizontal_focus_memory(target_widget)
 
     def on_descendant_focus(self, event: DescendantFocus) -> None:
         """Ensure focused widgets are scrolled into view.
@@ -422,6 +481,9 @@ class ScrollNavigationMixin:
         Args:
             event: The focus event containing the focused widget
         """
+        # Update focus memory if this widget is in a horizontal group
+        self._update_horizontal_focus_memory(event.widget)
+
         # Scroll the VerticalScroll container to keep focused widget visible
         # This ensures proper scrolling within the container
         try:
