@@ -11,21 +11,20 @@ class CreatePresetScreen(BaseModalScreen):
 
     def compose_title(self) -> str:
         """Return the modal title."""
-        return "Create New Preset"
+        return ""
 
     def compose_content(self) -> ComposeResult:
         """Compose the modal content."""
-        yield Label("Preset Name:", classes="dialog-label")
+        yield Label("Name:", classes="dialog-label")
         yield Input(placeholder="my-custom-preset", id="input-preset-name")
-
-        yield Label("\nDescription (optional):", classes="dialog-label")
+        yield Label("Description (optional):", classes="dialog-label")
         yield Input(
             placeholder="My custom configuration", id="input-preset-description"
         )
 
     def compose_actions(self) -> ComposeResult:
         """Compose the action buttons."""
-        yield Button("Create", id="btn-create", variant="primary")
+        yield Button("Create", id="btn-create")
         yield Button("Cancel", id="btn-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
