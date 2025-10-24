@@ -3,6 +3,7 @@
 from textual.app import ComposeResult
 from textual.widgets import Button, Input, Label
 
+from claudefig.services.validation_service import validate_not_empty
 from claudefig.tui.base import BaseModalScreen
 
 
@@ -38,8 +39,10 @@ class CreatePresetScreen(BaseModalScreen):
             preset_name = name_input.value.strip()
             description = desc_input.value.strip()
 
-            if not preset_name:
-                self.notify("Preset name is required", severity="error")
+            # Validate preset name using centralized validation
+            validation_result = validate_not_empty(preset_name, "Preset name")
+            if validation_result.has_errors:
+                self.notify(validation_result.errors[0], severity="error")
                 return
 
             self.dismiss(

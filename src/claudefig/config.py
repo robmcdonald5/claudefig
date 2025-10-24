@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -71,7 +71,7 @@ class Config:
         """
         if self.config_path and self.config_path.exists():
             with open(self.config_path, "rb") as f:
-                return tomllib.load(f)
+                return cast(dict[str, Any], tomllib.load(f))
 
         return self.DEFAULT_CONFIG.copy()
 
@@ -86,7 +86,7 @@ class Config:
             Configuration value or default.
         """
         keys = key.split(".")
-        value = self.data
+        value: Any = self.data
 
         for k in keys:
             if isinstance(value, dict):
@@ -136,7 +136,7 @@ class Config:
         Returns:
             List of file instance dictionaries
         """
-        return self.data.get("files", [])
+        return cast(list[dict[str, Any]], self.data.get("files", []))
 
     def set_file_instances(self, instances: list[dict[str, Any]]) -> None:
         """Set file instances in config.

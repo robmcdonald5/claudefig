@@ -109,7 +109,7 @@ class PresetValidator:
         Returns:
             Dictionary mapping preset names to validation results
         """
-        results = {}
+        results: dict[str, ValidationResult] = {}
         if not self.global_presets_dir.exists():
             return results
 

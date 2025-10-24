@@ -154,8 +154,23 @@ claudefig presets list --type claude_md
 # Show preset details
 claudefig presets show claude_md:default
 
-# Apply a preset to create file instances
-claudefig presets apply claude_md:backend
+# Create a new preset
+claudefig presets create my_preset --type claude_md --description "My custom preset"
+
+# Create a preset from a template file
+claudefig presets create my_preset --type claude_md --template /path/to/template.md
+
+# Edit a preset in your default editor
+claudefig presets edit claude_md:my_preset
+
+# Delete a preset (with confirmation)
+claudefig presets delete claude_md:my_preset
+
+# Delete without confirmation
+claudefig presets delete claude_md:my_preset --force
+
+# Open presets directory in file explorer
+claudefig presets open
 ```
 
 #### File Instance Management
@@ -176,6 +191,31 @@ claudefig files disable <instance-id>
 
 # Remove an instance
 claudefig files remove <instance-id>
+```
+
+#### Template Management
+
+```bash
+# List all global templates
+claudefig templates list
+
+# List with validation status
+claudefig templates list --validate
+
+# Show template details
+claudefig templates show default
+
+# Save current project as a template
+claudefig templates save my_template --description "My project template"
+
+# Apply a template to current project
+claudefig templates apply default
+
+# Edit a template in your default editor
+claudefig templates edit my_template
+
+# Delete a template (with confirmation)
+claudefig templates delete my_template
 ```
 
 #### Configuration
@@ -220,14 +260,41 @@ claudefig files add --type commands --preset commands:default --path .claude/com
 claudefig init --force
 ```
 
-#### Example 3: Using Presets
+#### Example 3: Creating Custom Presets
 
 ```bash
-# Apply a preset (creates file instances automatically)
-claudefig presets apply claude_md:backend
+# Create a custom preset from a template file
+claudefig presets create my_backend --type claude_md --template backend_template.md \
+  --description "Backend-focused CLAUDE.md template"
 
-# Generate files from all enabled instances
+# Edit the preset to customize it
+claudefig presets edit claude_md:my_backend
+
+# List all presets to verify
+claudefig presets list --type claude_md
+
+# Apply your custom preset
+claudefig files add --type claude_md --preset claude_md:my_backend --path CLAUDE.md
+
+# Generate the file
 claudefig init
+```
+
+#### Example 4: Managing Global Templates
+
+```bash
+# Save current project configuration as a reusable template
+claudefig templates save my_fastapi_project --description "FastAPI backend template"
+
+# List all templates
+claudefig templates list
+
+# Apply template to a new project
+cd /path/to/new/project
+claudefig templates apply my_fastapi_project
+
+# Edit template to update it
+claudefig templates edit my_fastapi_project
 ```
 
 For detailed usage instructions, run:
@@ -252,7 +319,7 @@ claudefig --help
 
 ## Requirements
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - Click >= 8.0
 - Rich >= 13.0
 
