@@ -68,10 +68,11 @@ from textual.events import DescendantFocus
 from textual.widgets import Button
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from textual.app import App
 
-    from claudefig.config import Config
-    from claudefig.file_instance_manager import FileInstanceManager
+    from claudefig.repositories import AbstractConfigRepository
 
 
 class BackButtonMixin:
@@ -130,65 +131,79 @@ class FileInstanceMixin:
     """Mixin for screens that manage file instances.
 
     Provides:
-    - sync_instances_to_config(): Sync instance manager state to config and save
+    - sync_instances_to_config(): Sync instances dict to config and save
 
     Requires the screen to have:
-    - self.config: Config instance
-    - self.instance_manager: FileInstanceManager instance
+    - self.config_data: dict[str, Any] - Configuration data dictionary
+    - self.config_repo: AbstractConfigRepository - Repository for saving
+    - self.instances_dict: dict[str, FileInstance] - File instances by ID
 
     Usage:
         class MyScreen(Screen, FileInstanceMixin):
-            def __init__(self, config, instance_manager, **kwargs):
+            def __init__(self, config_data, config_repo, instances_dict, **kwargs):
                 super().__init__(**kwargs)
-                self.config = config
-                self.instance_manager = instance_manager
+                self.config_data = config_data
+                self.config_repo = config_repo
+                self.instances_dict = instances_dict
 
             def some_handler(self):
-                # Modify instance manager
-                self.instance_manager.add_instance(instance)
+                # Modify instances_dict
+                self.instances_dict[instance_id] = instance
                 # Sync to config and save
                 self.sync_instances_to_config()
     """
 
     if TYPE_CHECKING:
-        config: "Config"
-        instance_manager: "FileInstanceManager"
+        from claudefig.models import FileInstance
+
+        config_data: dict[str, Any]
+        config_repo: "AbstractConfigRepository"
+        instances_dict: dict[str, "FileInstance"]
 
     def sync_instances_to_config(self) -> None:
-        """Sync instance manager state to config and save to disk.
+        """Sync instances dict to config data and save to disk.
 
         This method implements the critical 3-step state synchronization pattern
-        documented in ARCHITECTURE.md:
+        for the new architecture:
 
-        1. Modify instance_manager (already done by caller)
-        2. Sync manager → config (done here)
-        3. Sync config → disk (done here)
+        1. Modify instances_dict (already done by caller)
+        2. Sync instances_dict → config_data (done here)
+        3. Sync config_data → disk via repository (done here)
 
-        Call this method after ANY modification to instance_manager:
-        - add_instance()
-        - update_instance()
-        - remove_instance()
-        - enable_instance()
-        - disable_instance()
+        Call this method after ANY modification to instances_dict:
+        - Adding an instance: instances_dict[id] = instance
+        - Updating an instance: instances_dict[id] = updated_instance
+        - Removing an instance: del instances_dict[id]
+        - Enabling/disabling: instances_dict[id].enabled = True/False
 
         Example:
             # Add an instance
-            self.instance_manager.add_instance(new_instance)
+            self.instances_dict[new_instance.id] = new_instance
             self.sync_instances_to_config()  # ← Call this!
 
             # Update an instance
+            instance = self.instances_dict[instance_id]
             instance.enabled = False
-            self.instance_manager.update_instance(instance)
+            self.instances_dict[instance_id] = instance
+            self.sync_instances_to_config()  # ← Call this!
+
+            # Remove an instance
+            del self.instances_dict[instance_id]
             self.sync_instances_to_config()  # ← Call this!
 
         Raises:
-            AttributeError: If screen doesn't have config or instance_manager
+            AttributeError: If screen doesn't have required attributes
         """
-        # Step 2: Sync manager → config
-        self.config.set_file_instances(self.instance_manager.save_instances())
+        from claudefig.services import file_instance_service
 
-        # Step 3: Sync config → disk
-        self.config.save()
+        # Step 2: Sync instances_dict → config_data
+        instances_list = file_instance_service.save_instances_to_config(
+            self.instances_dict
+        )
+        self.config_data["files"] = instances_list
+
+        # Step 3: Sync config_data → disk via repository
+        self.config_repo.save(self.config_data)
 
 
 class ScrollNavigationMixin:
