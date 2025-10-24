@@ -5,50 +5,31 @@ from unittest.mock import patch
 import pytest
 
 from claudefig.config import Config
+from claudefig.services import config_service
 
 
 class TestConfigCorruption:
     """Tests for handling corrupted or malformed config files.
 
-    NOTE: These tests document CURRENT behavior. Config currently raises
-    TOMLDecodeError for malformed files instead of handling gracefully.
-    This is a known issue that should be fixed in the future.
+    With the new architecture, Config gracefully falls back to defaults
+    when encountering malformed TOML files, which is the ideal behavior.
     """
 
     def test_load_malformed_toml_syntax(self, tmp_path):
-        """Test loading config with TOML syntax errors.
-
-        CURRENT: Raises TOMLDecodeError
-        IDEAL: Should fall back to defaults with warning
-        """
-        import sys
-
-        if sys.version_info >= (3, 11):
-            import tomllib
-        else:
-            import tomli as tomllib
-
+        """Test loading config with TOML syntax errors falls back to defaults."""
         config_file = tmp_path / ".claudefig.toml"
         # Write invalid TOML with syntax error
         config_file.write_text("[incomplete", encoding="utf-8")
 
-        # Currently raises TOMLDecodeError - this documents the issue
-        with pytest.raises(tomllib.TOMLDecodeError):
-            Config(config_path=config_file)
+        # Should fall back to defaults instead of crashing
+        config = Config(config_path=config_file)
+
+        # Should use default config values
+        assert config.data == config_service.DEFAULT_CONFIG
+        assert config.get("claudefig.version") is not None
 
     def test_load_malformed_toml_unclosed_table(self, tmp_path):
-        """Test loading config with unclosed table.
-
-        CURRENT: Raises TOMLDecodeError
-        IDEAL: Should fall back to defaults with warning
-        """
-        import sys
-
-        if sys.version_info >= (3, 11):
-            import tomllib
-        else:
-            import tomli as tomllib
-
+        """Test loading config with unclosed table falls back to defaults."""
         config_file = tmp_path / ".claudefig.toml"
         # Unclosed table
         config_file.write_text(
@@ -58,22 +39,14 @@ class TestConfigCorruption:
             encoding="utf-8",
         )
 
-        with pytest.raises(tomllib.TOMLDecodeError):
-            Config(config_path=config_file)
+        # Should fall back to defaults instead of crashing
+        config = Config(config_path=config_file)
+
+        # Should use default config values
+        assert config.data == config_service.DEFAULT_CONFIG
 
     def test_load_malformed_toml_invalid_value(self, tmp_path):
-        """Test loading config with invalid value syntax.
-
-        CURRENT: Raises TOMLDecodeError
-        IDEAL: Should fall back to defaults with warning
-        """
-        import sys
-
-        if sys.version_info >= (3, 11):
-            import tomllib
-        else:
-            import tomli as tomllib
-
+        """Test loading config with invalid value syntax falls back to defaults."""
         config_file = tmp_path / ".claudefig.toml"
         # Invalid value (unquoted string)
         config_file.write_text(
@@ -84,8 +57,11 @@ class TestConfigCorruption:
             encoding="utf-8",
         )
 
-        with pytest.raises(tomllib.TOMLDecodeError):
-            Config(config_path=config_file)
+        # Should fall back to defaults instead of crashing
+        config = Config(config_path=config_file)
+
+        # Should use default config values
+        assert config.data == config_service.DEFAULT_CONFIG
 
     def test_load_empty_file(self, tmp_path):
         """Test loading completely empty config file.
@@ -147,6 +123,8 @@ class TestConfigSaveErrors:
 
     def test_save_permission_denied(self, tmp_path):
         """Test saving config when write permission is denied."""
+        from claudefig.exceptions import FileWriteError
+
         config_file = tmp_path / ".claudefig.toml"
         config = Config()
 
@@ -154,39 +132,45 @@ class TestConfigSaveErrors:
         config_file.write_text('[claudefig]\nversion = "2.0"', encoding="utf-8")
         config_file.chmod(0o444)  # Read-only
 
-        # Attempt to save should raise PermissionError
-        with pytest.raises(PermissionError):
+        # New architecture raises FileWriteError which wraps permission errors
+        with pytest.raises((FileWriteError, PermissionError)):
             config.save(config_file)
 
         # Cleanup
         config_file.chmod(0o644)
 
     def test_save_to_nonexistent_directory(self, tmp_path):
-        """Test saving config to directory that doesn't exist."""
+        """Test saving config to directory that doesn't exist.
+
+        New architecture automatically creates parent directories.
+        """
         config = Config()
         config_file = tmp_path / "nonexistent" / "subdir" / ".claudefig.toml"
 
-        # Should raise FileNotFoundError or similar
-        with pytest.raises((FileNotFoundError, OSError)):
-            config.save(config_file)
+        # Should automatically create parent directories and save successfully
+        config.save(config_file)
+
+        # Verify file was created
+        assert config_file.exists()
+        assert config_file.parent.exists()
 
     def test_save_disk_full(self, tmp_path):
         """Test saving config when disk is full."""
-        import sys
-
-        if sys.version_info >= (3, 11):
-            pass
-        else:
-            pass
+        from claudefig.exceptions import FileWriteError
 
         config = Config()
         config_file = tmp_path / ".claudefig.toml"
 
-        # We can't easily simulate disk full, but we can test the code path
-        # by mocking at a lower level
+        # Mock at the repository level since new architecture uses atomic writes
         with (
-            patch("builtins.open", side_effect=OSError("No space left on device")),
-            pytest.raises(OSError),
+            patch(
+                "claudefig.repositories.config_repository.TomlConfigRepository.save",
+                side_effect=FileWriteError(
+                    path=str(config_file),
+                    reason="No space left on device",
+                ),
+            ),
+            pytest.raises(FileWriteError),
         ):
             config.save(config_file)
 
@@ -428,22 +412,32 @@ class TestConfigFileInstances:
     def test_add_file_instance_to_corrupted_config(self, tmp_path):
         """Test adding file instance to corrupted config.
 
-        CURRENT: Config fails to load if TOML is malformed
-        This test shows that we can't add to a corrupted config
+        New architecture gracefully falls back to defaults when TOML is malformed,
+        so we can add instances to the recovered config.
         """
-        import sys
-
-        if sys.version_info >= (3, 11):
-            import tomllib
-        else:
-            import tomli as tomllib
-
         config_file = tmp_path / ".claudefig.toml"
         config_file.write_text("[incomplete", encoding="utf-8")
 
-        # Config load fails with corrupted TOML
-        with pytest.raises(tomllib.TOMLDecodeError):
-            Config(config_path=config_file)
+        # Config should load with default values (graceful fallback)
+        config = Config(config_path=config_file)
+
+        # Should have default structure
+        assert config.data is not None
+
+        # Can add file instances to the recovered config
+        test_instance = {
+            "id": "test-1",
+            "type": "claude_md",
+            "preset": "claude_md:default",
+            "path": "CLAUDE.md",
+            "enabled": True,
+        }
+        config.add_file_instance(test_instance)
+
+        # Verify it was added
+        instances = config.get_file_instances()
+        assert len(instances) == 1
+        assert instances[0]["id"] == "test-1"
 
     def test_add_file_instance_to_valid_config(self, tmp_path):
         """Test adding file instance to a valid (but minimal) config."""
@@ -679,7 +673,7 @@ class TestConfigValidation:
     def test_validate_schema_data_not_dict(self):
         """Test validation catches config.data as non-dict."""
         config = Config()
-        config.data = "not a dictionary"
+        config.data = "not a dictionary"  # type: ignore[assignment]
 
         result = config.validate_schema()
 
