@@ -10,20 +10,32 @@ from claudefig.initializer import Initializer
 
 
 @pytest.fixture
-def mock_config():
-    """Create a mock Config object with default settings."""
-    config = Mock(spec=Config)
-    config.get.side_effect = lambda key, default=None: {
-        "claudefig.template_source": "default",
-        "init.create_claude_md": True,
-        "init.create_contributing": True,
-        "init.create_settings": False,
-        "custom.template_dir": None,
-    }.get(key, default)
-    # Mock the new file instance methods
-    config.get_file_instances.return_value = []
-    config.set_file_instances.return_value = None
-    return config
+def config_with_defaults(tmp_path):
+    """Create a real config file with default settings.
+
+    New architecture: Initializer takes config_path, not Config object.
+    """
+    config_file = tmp_path / ".claudefig.toml"
+    config_file.write_text(
+        """[claudefig]
+version = "2.0"
+schema_version = "2.0"
+template_source = "default"
+
+[init]
+create_claude_md = true
+create_contributing = true
+create_settings = false
+
+[custom]
+template_dir = ""
+presets_dir = ""
+
+[[files]]
+""",
+        encoding="utf-8",
+    )
+    return config_file
 
 
 @pytest.fixture
@@ -45,39 +57,46 @@ def git_repo(tmp_path):
 class TestInitializerInit:
     """Tests for Initializer.__init__ method."""
 
-    def test_init_with_config(self, mock_config):
-        """Test initialization with provided config."""
-        initializer = Initializer(mock_config)
-        assert initializer.config is mock_config
+    def test_init_with_config(self, config_with_defaults):
+        """Test initialization with provided config path."""
+        initializer = Initializer(config_path=config_with_defaults)
+        assert initializer.config_path == config_with_defaults
+        assert initializer.config_data is not None
         assert initializer.template_manager is not None
 
     def test_init_without_config(self):
         """Test initialization without config (uses default)."""
         initializer = Initializer()
-        assert isinstance(initializer.config, Config)
+        assert initializer.config_data is not None
         assert initializer.template_manager is not None
 
     @patch("claudefig.initializer.FileTemplateManager")
-    def test_init_with_custom_template_dir(self, mock_tm_class):
+    def test_init_with_custom_template_dir(self, mock_tm_class, tmp_path):
         """Test initialization with custom template directory."""
-        config = Mock(spec=Config)
-        config.get.side_effect = lambda key, default=None: {
-            "custom.template_dir": "/custom/templates"
-        }.get(key, default)
-        initializer = Initializer(config)
+        config_file = tmp_path / ".claudefig.toml"
+        config_file.write_text(
+            """[claudefig]
+version = "2.0"
+
+[custom]
+template_dir = "/custom/templates"
+""",
+            encoding="utf-8",
+        )
+        initializer = Initializer(config_path=config_file)
 
         mock_tm_class.assert_called_once_with(Path("/custom/templates"))
-        assert initializer.config is config
+        assert initializer.config_path == config_file
 
 
 class TestInitializeMethod:
     """Tests for Initializer.initialize method."""
 
     @patch("claudefig.initializer.is_git_repository")
-    def test_initialize_nonexistent_path(self, mock_is_git, mock_config):
+    def test_initialize_nonexistent_path(self, mock_is_git):
         """Test initialization with non-existent path."""
         mock_is_git.return_value = False
-        initializer = Initializer(mock_config)
+        initializer = Initializer()  # Uses defaults
         non_existent = Path("/nonexistent/path/that/does/not/exist")
 
         with patch("claudefig.initializer.console.input", return_value="n"):
@@ -87,11 +106,11 @@ class TestInitializeMethod:
 
     @patch("claudefig.initializer.is_git_repository")
     def test_initialize_non_git_repo_user_declines(
-        self, mock_is_git, git_repo, mock_config
+        self, mock_is_git, git_repo
     ):
         """Test initialization in non-git repo when user declines to continue."""
         mock_is_git.return_value = False
-        initializer = Initializer(mock_config)
+        initializer = Initializer()  # Uses defaults
 
         with patch("claudefig.initializer.console.input", return_value="n"):
             result = initializer.initialize(git_repo)
@@ -101,15 +120,16 @@ class TestInitializeMethod:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_non_git_repo_user_accepts(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test initialization in non-git repo when user accepts to continue."""
         mock_is_git.return_value = False
-        initializer = Initializer(mock_config)
+        initializer = Initializer()  # Uses defaults
 
         with (
             patch("claudefig.initializer.console.input", return_value="y"),
-            patch.object(Config, "create_default"),
+            patch("claudefig.services.config_service.save_config"),
+            patch.object(initializer.template_manager, "read_template_file", return_value="# Template content"),
         ):
             result = initializer.initialize(git_repo)
 
@@ -120,13 +140,16 @@ class TestInitializeMethod:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_success_git_repo(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test successful initialization in git repository."""
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
-        with patch.object(Config, "create_default"):
+        with (
+            patch.object(Config, "create_default"),
+            patch.object(initializer.template_manager, "read_template_file", return_value="# Template content"),
+        ):
             result = initializer.initialize(git_repo)
 
         # Result may be True (success) or False (warnings with missing presets)
@@ -137,14 +160,15 @@ class TestInitializeMethod:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_creates_expected_files(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test that initialize creates the expected template files."""
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Don't patch create_default - let it actually create the config file
-        initializer.initialize(git_repo)
+        with patch.object(initializer.template_manager, "read_template_file", return_value="# Template content"):
+            initializer.initialize(git_repo)
 
         # Verify CLAUDE.md was created (from default file instances)
         claude_md = git_repo / "CLAUDE.md"
@@ -157,17 +181,20 @@ class TestInitializeMethod:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_with_force_mode(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test initialization with force mode enabled."""
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create existing CLAUDE.md file
         claude_md = git_repo / "CLAUDE.md"
         claude_md.write_text("Old content", encoding="utf-8")
 
-        with patch.object(Config, "create_default"):
+        with (
+            patch.object(Config, "create_default"),
+            patch.object(initializer.template_manager, "read_template_file", return_value="# New template content"),
+        ):
             initializer.initialize(git_repo, force=True)
 
         # Force mode should have overwritten the file
@@ -178,18 +205,19 @@ class TestInitializeMethod:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_skips_existing_config(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test that existing .claudefig.toml is not overwritten."""
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create existing config file
         config_path = git_repo / ".claudefig.toml"
         existing_content = "[claudefig]\ntemplate_source = 'existing'"
         config_path.write_text(existing_content, encoding="utf-8")
 
-        initializer.initialize(git_repo)
+        with patch.object(initializer.template_manager, "read_template_file", return_value="# Template content"):
+            initializer.initialize(git_repo)
 
         # Verify config content wasn't changed
         assert config_path.read_text(encoding="utf-8") == existing_content
@@ -199,10 +227,10 @@ class TestCopyTemplateFile:
     """Tests for Initializer._copy_template_file method."""
 
     def test_copy_template_file_success(
-        self, tmp_path, mock_config, mock_template_manager
+        self, tmp_path, mock_template_manager
     ):
         """Test successful template file copy."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         result = initializer._copy_template_file(
@@ -215,10 +243,10 @@ class TestCopyTemplateFile:
         assert dest_file.read_text(encoding="utf-8") == "# Template content"
 
     def test_copy_template_file_exists_no_force(
-        self, tmp_path, mock_config, mock_template_manager
+        self, tmp_path, mock_template_manager
     ):
         """Test copying when file exists without force flag."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         existing_file = tmp_path / "TEST_TEMPLATE.md"
@@ -234,10 +262,10 @@ class TestCopyTemplateFile:
         mock_template_manager.read_template_file.assert_not_called()
 
     def test_copy_template_file_exists_with_force(
-        self, tmp_path, mock_config, mock_template_manager
+        self, tmp_path, mock_template_manager
     ):
         """Test copying when file exists with force flag."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         existing_file = tmp_path / "TEST_TEMPLATE.md"
@@ -255,10 +283,10 @@ class TestCopyTemplateFile:
         )
 
     def test_copy_template_file_not_found(
-        self, tmp_path, mock_config, mock_template_manager
+        self, tmp_path, mock_template_manager
     ):
         """Test copying when template file doesn't exist."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         mock_template_manager.read_template_file.side_effect = FileNotFoundError()
@@ -275,10 +303,10 @@ class TestCopyTemplateFile:
         )
 
     def test_copy_template_file_write_error(
-        self, tmp_path, mock_config, mock_template_manager
+        self, tmp_path, mock_template_manager
     ):
         """Test handling of write errors during file copy."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         with patch.object(
@@ -301,10 +329,10 @@ class TestSetupMcpServers:
 
     @patch("subprocess.run")
     def test_setup_mcp_servers_claude_not_installed(
-        self, mock_subprocess, tmp_path, mock_config
+        self, mock_subprocess, tmp_path
     ):
         """Test MCP setup when claude CLI is not installed."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create MCP directory with a valid JSON file
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -323,10 +351,10 @@ class TestSetupMcpServers:
 
     @patch("subprocess.run")
     def test_setup_mcp_servers_invalid_json(
-        self, mock_subprocess, tmp_path, mock_config
+        self, mock_subprocess, tmp_path
     ):
         """Test MCP setup with invalid JSON in config file."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create MCP directory with invalid JSON
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -342,11 +370,11 @@ class TestSetupMcpServers:
         mock_subprocess.assert_not_called()
 
     @patch("subprocess.run")
-    def test_setup_mcp_servers_timeout(self, mock_subprocess, tmp_path, mock_config):
+    def test_setup_mcp_servers_timeout(self, mock_subprocess, tmp_path):  # Removed mock_config
         """Test MCP setup when claude command times out."""
         import subprocess
 
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create MCP directory with valid JSON
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -367,10 +395,10 @@ class TestSetupMcpServers:
 
     @patch("subprocess.run")
     def test_setup_mcp_servers_command_fails(
-        self, mock_subprocess, tmp_path, mock_config
+        self, mock_subprocess, tmp_path
     ):
         """Test MCP setup when claude command returns non-zero exit code."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create MCP directory with valid JSON
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -391,9 +419,9 @@ class TestSetupMcpServers:
         mock_subprocess.assert_called_once()
 
     @patch("subprocess.run")
-    def test_setup_mcp_servers_success(self, mock_subprocess, tmp_path, mock_config):
+    def test_setup_mcp_servers_success(self, mock_subprocess, tmp_path):  # Removed mock_config
         """Test successful MCP server setup."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create MCP directory with valid JSON files
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -426,18 +454,18 @@ class TestSetupMcpServers:
         assert "server1" in server_names
         assert "server2" in server_names
 
-    def test_setup_mcp_servers_no_directory(self, tmp_path, mock_config):
+    def test_setup_mcp_servers_no_directory(self, tmp_path):  # Removed mock_config
         """Test MCP setup when .claude/mcp directory doesn't exist."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         result = initializer.setup_mcp_servers(tmp_path)
 
         # Should return False with informative message
         assert result is False
 
-    def test_setup_mcp_servers_no_json_files(self, tmp_path, mock_config):
+    def test_setup_mcp_servers_no_json_files(self, tmp_path):  # Removed mock_config
         """Test MCP setup when .claude/mcp directory has no JSON files."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create empty MCP directory
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -450,10 +478,10 @@ class TestSetupMcpServers:
 
     @patch("subprocess.run")
     def test_setup_mcp_servers_partial_success(
-        self, mock_subprocess, tmp_path, mock_config
+        self, mock_subprocess, tmp_path
     ):
         """Test MCP setup when some servers succeed and some fail."""
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Create MCP directory with multiple JSON files
         mcp_dir = tmp_path / ".claude" / "mcp"
@@ -489,7 +517,7 @@ class TestInitializeTemplateErrors:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_missing_critical_template(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config, mock_template_manager
+        self, mock_ensure_dir, mock_is_git, git_repo, mock_template_manager
     ):
         """Test initialization when critical templates are missing.
 
@@ -498,7 +526,7 @@ class TestInitializeTemplateErrors:
         from claudefig.exceptions import InitializationRollbackError
 
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         # Mock template manager to raise FileNotFoundError for all templates
@@ -518,7 +546,7 @@ class TestInitializeTemplateErrors:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_permission_denied_during_write(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test initialization when write permission is denied.
 
@@ -527,7 +555,7 @@ class TestInitializeTemplateErrors:
         from claudefig.exceptions import InitializationRollbackError
 
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Patch Path.write_text to raise PermissionError for all writes
         with (
@@ -547,14 +575,14 @@ class TestInitializeTemplateErrors:
     @patch("claudefig.initializer.is_git_repository")
     @patch("claudefig.initializer.ensure_directory")
     def test_initialize_continues_after_partial_failure(
-        self, mock_ensure_dir, mock_is_git, git_repo, mock_config
+        self, mock_ensure_dir, mock_is_git, git_repo
     ):
         """Test that initialization continues when some files fail.
 
         BEHAVIOR: Initialization should continue processing remaining files even if some fail.
         """
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
 
         # Mock template manager to fail on first call, succeed on second
         mock_tm = MagicMock()
@@ -587,7 +615,6 @@ class TestInitializeTemplateErrors:
         mock_ensure_dir,
         mock_is_git,
         git_repo,
-        mock_config,
         mock_template_manager,
         capsys,
     ):
@@ -598,7 +625,7 @@ class TestInitializeTemplateErrors:
         from claudefig.exceptions import InitializationRollbackError
 
         mock_is_git.return_value = True
-        initializer = Initializer(mock_config)
+        initializer = Initializer()
         initializer.template_manager = mock_template_manager
 
         # Mock template manager to raise FileNotFoundError
