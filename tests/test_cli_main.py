@@ -203,7 +203,7 @@ enabled = false
             assert "File Instances" in result.output
 
     def test_show_with_exception(self, cli_runner, tmp_path):
-        """Test show command error handling."""
+        """Test show command error handling with invalid TOML."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             # Create invalid TOML config
             config_path = Path.cwd() / ".claudefig.toml"
@@ -211,9 +211,14 @@ enabled = false
 
             result = cli_runner.invoke(main, ["show"])
 
-            # Should handle error gracefully
+            # With new architecture, invalid TOML falls back to defaults (resilient behavior)
             assert result.exit_code == 0
-            assert "Error" in result.output
+            assert "Current Configuration" in result.output
+            # Should still show config file was found
+            assert ".claudefig.toml" in result.output
+            # Should show default values (fallback behavior)
+            assert "Schema Version" in result.output
+            assert "2.0" in result.output
 
 
 class TestAddTemplate:
