@@ -7,12 +7,14 @@ from rich.console import Console
 from rich.table import Table
 
 from claudefig import __version__
-from claudefig.config import Config
 from claudefig.error_messages import (
     ErrorMessages,
     format_cli_error,
     format_cli_warning,
 )
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.repositories.preset_repository import TomlPresetRepository
+from claudefig.services import config_service, file_instance_service
 from claudefig.exceptions import (
     BuiltInModificationError,
     ConfigFileExistsError,
@@ -125,8 +127,7 @@ def init(path, force):
         )
 
     try:
-        config = Config()
-        initializer = Initializer(config)
+        initializer = Initializer()
         success = initializer.initialize(repo_path, force=force)
 
         if success:
@@ -153,28 +154,29 @@ def init(path, force):
 @main.command()
 def show():
     """Show current Claude Code configuration."""
-    from claudefig.file_instance_manager import FileInstanceManager
-    from claudefig.preset_manager import PresetManager
-
     console.print("[bold blue]Current Configuration:[/bold blue]\n")
 
     try:
-        config = Config()
+        config_path = config_service.find_config_path()
 
-        if config.config_path:
-            console.print(f"[green]Config file:[/green] {config.config_path}\n")
+        if config_path:
+            console.print(f"[green]Config file:[/green] {config_path}\n")
+            repo = TomlConfigRepository(config_path)
         else:
             console.print("[yellow]No config file found (using defaults)[/yellow]\n")
+            repo = TomlConfigRepository(Path.cwd() / ".claudefig.toml")
+
+        config_data = config_service.load_config(repo)
 
         # Create a table to display config
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Setting", style="cyan", width=30)
         table.add_column("Value", style="green")
 
-        table.add_row("Template Source", config.get("claudefig.template_source"))
-        table.add_row("Schema Version", str(config.get("claudefig.schema_version")))
+        table.add_row("Template Source", config_service.get_value(config_data, "claudefig.template_source"))
+        table.add_row("Schema Version", str(config_service.get_value(config_data, "claudefig.schema_version")))
 
-        custom_dir = config.get("custom.template_dir")
+        custom_dir = config_service.get_value(config_data, "custom.template_dir")
         if custom_dir:
             table.add_row("Custom Template Dir", custom_dir)
 
@@ -183,13 +185,10 @@ def show():
         # Show file instances summary
         console.print("\n[bold blue]File Instances:[/bold blue]\n")
 
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, Path.cwd())
-
-        instances_data = config.get_file_instances()
+        instances_data = config_service.get_file_instances(config_data)
         if instances_data:
-            instance_manager.load_instances(instances_data)
-            all_instances = instance_manager.list_instances()
+            instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+            all_instances = file_instance_service.list_instances(instances_dict)
 
             # Count by type
             type_counts = {}
@@ -248,8 +247,15 @@ def list_templates():
     console.print("[bold blue]Available Templates:[/bold blue]\n")
 
     try:
-        config = Config()
-        custom_dir = config.get("custom.template_dir")
+        # Find config and load it
+        config_path = config_service.find_config_path()
+        if config_path:
+            config_repo = TomlConfigRepository(config_path)
+            config_data = config_service.load_config(config_repo)
+            custom_dir = config_service.get_value(config_data, "custom.template_dir")
+        else:
+            custom_dir = None
+
         template_manager = FileTemplateManager(Path(custom_dir) if custom_dir else None)
 
         templates = template_manager.list_templates()
@@ -292,8 +298,9 @@ def config_get(key, path):
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
-        value = cfg.get(key)
+        repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(repo)
+        value = config_service.get_value(config_data, key)
 
         if value is None:
             console.print(f"[yellow]Key not found:[/yellow] {key}")
@@ -329,7 +336,8 @@ def config_set(key, value, path):
 
     try:
         # Load or create config
-        cfg = Config(config_path=config_path if config_path.exists() else None)
+        repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(repo)
 
         # Parse value
         parsed_value = value
@@ -339,10 +347,10 @@ def config_set(key, value, path):
             parsed_value = int(value)
 
         # Set value
-        cfg.set(key, parsed_value)
+        config_service.set_value(config_data, key, parsed_value)
 
         # Save to config file
-        cfg.save(config_path)
+        config_service.save_config(config_data, repo)
 
         console.print(f"[green]+[/green] Set [cyan]{key}[/cyan] = {parsed_value}")
         console.print(f"[dim]Config saved to: {config_path}[/dim]")
@@ -381,19 +389,20 @@ def config_set_init(overwrite, backup, path):
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
+        repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(repo)
 
         changes = []
 
         # Update overwrite setting
         if overwrite is not None:
-            cfg.set("init.overwrite_existing", overwrite)
+            config_service.set_value(config_data, "init.overwrite_existing", overwrite)
             status = "enabled" if overwrite else "disabled"
             changes.append(f"overwrite_existing: {status}")
 
         # Update backup setting
         if backup is not None:
-            cfg.set("init.create_backup", backup)
+            config_service.set_value(config_data, "init.create_backup", backup)
             status = "enabled" if backup else "disabled"
             changes.append(f"create_backup: {status}")
 
@@ -401,16 +410,16 @@ def config_set_init(overwrite, backup, path):
             # Show current settings
             console.print("[bold blue]Current initialization settings:[/bold blue]\n")
             console.print(
-                f"Overwrite existing: {cfg.get('init.overwrite_existing', False)}"
+                f"Overwrite existing: {config_service.get_value(config_data, 'init.overwrite_existing', False)}"
             )
-            console.print(f"Create backups:     {cfg.get('init.create_backup', True)}")
+            console.print(f"Create backups:     {config_service.get_value(config_data, 'init.create_backup', True)}")
             console.print(
                 "\n[dim]Use --overwrite/--no-overwrite or --backup/--no-backup to change settings[/dim]"
             )
             return
 
         # Save changes
-        cfg.save(config_path)
+        config_service.save_config(config_data, repo)
 
         console.print("\n[green]+[/green] Updated initialization settings:")
         for change in changes:
@@ -434,14 +443,12 @@ def config_set_init(overwrite, backup, path):
 )
 def config_list(path):
     """List all configuration settings and file instances."""
-    from claudefig.file_instance_manager import FileInstanceManager
-    from claudefig.preset_manager import PresetManager
-
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
+        repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(repo)
 
         if config_path and config_path.exists():
             console.print(f"[bold blue]Configuration from:[/bold blue] {config_path}\n")
@@ -457,17 +464,17 @@ def config_list(path):
 
         # Claudefig section
         table.add_row("[bold]Claudefig[/bold]", "")
-        table.add_row("  version", str(cfg.get("claudefig.version")))
-        table.add_row("  schema_version", str(cfg.get("claudefig.schema_version")))
-        table.add_row("  template_source", cfg.get("claudefig.template_source"))
+        table.add_row("  version", str(config_service.get_value(config_data, "claudefig.version")))
+        table.add_row("  schema_version", str(config_service.get_value(config_data, "claudefig.schema_version")))
+        table.add_row("  template_source", config_service.get_value(config_data, "claudefig.template_source"))
 
         # Init section
         table.add_row("[bold]Init[/bold]", "")
-        table.add_row("  overwrite_existing", str(cfg.get("init.overwrite_existing")))
+        table.add_row("  overwrite_existing", str(config_service.get_value(config_data, "init.overwrite_existing")))
 
         # Custom section
-        custom_dir = cfg.get("custom.template_dir")
-        presets_dir = cfg.get("custom.presets_dir")
+        custom_dir = config_service.get_value(config_data, "custom.template_dir")
+        presets_dir = config_service.get_value(config_data, "custom.presets_dir")
         if custom_dir or presets_dir:
             table.add_row("[bold]Custom[/bold]", "")
             if custom_dir:
@@ -480,13 +487,10 @@ def config_list(path):
         # Display file instances
         console.print("\n[bold blue]File Instances:[/bold blue]\n")
 
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
-
-        instances_data = cfg.get_file_instances()
+        instances_data = config_service.get_file_instances(config_data)
         if instances_data:
-            instance_manager.load_instances(instances_data)
-            all_instances = instance_manager.list_instances()
+            instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+            all_instances = file_instance_service.list_instances(instances_dict)
 
             if all_instances:
                 # Group by file type
@@ -544,21 +548,24 @@ def files():
 )
 def files_list(path, file_type, enabled_only):
     """List all configured file instances."""
-    from claudefig.file_instance_manager import FileInstanceManager
     from claudefig.models import FileType
-    from claudefig.preset_manager import PresetManager
 
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
+        # Load config
+        repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(repo)
 
         # Load instances from config
-        instances_data = cfg.get_file_instances()
-        instance_manager.load_instances(instances_data)
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+
+        # Show load errors if any
+        if load_errors:
+            for error in load_errors:
+                console.print(f"[yellow]Warning:[/yellow] {error}")
 
         # Filter by file type if provided
         filter_type = None
@@ -574,7 +581,8 @@ def files_list(path, file_type, enabled_only):
                 )
                 raise click.Abort() from None
 
-        instances = instance_manager.list_instances(filter_type, enabled_only)
+        # List instances with filters
+        instances = file_instance_service.list_instances(instances_dict, filter_type, enabled_only)
 
         if not instances:
             console.print("[yellow]No file instances configured[/yellow]")
@@ -635,9 +643,7 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
 
     FILE_TYPE: Type of file (e.g., claude_md, settings_json)
     """
-    from claudefig.file_instance_manager import FileInstanceManager
     from claudefig.models import FileInstance, FileType
-    from claudefig.preset_manager import PresetManager
 
     repo_path = Path(repo_path_arg).resolve()
     config_path = repo_path / ".claudefig.toml"
@@ -651,22 +657,26 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
             console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
             raise click.Abort() from None
 
-        # Load config and managers
-        cfg = Config(config_path=config_path if config_path.exists() else None)
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
+        # Load config
+        config_repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(config_repo)
 
         # Load existing instances
-        instances_data = cfg.get_file_instances()
-        instance_manager.load_instances(instances_data)
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+
+        # Show load errors if any
+        if load_errors:
+            for error in load_errors:
+                console.print(f"[yellow]Warning:[/yellow] {error}")
 
         # Determine path
         if not path_target:
             path_target = file_type_enum.default_path
 
         # Generate instance ID
-        instance_id = instance_manager.generate_instance_id(
-            file_type_enum, preset, path_target
+        instance_id = file_instance_service.generate_instance_id(
+            file_type_enum, preset, path_target, instances_dict
         )
 
         # Build preset ID
@@ -683,7 +693,10 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
         )
 
         # Validate and add
-        result = instance_manager.add_instance(instance)
+        preset_repo = TomlPresetRepository()
+        result = file_instance_service.add_instance(
+            instances_dict, instance, preset_repo, repo_path
+        )
 
         if not result.valid:
             console.print("[red]Validation failed:[/red]")
@@ -696,9 +709,10 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
             for warning in result.warnings:
                 console.print(f"  • {warning}")
 
-        # Save to config
-        cfg.add_file_instance(instance.to_dict())
-        cfg.save(config_path)
+        # Save instances back to config
+        updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+        config_service.set_file_instances(config_data, updated_instances_data)
+        config_service.save_config(config_data, config_repo)
 
         console.print(
             f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]"
@@ -741,10 +755,21 @@ def files_remove(instance_id, path):
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
+        # Load config
+        config_repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(config_repo)
 
-        if cfg.remove_file_instance(instance_id):
-            cfg.save(config_path)
+        # Load instances
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+
+        # Remove instance
+        if file_instance_service.remove_instance(instances_dict, instance_id):
+            # Save instances back to config
+            updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+            config_service.set_file_instances(config_data, updated_instances_data)
+            config_service.save_config(config_data, config_repo)
+
             console.print(
                 f"[green]+[/green] Removed file instance: [cyan]{instance_id}[/cyan]"
             )
@@ -781,25 +806,25 @@ def files_enable(instance_id, path):
 
     INSTANCE_ID: ID of the instance to enable
     """
-    from claudefig.file_instance_manager import FileInstanceManager
-    from claudefig.preset_manager import PresetManager
-
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
+        # Load config
+        config_repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(config_repo)
 
         # Load instances
-        instances_data = cfg.get_file_instances()
-        instance_manager.load_instances(instances_data)
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
-        if instance_manager.enable_instance(instance_id):
-            # Save back to config
-            cfg.set_file_instances(instance_manager.save_instances())
-            cfg.save(config_path)
+        # Enable instance
+        if file_instance_service.enable_instance(instances_dict, instance_id):
+            # Save instances back to config
+            updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+            config_service.set_file_instances(config_data, updated_instances_data)
+            config_service.save_config(config_data, config_repo)
+
             console.print(
                 f"[green]+[/green] Enabled file instance: [cyan]{instance_id}[/cyan]"
             )
@@ -836,25 +861,25 @@ def files_disable(instance_id, path):
 
     INSTANCE_ID: ID of the instance to disable
     """
-    from claudefig.file_instance_manager import FileInstanceManager
-    from claudefig.preset_manager import PresetManager
-
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
+        # Load config
+        config_repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(config_repo)
 
         # Load instances
-        instances_data = cfg.get_file_instances()
-        instance_manager.load_instances(instances_data)
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
-        if instance_manager.disable_instance(instance_id):
-            # Save back to config
-            cfg.set_file_instances(instance_manager.save_instances())
-            cfg.save(config_path)
+        # Disable instance
+        if file_instance_service.disable_instance(instances_dict, instance_id):
+            # Save instances back to config
+            updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+            config_service.set_file_instances(config_data, updated_instances_data)
+            config_service.save_config(config_data, config_repo)
+
             console.print(
                 f"[green]+[/green] Disabled file instance: [cyan]{instance_id}[/cyan]"
             )
@@ -906,23 +931,20 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
 
     INSTANCE_ID: ID of the instance to edit
     """
-    from claudefig.file_instance_manager import FileInstanceManager
-    from claudefig.preset_manager import PresetManager
-
     repo_path = Path(repo_path_arg).resolve()
     config_path = repo_path / ".claudefig.toml"
 
     try:
-        cfg = Config(config_path=config_path if config_path.exists() else None)
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
+        # Load config
+        config_repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(config_repo)
 
         # Load instances
-        instances_data = cfg.get_file_instances()
-        instance_manager.load_instances(instances_data)
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
         # Get existing instance
-        instance = instance_manager.get_instance(instance_id)
+        instance = file_instance_service.get_instance(instances_dict, instance_id)
         if not instance:
             console.print(
                 format_cli_warning(
@@ -962,7 +984,10 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
             return
 
         # Validate changes
-        result = instance_manager.update_instance(instance)
+        preset_repo = TomlPresetRepository()
+        result = file_instance_service.update_instance(
+            instances_dict, instance, preset_repo, repo_path
+        )
 
         if not result.valid:
             console.print("[red]Validation failed:[/red]")
@@ -975,9 +1000,10 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
             for warning in result.warnings:
                 console.print(f"  • {warning}")
 
-        # Save to config
-        cfg.set_file_instances(instance_manager.save_instances())
-        cfg.save(config_path)
+        # Save instances back to config
+        updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+        config_service.set_file_instances(config_data, updated_instances_data)
+        config_service.save_config(config_data, config_repo)
 
         console.print(
             f"\n[green]+[/green] Updated file instance: [cyan]{instance_id}[/cyan]"
@@ -1874,8 +1900,7 @@ def setup_mcp(path):
     console.print(f"[bold green]Setting up MCP servers in:[/bold green] {repo_path}")
 
     try:
-        config = Config()
-        initializer = Initializer(config)
+        initializer = Initializer()
         success = initializer.setup_mcp_servers(repo_path)
 
         if not success:
@@ -1928,9 +1953,8 @@ def sync(path, force):
         )
 
     try:
-        # Load existing config
-        config = Config(config_path=config_path)
-        initializer = Initializer(config)
+        # Initialize with existing config
+        initializer = Initializer(config_path=config_path)
 
         # Regenerate files
         success = initializer.initialize(repo_path, force=force)
@@ -1974,9 +1998,6 @@ def validate(path):
     Checks for errors and warnings in the current configuration.
     Shows health status similar to the TUI Overview screen.
     """
-    from claudefig.file_instance_manager import FileInstanceManager
-    from claudefig.preset_manager import PresetManager
-
     repo_path = Path(path).resolve()
     config_path = repo_path / ".claudefig.toml"
 
@@ -1995,17 +2016,21 @@ def validate(path):
     console.print(f"[bold blue]Validating configuration in:[/bold blue] {repo_path}\n")
 
     try:
-        # Load config and managers
-        cfg = Config(config_path=config_path)
-        preset_manager = PresetManager()
-        instance_manager = FileInstanceManager(preset_manager, repo_path)
+        # Load config
+        config_repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(config_repo)
 
         # Load instances
-        instances_data = cfg.get_file_instances()
-        instance_manager.load_instances(instances_data)
+        instances_data = config_service.get_file_instances(config_data)
+        instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+
+        # Show load errors
+        if load_errors:
+            for error in load_errors:
+                console.print(f"[red]Load error:[/red] {error}")
 
         # Get enabled instances
-        enabled_instances = instance_manager.list_instances(enabled_only=True)
+        enabled_instances = file_instance_service.list_instances(instances_dict, enabled_only=True)
 
         if not enabled_instances:
             logger.warning("No enabled file instances to validate")
@@ -2018,8 +2043,11 @@ def validate(path):
         total_errors = []
         total_warnings = []
 
+        preset_repo = TomlPresetRepository()
         for instance in enabled_instances:
-            result = instance_manager.validate_instance(instance, is_update=True)
+            result = file_instance_service.validate_instance(
+                instance, instances_dict, preset_repo, repo_path, is_update=True
+            )
 
             if result.has_errors:
                 total_errors.extend(
