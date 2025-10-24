@@ -5,6 +5,12 @@ from pathlib import Path
 import pytest
 import tomli_w
 
+from claudefig.exceptions import (
+    BuiltInModificationError,
+    PresetExistsError,
+    PresetNotFoundError,
+    TemplateNotFoundError,
+)
 from claudefig.models import FileType, Preset, PresetSource
 from claudefig.preset_manager import PresetManager
 
@@ -179,7 +185,7 @@ class TestAddDeletePreset:
             source=PresetSource.BUILT_IN,
         )
 
-        with pytest.raises(ValueError, match="Cannot add built-in presets"):
+        with pytest.raises(BuiltInModificationError):
             manager.add_preset(new_preset, source=PresetSource.BUILT_IN)
 
     def test_add_duplicate_preset_raises_error(self):
@@ -195,22 +201,22 @@ class TestAddDeletePreset:
             source=PresetSource.USER,
         )
 
-        with pytest.raises(ValueError, match="already exists"):
+        with pytest.raises(PresetExistsError):
             manager.add_preset(duplicate, source=PresetSource.USER)
 
     def test_delete_builtin_preset_raises_error(self):
         """Test that deleting built-in preset raises error."""
         manager = PresetManager()
 
-        with pytest.raises(ValueError, match="Cannot delete built-in presets"):
+        with pytest.raises(BuiltInModificationError):
             manager.delete_preset("claude_md:default")
 
-    def test_delete_nonexistent_preset_returns_false(self):
-        """Test that deleting non-existent preset returns False."""
+    def test_delete_nonexistent_preset_raises_error(self):
+        """Test that deleting non-existent preset raises error."""
         manager = PresetManager()
 
-        result = manager.delete_preset("nonexistent:preset")
-        assert result is False
+        with pytest.raises(PresetNotFoundError):
+            manager.delete_preset("nonexistent:preset")
 
     def test_add_user_preset_success(self, preset_manager, tmp_path):
         """Test successfully adding a user preset (Priority 4)."""
@@ -404,7 +410,7 @@ class TestRenderPreset:
 
         manager = PresetManager()
 
-        with pytest.raises(FileNotFoundError, match="Template file not found"):
+        with pytest.raises(TemplateNotFoundError):
             manager.render_preset(preset)
 
 
@@ -522,8 +528,8 @@ class TestPresetEdgeCases:
 
         manager = PresetManager()
 
-        # Should raise FileNotFoundError
-        with pytest.raises(FileNotFoundError):
+        # Should raise TemplateNotFoundError
+        with pytest.raises(TemplateNotFoundError):
             manager.render_preset(preset)
 
     def test_render_preset_with_empty_variables(self, tmp_path):
