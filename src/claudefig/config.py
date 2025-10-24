@@ -1,38 +1,35 @@
-"""Configuration management for claudefig."""
+"""Configuration management for claudefig.
 
-import sys
+This module provides the Config class, which is a compatibility wrapper
+around config_service. It delegates all operations to the service layer
+to ensure TUI and CLI use identical business logic.
+
+For new code, prefer using config_service directly with TomlConfigRepository.
+"""
+
 from pathlib import Path
-from typing import Any, Optional, cast
-
-if sys.version_info < (3, 11):
-    import tomli as tomllib
-else:
-    import tomllib
-
-import tomli_w
+from typing import Any, Optional
 
 from claudefig.models import ValidationResult
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
 
 
 class Config:
-    """Manages claudefig configuration."""
+    """Configuration manager - delegates to config_service.
+
+    This is a compatibility wrapper that provides the old Config API
+    while delegating to the new service layer. This ensures TUI and CLI
+    use identical business logic for config operations.
+
+    For new code, prefer using config_service directly:
+        repo = TomlConfigRepository(config_path)
+        config_data = config_service.load_config(repo)
+        value = config_service.get_value(config_data, "some.key")
+    """
 
     SCHEMA_VERSION = "2.0"
-
-    DEFAULT_CONFIG = {
-        "claudefig": {
-            "version": "2.0",
-            "schema_version": "2.0",
-        },
-        "init": {
-            "overwrite_existing": False,
-        },
-        "files": [],  # File instances
-        "custom": {
-            "template_dir": "",
-            "presets_dir": "",
-        },
-    }
+    DEFAULT_CONFIG = config_service.DEFAULT_CONFIG  # Delegate to service
 
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize configuration.
@@ -41,42 +38,31 @@ class Config:
             config_path: Path to config file. If None, searches for .claudefig.toml
                         in current directory and user home directory.
         """
-        self.config_path = config_path or self._find_config()
-        self.data = self._load_config()
-        self.schema_version = self.get("claudefig.schema_version", "2.0")
-        self._validation_result: Optional[ValidationResult] = None
+        # Find config path
+        if config_path is None:
+            config_path = config_service.find_config_path()
 
-    def _find_config(self) -> Optional[Path]:
-        """Search for .claudefig.toml in current directory and home directory.
+        self.config_path = config_path
+        self._repo: Optional[TomlConfigRepository]
 
-        Returns:
-            Path to config file if found, None otherwise.
-        """
-        search_paths = [
-            Path.cwd() / ".claudefig.toml",
-            Path.home() / ".claudefig.toml",
-        ]
-
-        for path in search_paths:
-            if path.exists():
-                return path
-
-        return None
-
-    def _load_config(self) -> dict[str, Any]:
-        """Load configuration from file or return defaults.
-
-        Returns:
-            Configuration dictionary.
-        """
+        # Load config data using service layer
         if self.config_path and self.config_path.exists():
-            with open(self.config_path, "rb") as f:
-                return cast(dict[str, Any], tomllib.load(f))
+            self._repo = TomlConfigRepository(self.config_path)
+            self.data = config_service.load_config(self._repo)
+        else:
+            self._repo = None
+            self.data = config_service.DEFAULT_CONFIG.copy()
 
-        return self.DEFAULT_CONFIG.copy()
+        self.schema_version = config_service.get_value(
+            self.data, "claudefig.schema_version", "2.0"
+        )
+        self._validation_result: Optional[ValidationResult] = None
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation key.
+
+        Delegates to config_service.get_value() to ensure identical behavior
+        between TUI (using this method) and CLI (using config_service directly).
 
         Args:
             key: Configuration key in dot notation (e.g., "init.create_claude_md")
@@ -85,39 +71,25 @@ class Config:
         Returns:
             Configuration value or default.
         """
-        keys = key.split(".")
-        value: Any = self.data
-
-        for k in keys:
-            if isinstance(value, dict):
-                value = value.get(k)
-            else:
-                return default
-
-            if value is None:
-                return default
-
-        return value
+        return config_service.get_value(self.data, key, default)
 
     def set(self, key: str, value: Any) -> None:
         """Set configuration value by dot-notation key.
+
+        Delegates to config_service.set_value() to ensure identical behavior
+        between TUI (using this method) and CLI (using config_service directly).
 
         Args:
             key: Configuration key in dot notation
             value: Value to set
         """
-        keys = key.split(".")
-        data = self.data
-
-        for k in keys[:-1]:
-            if k not in data:
-                data[k] = {}
-            data = data[k]
-
-        data[keys[-1]] = value
+        config_service.set_value(self.data, key, value)
 
     def save(self, path: Optional[Path] = None) -> None:
         """Save configuration to file.
+
+        Delegates to config_service.save_config() to ensure identical behavior
+        between TUI (using this method) and CLI (using config_service directly).
 
         Args:
             path: Path to save config. If None, uses self.config_path or creates
@@ -125,28 +97,37 @@ class Config:
         """
         save_path = path or self.config_path or Path.cwd() / ".claudefig.toml"
 
-        with open(save_path, "wb") as f:
-            tomli_w.dump(self.data, f)
+        # Create repository for save location
+        save_repo = TomlConfigRepository(save_path)
 
+        # Delegate to service layer
+        config_service.save_config(self.data, save_repo)
+
+        # Update our state
         self.config_path = save_path
+        self._repo = save_repo
 
     def get_file_instances(self) -> list[dict[str, Any]]:
         """Get file instances from config.
 
+        Delegates to config_service.get_file_instances() to ensure identical
+        behavior between TUI and CLI.
+
         Returns:
             List of file instance dictionaries
         """
-        return cast(list[dict[str, Any]], self.data.get("files", []))
+        return config_service.get_file_instances(self.data)
 
     def set_file_instances(self, instances: list[dict[str, Any]]) -> None:
         """Set file instances in config.
 
+        Delegates to config_service.set_file_instances() to ensure identical
+        behavior between TUI and CLI.
+
         Args:
             instances: List of file instance dictionaries
         """
-        if "files" not in self.data:
-            self.data["files"] = []
-        self.data["files"] = instances
+        config_service.set_file_instances(self.data, instances)
 
     def add_file_instance(self, instance: dict[str, Any]) -> None:
         """Add a file instance to config.
@@ -180,109 +161,51 @@ class Config:
     def create_default(cls, path: Path) -> "Config":
         """Create a new config file with default values.
 
+        Delegates to config_service to ensure identical behavior
+        between TUI and CLI.
+
         Args:
             path: Path where to create the config file
 
         Returns:
             Config instance with default values.
         """
-        config = cls(config_path=None)
-        config.data = cls.DEFAULT_CONFIG.copy()
-        config.schema_version = "2.0"
-        config.save(path)
-        return config
+        # Create default config using service layer
+        default_config = config_service.DEFAULT_CONFIG.copy()
+        repo = TomlConfigRepository(path)
+        config_service.save_config(default_config, repo)
+
+        # Return Config wrapper
+        return cls(config_path=path)
 
     def get_validation_result(self) -> ValidationResult:
         """Get cached validation result, or run validation if not cached.
+
+        Delegates to config_service.validate_config_schema() to ensure
+        identical validation logic between TUI and CLI.
 
         Returns:
             ValidationResult from schema validation
         """
         if self._validation_result is None:
-            self._validation_result = self.validate_schema()
+            self._validation_result = config_service.validate_config_schema(self.data)
+
         return self._validation_result
 
     def validate_schema(self) -> ValidationResult:
-        """Validate the configuration schema.
+        """Validate configuration schema.
+
+        Alias for get_validation_result() for backward compatibility.
 
         Returns:
-            ValidationResult with any errors or warnings
+            ValidationResult from schema validation
         """
-        result = ValidationResult(valid=True)
+        return self.get_validation_result()
 
-        # Validate that data is a dictionary
-        if not isinstance(self.data, dict):
-            result.add_error("Configuration must be a dictionary")
-            return result
+    def to_dict(self) -> dict[str, Any]:
+        """Convert configuration to dictionary.
 
-        # Validate required sections exist
-        required_sections = ["claudefig"]
-        for section in required_sections:
-            if section not in self.data:
-                result.add_error(f"Missing required section: '{section}'")
-
-        # Validate claudefig section
-        if "claudefig" in self.data:
-            claudefig = self.data["claudefig"]
-            if not isinstance(claudefig, dict):
-                result.add_error("Section 'claudefig' must be a dictionary")
-            else:
-                # Check for required keys
-                if "schema_version" not in claudefig:
-                    result.add_warning(
-                        "Missing 'claudefig.schema_version' - using default"
-                    )
-
-                # Validate schema version
-                schema_version = claudefig.get("schema_version")
-                if schema_version and schema_version != self.SCHEMA_VERSION:
-                    result.add_warning(
-                        f"Schema version mismatch: config has '{schema_version}', "
-                        f"expected '{self.SCHEMA_VERSION}'"
-                    )
-
-        # Validate init section (optional, but must be dict if present)
-        if "init" in self.data:
-            init = self.data["init"]
-            if not isinstance(init, dict):
-                result.add_error("Section 'init' must be a dictionary")
-            else:
-                # Validate known init keys have correct types
-                if "overwrite_existing" in init and not isinstance(
-                    init["overwrite_existing"], bool
-                ):
-                    result.add_error("'init.overwrite_existing' must be a boolean")
-
-                if "create_backup" in init and not isinstance(
-                    init["create_backup"], bool
-                ):
-                    result.add_error("'init.create_backup' must be a boolean")
-
-        # Validate files section (optional, but must be list if present)
-        if "files" in self.data:
-            files = self.data["files"]
-            if not isinstance(files, list):
-                result.add_error("Section 'files' must be a list")
-            else:
-                # Validate each file instance has required fields
-                for i, file_inst in enumerate(files):
-                    if not isinstance(file_inst, dict):
-                        result.add_error(
-                            f"File instance at index {i} must be a dictionary"
-                        )
-                        continue
-
-                    required_fields = ["id", "type", "preset", "path"]
-                    for field in required_fields:
-                        if field not in file_inst:
-                            result.add_error(
-                                f"File instance at index {i} missing required field: '{field}'"
-                            )
-
-        # Validate custom section (optional, but must be dict if present)
-        if "custom" in self.data:
-            custom = self.data["custom"]
-            if not isinstance(custom, dict):
-                result.add_error("Section 'custom' must be a dictionary")
-
-        return result
+        Returns:
+            Configuration as dictionary
+        """
+        return self.data.copy()
