@@ -73,7 +73,8 @@ class TestTomlConfigRepository:
             with pytest.raises(ConfigFileNotFoundError) as exc_info:
                 repo.load()
 
-            assert str(config_path) in str(exc_info.value)
+            # Check filename is in error (handles Windows short vs long path names)
+            assert "nonexistent.toml" in str(exc_info.value)
 
     def test_load_malformed_toml_raises_error(self):
         """Test loading malformed TOML raises ValueError."""

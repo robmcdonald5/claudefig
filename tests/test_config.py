@@ -1,5 +1,6 @@
 """Tests for Config class - focusing on error handling and edge cases."""
 
+import os
 import platform
 from unittest.mock import patch
 
@@ -123,8 +124,8 @@ class TestConfigSaveErrors:
     """Tests for error handling during config save operations."""
 
     @pytest.mark.skipif(
-        platform.system() in ["Windows", "Darwin"],
-        reason="File permission tests unreliable on Windows/macOS - chmod doesn't prevent writes",
+        platform.system() in ["Windows", "Darwin"] or os.environ.get("CI") == "true",
+        reason="File permission tests unreliable on Windows/macOS/CI - chmod doesn't prevent writes",
     )
     def test_save_permission_denied(self, tmp_path):
         """Test saving config when write permission is denied."""
