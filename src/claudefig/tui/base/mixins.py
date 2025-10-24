@@ -1,5 +1,7 @@
 """Mixins for common TUI screen functionality.
 
+Note: Platform and subprocess imports removed - now using claudefig.utils.platform
+
 UI UPDATE PATTERNS - WHEN TO USE WHAT:
 ======================================
 
@@ -194,6 +196,7 @@ class ScrollNavigationMixin:
 
     Provides:
     - Smart up/down arrow navigation that doesn't wrap at boundaries
+    - Smart left/right arrow navigation within horizontal groups
     - Automatic scrolling to reveal title when at top
     - Automatic scrolling to reveal content when at bottom
     - Horizontal group navigation support (skips siblings in horizontal containers)
@@ -203,12 +206,15 @@ class ScrollNavigationMixin:
     Requires:
     - Screen must use a VerticalScroll container with an id attribute
     - Screen must have up/down arrow bindings that call action_focus_previous/action_focus_next
+    - Optional: left/right arrow bindings that call action_focus_left/action_focus_right
 
     Usage:
         class MyScreen(Screen, ScrollNavigationMixin):
             BINDINGS = [
                 ("up", "focus_previous", "Focus Previous"),
                 ("down", "focus_next", "Focus Next"),
+                ("left", "focus_left", "Focus Left"),
+                ("right", "focus_right", "Focus Right"),
             ]
 
             def compose(self) -> ComposeResult:
@@ -218,17 +224,12 @@ class ScrollNavigationMixin:
     """
 
     # These attributes/methods are expected to be provided by the Screen class
-    # that this mixin is used with. We declare them here for type checking only.
+    # that this mixin is used with.
     if TYPE_CHECKING:
         from typing import Any
 
         focused: Any  # Provided by Screen
         focus_chain: Any  # Provided by Screen
-
-        def query(self, selector: str) -> Any: ...  # Provided by DOMNode
-        def query_one(
-            self, selector: Any, expect_type: Any = None
-        ) -> Any: ...  # Provided by DOMNode
 
     def _ensure_focus_memory_initialized(self):
         """Ensure the focus memory dict exists (lazy initialization).
@@ -324,7 +325,7 @@ class ScrollNavigationMixin:
             # Scroll to the top to reveal title labels
             try:
                 # Get the title label and scroll it into view (at the top)
-                title_label = self.query("Label.screen-title").first()
+                title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
                     title_label.scroll_visible(top=True, animate=False)
             except Exception:
@@ -353,7 +354,7 @@ class ScrollNavigationMixin:
         if target_index < 0:
             # Already at top, scroll to reveal title
             try:
-                title_label = self.query("Label.screen-title").first()
+                title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
                     title_label.scroll_visible(top=True, animate=False)
             except Exception:
@@ -488,10 +489,98 @@ class ScrollNavigationMixin:
         # This ensures proper scrolling within the container
         try:
             # Find the first VerticalScroll container in this screen
-            scroll_container = self.query_one(VerticalScroll)
+            scroll_container = self.query_one(VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_to_widget(event.widget, animate=False)
         except Exception:
             pass
+
+    def action_focus_left(self) -> None:
+        """Navigate left within a horizontal group.
+
+        Handles focus movement when pressing left arrow:
+        - Only works if current widget is in a horizontal navigation group
+        - Moves focus to the previous focusable widget in the group
+        - Does not wrap - stays on first element if already there
+        - Does not navigate if not in a horizontal group
+        """
+        focused = self.focused
+        if not focused:
+            return
+
+        # Check if we're in a horizontal group
+        horizontal_parent = self._get_horizontal_nav_parent(focused)
+        if not horizontal_parent:
+            # Not in a horizontal group, do nothing
+            return
+
+        # Get all focusable widgets in this horizontal container
+        from textual.widgets import Button, Select
+
+        focusable_widgets = [
+            widget
+            for widget in horizontal_parent.query("Select, Button")
+            if widget.can_focus and widget.display and not widget.disabled
+        ]
+
+        if len(focusable_widgets) <= 1:
+            # Only one or zero widgets, nothing to navigate to
+            return
+
+        try:
+            current_index = focusable_widgets.index(focused)
+        except ValueError:
+            # Current widget not in list
+            return
+
+        # Navigate left (previous widget)
+        new_index = current_index - 1
+        if new_index >= 0:
+            focusable_widgets[new_index].focus()
+            self._update_horizontal_focus_memory(focusable_widgets[new_index])
+
+    def action_focus_right(self) -> None:
+        """Navigate right within a horizontal group.
+
+        Handles focus movement when pressing right arrow:
+        - Only works if current widget is in a horizontal navigation group
+        - Moves focus to the next focusable widget in the group
+        - Does not wrap - stays on last element if already there
+        - Does not navigate if not in a horizontal group
+        """
+        focused = self.focused
+        if not focused:
+            return
+
+        # Check if we're in a horizontal group
+        horizontal_parent = self._get_horizontal_nav_parent(focused)
+        if not horizontal_parent:
+            # Not in a horizontal group, do nothing
+            return
+
+        # Get all focusable widgets in this horizontal container
+        from textual.widgets import Button, Select
+
+        focusable_widgets = [
+            widget
+            for widget in horizontal_parent.query("Select, Button")
+            if widget.can_focus and widget.display and not widget.disabled
+        ]
+
+        if len(focusable_widgets) <= 1:
+            # Only one or zero widgets, nothing to navigate to
+            return
+
+        try:
+            current_index = focusable_widgets.index(focused)
+        except ValueError:
+            # Current widget not in list
+            return
+
+        # Navigate right (next widget)
+        new_index = current_index + 1
+        if new_index < len(focusable_widgets):
+            focusable_widgets[new_index].focus()
+            self._update_horizontal_focus_memory(focusable_widgets[new_index])
 
 
 class SystemUtilityMixin:
@@ -512,22 +601,9 @@ class SystemUtilityMixin:
     """
 
     if TYPE_CHECKING:
-        from typing import Literal
-
         from textual.app import App
 
-        SeverityLevel = Literal["information", "warning", "error"]
         app: "App[object]"
-
-        def notify(
-            self,
-            message: str,
-            *,
-            severity: SeverityLevel = "information",
-            timeout: float = 2.0,
-        ) -> None:
-            """Provided by Screen/Widget."""
-            ...
 
     def open_file_in_editor(self, file_path: Union[Path, str]) -> bool:
         """Open a file in the system's default editor.
@@ -545,39 +621,31 @@ class SystemUtilityMixin:
             - Uses appropriate system command
             - Shows notification to user
         """
-        file_path = Path(file_path)
-
-        if not file_path.exists():
-            self.notify(
-                f"File does not exist: {file_path}",
-                severity="error",
-            )
-            return False
-
-        if not file_path.is_file():
-            self.notify(
-                f"Path is not a file: {file_path}",
-                severity="error",
-            )
-            return False
+        from claudefig.utils.platform import open_file_in_editor as platform_open_file
 
         try:
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["start", "", str(file_path)], shell=True, check=False)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", str(file_path)], check=False)
-            else:  # Linux
-                subprocess.run(["xdg-open", str(file_path)], check=False)
-
-            self.notify(
+            platform_open_file(file_path)
+            self.notify(  # type: ignore[attr-defined]
                 "Opened file in editor",
                 severity="information",
             )
             return True
 
-        except Exception as e:
-            self.notify(
+        except FileNotFoundError as e:
+            self.notify(  # type: ignore[attr-defined]
+                str(e),
+                severity="error",
+            )
+            return False
+        except ValueError as e:
+            self.notify(  # type: ignore[attr-defined]
+                str(e),
+                severity="error",
+            )
+            return False
+        except (RuntimeError, Exception) as e:
+            # Catch subprocess and other unexpected errors
+            self.notify(  # type: ignore[attr-defined]
                 f"Failed to open file: {e}",
                 severity="error",
             )
@@ -599,35 +667,25 @@ class SystemUtilityMixin:
             - Uses appropriate system command
             - Shows notification to user
         """
-        folder_path = Path(folder_path)
-
-        # Ensure directory exists
-        try:
-            folder_path.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            self.notify(
-                f"Failed to create folder: {e}",
-                severity="error",
-            )
-            return False
+        from claudefig.utils.platform import open_folder_in_explorer as platform_open_folder
 
         try:
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["explorer", str(folder_path)], check=False)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", str(folder_path)], check=False)
-            else:  # Linux
-                subprocess.run(["xdg-open", str(folder_path)], check=False)
-
-            self.notify(
+            platform_open_folder(folder_path, create_if_missing=True)
+            self.notify(  # type: ignore[attr-defined]
                 f"Opened folder: {folder_path}",
                 severity="information",
             )
             return True
 
-        except Exception as e:
-            self.notify(
+        except FileNotFoundError as e:
+            self.notify(  # type: ignore[attr-defined]
+                str(e),
+                severity="error",
+            )
+            return False
+        except (OSError, RuntimeError, Exception) as e:
+            # Catch subprocess and other unexpected errors
+            self.notify(  # type: ignore[attr-defined]
                 f"Failed to open folder: {e}",
                 severity="error",
             )
