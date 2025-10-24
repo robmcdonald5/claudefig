@@ -48,59 +48,65 @@ variables = {}
 class TestFilesList:
     """Tests for 'claudefig files list' command."""
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.list_instances")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_list_all_files(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_list_instances,
         cli_runner,
         tmp_path,
     ):
         """Test listing all file instances."""
-        # Setup mocks
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = [
-            {
-                "id": "test-claude-md",
-                "type": "claude_md",
-                "preset": "claude_md:default",
-                "path": "CLAUDE.md",
-                "enabled": True,
-            },
-            {
-                "id": "test-settings",
-                "type": "settings_json",
-                "preset": "settings_json:default",
-                "path": ".claude/settings.json",
-                "enabled": False,
-            },
-        ]
-        mock_config_class.return_value = mock_cfg
-
-        # Mock instances
         from claudefig.models import FileInstance, FileType
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.list_instances.return_value = [
-            FileInstance(
-                id="test-claude-md",
-                type=FileType.CLAUDE_MD,
-                preset="claude_md:default",
-                path="CLAUDE.md",
-                enabled=True,
-            ),
-            FileInstance(
-                id="test-settings",
-                type=FileType.SETTINGS_JSON,
-                preset="settings_json:default",
-                path=".claude/settings.json",
-                enabled=False,
-            ),
-        ]
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock config loading
+        mock_load_config.return_value = {
+            "claudefig": {"version": "2.0"},
+            "files": [
+                {
+                    "id": "test-claude-md",
+                    "type": "claude_md",
+                    "preset": "claude_md:default",
+                    "path": "CLAUDE.md",
+                    "enabled": True,
+                },
+                {
+                    "id": "test-settings",
+                    "type": "settings_json",
+                    "preset": "settings_json:default",
+                    "path": ".claude/settings.json",
+                    "enabled": False,
+                },
+            ],
+        }
+
+        mock_get_file_instances.return_value = mock_load_config.return_value["files"]
+
+        # Mock instance loading
+        claude_instance = FileInstance(
+            id="test-claude-md",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+        settings_instance = FileInstance(
+            id="test-settings",
+            type=FileType.SETTINGS_JSON,
+            preset="settings_json:default",
+            path=".claude/settings.json",
+            enabled=False,
+        )
+        mock_load_instances.return_value = (
+            {"test-claude-md": claude_instance, "test-settings": settings_instance},
+            []
+        )
+        mock_list_instances.return_value = [claude_instance, settings_instance]
 
         result = cli_runner.invoke(main, ["files", "list", "--path", str(tmp_path)])
 
@@ -109,35 +115,36 @@ class TestFilesList:
         assert "test-claude-md" in result.output
         assert "test-settings" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.list_instances")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_list_by_type(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_list_instances,
         cli_runner,
         tmp_path,
     ):
         """Test listing files filtered by type."""
         from claudefig.models import FileInstance, FileType
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.list_instances.return_value = [
-            FileInstance(
-                id="test-claude-md",
-                type=FileType.CLAUDE_MD,
-                preset="claude_md:default",
-                path="CLAUDE.md",
-                enabled=True,
-            )
-        ]
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock instance loading
+        claude_instance = FileInstance(
+            id="test-claude-md",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+        mock_load_instances.return_value = ({"test-claude-md": claude_instance}, [])
+        mock_list_instances.return_value = [claude_instance]
 
         result = cli_runner.invoke(
             main, ["files", "list", "--path", str(tmp_path), "--type", "claude_md"]
@@ -145,38 +152,39 @@ class TestFilesList:
 
         assert result.exit_code == 0
         # Verify filter_type was passed to list_instances
-        call_args = mock_inst_mgr.list_instances.call_args
-        assert call_args[0][0] == FileType.CLAUDE_MD
+        call_args = mock_list_instances.call_args
+        assert call_args[0][1] == FileType.CLAUDE_MD  # Second arg is filter_type
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.list_instances")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_list_enabled_only(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_list_instances,
         cli_runner,
         tmp_path,
     ):
         """Test listing only enabled file instances."""
         from claudefig.models import FileInstance, FileType
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.list_instances.return_value = [
-            FileInstance(
-                id="test-claude-md",
-                type=FileType.CLAUDE_MD,
-                preset="claude_md:default",
-                path="CLAUDE.md",
-                enabled=True,
-            )
-        ]
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock instance loading
+        claude_instance = FileInstance(
+            id="test-claude-md",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+        mock_load_instances.return_value = ({"test-claude-md": claude_instance}, [])
+        mock_list_instances.return_value = [claude_instance]
 
         result = cli_runner.invoke(
             main, ["files", "list", "--path", str(tmp_path), "--enabled-only"]
@@ -184,49 +192,50 @@ class TestFilesList:
 
         assert result.exit_code == 0
         # Verify enabled_only flag was passed
-        call_args = mock_inst_mgr.list_instances.call_args
-        assert call_args[0][1] is True  # enabled_only parameter
+        call_args = mock_list_instances.call_args
+        assert call_args[0][2] is True  # Third arg is enabled_only parameter
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.list_instances")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_list_empty(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_list_instances,
         cli_runner,
         tmp_path,
     ):
         """Test listing when no file instances exist."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
-
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.list_instances.return_value = []
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock config loading with no instances
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
+        mock_list_instances.return_value = []
 
         result = cli_runner.invoke(main, ["files", "list", "--path", str(tmp_path)])
 
         assert result.exit_code == 0
         assert "No file instances configured" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_list_invalid_type(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
         cli_runner,
         tmp_path,
     ):
         """Test listing with invalid file type."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
         result = cli_runner.invoke(
             main, ["files", "list", "--path", str(tmp_path), "--type", "invalid_type"]
@@ -239,31 +248,41 @@ class TestFilesList:
 class TestFilesAdd:
     """Tests for 'claudefig files add' command."""
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.add_instance")
+    @patch("claudefig.services.file_instance_service.generate_instance_id")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_add_valid_file(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_generate_id,
+        mock_add_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test adding a valid file instance."""
         from claudefig.models import ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.generate_instance_id.return_value = "claude-md-default"
-        mock_inst_mgr.add_instance.return_value = ValidationResult(
+        # Mock instance creation
+        mock_generate_id.return_value = "claude-md-default"
+        mock_add_instance.return_value = ValidationResult(
             valid=True, errors=[], warnings=[]
         )
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main,
@@ -282,31 +301,41 @@ class TestFilesAdd:
         assert "Added file instance" in result.output
         assert "claude-md-default" in result.output or "claude_md" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.add_instance")
+    @patch("claudefig.services.file_instance_service.generate_instance_id")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_add_with_disabled_flag(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_generate_id,
+        mock_add_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test adding a file instance with disabled flag."""
         from claudefig.models import ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.generate_instance_id.return_value = "claude-md-default"
-        mock_inst_mgr.add_instance.return_value = ValidationResult(
+        # Mock instance creation
+        mock_generate_id.return_value = "claude-md-default"
+        mock_add_instance.return_value = ValidationResult(
             valid=True, errors=[], warnings=[]
         )
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main,
@@ -322,17 +351,11 @@ class TestFilesAdd:
 
         assert result.exit_code == 0
         # Verify the instance was created with enabled=False
-        add_call = mock_inst_mgr.add_instance.call_args[0][0]
+        add_call = mock_add_instance.call_args[0][1]  # Second arg is FileInstance
         assert add_call.enabled is False
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
     def test_add_invalid_file_type(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
         cli_runner,
         tmp_path,
     ):
@@ -345,30 +368,40 @@ class TestFilesAdd:
         assert result.exit_code == 1
         assert "Invalid file type" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.add_instance")
+    @patch("claudefig.services.file_instance_service.generate_instance_id")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_add_validation_fails(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_generate_id,
+        mock_add_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test adding a file that fails validation."""
         from claudefig.models import ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.generate_instance_id.return_value = "test-id"
-        mock_inst_mgr.add_instance.return_value = ValidationResult(
+        # Mock validation failure
+        mock_generate_id.return_value = "test-id"
+        mock_add_instance.return_value = ValidationResult(
             valid=False, errors=["Test error"], warnings=[]
         )
-        mock_inst_mgr_class.return_value = mock_inst_mgr
 
         result = cli_runner.invoke(
             main,
@@ -378,31 +411,41 @@ class TestFilesAdd:
         assert result.exit_code == 1
         assert "Validation failed" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.add_instance")
+    @patch("claudefig.services.file_instance_service.generate_instance_id")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_add_with_custom_path(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_generate_id,
+        mock_add_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test adding a file with custom path."""
         from claudefig.models import ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.generate_instance_id.return_value = "test-id"
-        mock_inst_mgr.add_instance.return_value = ValidationResult(
+        # Mock instance creation
+        mock_generate_id.return_value = "test-id"
+        mock_add_instance.return_value = ValidationResult(
             valid=True, errors=[], warnings=[]
         )
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main,
@@ -419,7 +462,7 @@ class TestFilesAdd:
 
         assert result.exit_code == 0
         # Verify path was set correctly
-        add_call = mock_inst_mgr.add_instance.call_args[0][0]
+        add_call = mock_add_instance.call_args[0][1]  # Second arg is FileInstance
         assert add_call.path == "docs/CLAUDE.md"
 
 
@@ -461,27 +504,34 @@ class TestFilesRemove:
 class TestFilesEnable:
     """Tests for 'claudefig files enable' command."""
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.enable_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_enable_disabled_file(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_enable_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test enabling a disabled file instance."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.enable_instance.return_value = True
-        mock_inst_mgr.save_instances.return_value = []
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock enable operation
+        mock_enable_instance.return_value = True
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main, ["files", "enable", "test-instance", "--path", str(tmp_path)]
@@ -492,25 +542,33 @@ class TestFilesEnable:
             "Enabled file instance" in result.output or "test-instance" in result.output
         )
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.enable_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_enable_nonexistent_file(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_enable_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test enabling a file that doesn't exist."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.enable_instance.return_value = False
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock enable failure (instance not found)
+        mock_enable_instance.return_value = False
 
         result = cli_runner.invoke(
             main, ["files", "enable", "nonexistent", "--path", str(tmp_path)]
@@ -523,27 +581,34 @@ class TestFilesEnable:
 class TestFilesDisable:
     """Tests for 'claudefig files disable' command."""
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.disable_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_disable_enabled_file(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_disable_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test disabling an enabled file instance."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.disable_instance.return_value = True
-        mock_inst_mgr.save_instances.return_value = []
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock disable operation
+        mock_disable_instance.return_value = True
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main, ["files", "disable", "test-instance", "--path", str(tmp_path)]
@@ -555,25 +620,33 @@ class TestFilesDisable:
             or "test-instance" in result.output
         )
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.disable_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_disable_nonexistent_file(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_disable_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test disabling a file that doesn't exist."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.disable_instance.return_value = False
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock disable failure (instance not found)
+        mock_disable_instance.return_value = False
 
         result = cli_runner.invoke(
             main, ["files", "disable", "nonexistent", "--path", str(tmp_path)]
@@ -586,25 +659,36 @@ class TestFilesDisable:
 class TestFilesEdit:
     """Tests for 'claudefig files edit' command."""
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.update_instance")
+    @patch("claudefig.services.file_instance_service.get_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_edit_preset(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_get_instance,
+        mock_update_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test editing a file instance's preset."""
         from claudefig.models import FileInstance, FileType, ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
+        # Mock instance retrieval
         existing_instance = FileInstance(
             id="test-instance",
             type=FileType.CLAUDE_MD,
@@ -612,14 +696,13 @@ class TestFilesEdit:
             path="CLAUDE.md",
             enabled=True,
         )
+        mock_get_instance.return_value = existing_instance
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.get_instance.return_value = existing_instance
-        mock_inst_mgr.update_instance.return_value = ValidationResult(
+        # Mock update operation
+        mock_update_instance.return_value = ValidationResult(
             valid=True, errors=[], warnings=[]
         )
-        mock_inst_mgr.save_instances.return_value = []
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main,
@@ -638,25 +721,36 @@ class TestFilesEdit:
         assert "Updated file instance" in result.output
         assert "preset" in result.output.lower() or "test-instance" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.update_instance")
+    @patch("claudefig.services.file_instance_service.get_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_edit_path(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_get_instance,
+        mock_update_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test editing a file instance's path."""
         from claudefig.models import FileInstance, FileType, ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
+        # Mock instance retrieval
         existing_instance = FileInstance(
             id="test-instance",
             type=FileType.CLAUDE_MD,
@@ -664,14 +758,13 @@ class TestFilesEdit:
             path="CLAUDE.md",
             enabled=True,
         )
+        mock_get_instance.return_value = existing_instance
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.get_instance.return_value = existing_instance
-        mock_inst_mgr.update_instance.return_value = ValidationResult(
+        # Mock update operation
+        mock_update_instance.return_value = ValidationResult(
             valid=True, errors=[], warnings=[]
         )
-        mock_inst_mgr.save_instances.return_value = []
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main,
@@ -692,25 +785,36 @@ class TestFilesEdit:
         # Verify path was updated
         assert existing_instance.path == "docs/CLAUDE.md"
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.config_service.save_config")
+    @patch("claudefig.services.config_service.set_file_instances")
+    @patch("claudefig.services.file_instance_service.save_instances_to_config")
+    @patch("claudefig.services.file_instance_service.update_instance")
+    @patch("claudefig.services.file_instance_service.get_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_edit_enable_status(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_get_instance,
+        mock_update_instance,
+        mock_save_instances,
+        mock_set_file_instances,
+        mock_save_config,
         cli_runner,
         tmp_path,
     ):
         """Test editing a file instance's enabled status."""
         from claudefig.models import FileInstance, FileType, ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_cfg.save = Mock()
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
+        # Mock instance retrieval
         existing_instance = FileInstance(
             id="test-instance",
             type=FileType.CLAUDE_MD,
@@ -718,14 +822,13 @@ class TestFilesEdit:
             path="CLAUDE.md",
             enabled=True,
         )
+        mock_get_instance.return_value = existing_instance
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.get_instance.return_value = existing_instance
-        mock_inst_mgr.update_instance.return_value = ValidationResult(
+        # Mock update operation
+        mock_update_instance.return_value = ValidationResult(
             valid=True, errors=[], warnings=[]
         )
-        mock_inst_mgr.save_instances.return_value = []
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_save_instances.return_value = []
 
         result = cli_runner.invoke(
             main,
@@ -745,25 +848,27 @@ class TestFilesEdit:
         # Verify enabled was updated
         assert existing_instance.enabled is False
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.get_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_edit_nonexistent_file(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_get_instance,
         cli_runner,
         tmp_path,
     ):
         """Test editing a file that doesn't exist."""
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.get_instance.return_value = None
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        # Mock instance not found
+        mock_get_instance.return_value = None
 
         result = cli_runner.invoke(
             main,
@@ -781,24 +886,28 @@ class TestFilesEdit:
         assert result.exit_code == 1
         assert "not found" in result.output.lower() or "nonexistent" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.get_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_edit_no_changes(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_get_instance,
         cli_runner,
         tmp_path,
     ):
         """Test editing without specifying any changes."""
         from claudefig.models import FileInstance, FileType
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
+        # Mock instance retrieval
         existing_instance = FileInstance(
             id="test-instance",
             type=FileType.CLAUDE_MD,
@@ -806,10 +915,7 @@ class TestFilesEdit:
             path="CLAUDE.md",
             enabled=True,
         )
-
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.get_instance.return_value = existing_instance
-        mock_inst_mgr_class.return_value = mock_inst_mgr
+        mock_get_instance.return_value = existing_instance
 
         result = cli_runner.invoke(
             main,
@@ -819,24 +925,30 @@ class TestFilesEdit:
         assert result.exit_code == 0
         assert "No changes specified" in result.output
 
-    @patch("claudefig.file_instance_manager.FileInstanceManager")
-    @patch("claudefig.preset_manager.PresetManager")
-    @patch("claudefig.config.Config")
+    @patch("claudefig.services.file_instance_service.update_instance")
+    @patch("claudefig.services.file_instance_service.get_instance")
+    @patch("claudefig.services.file_instance_service.load_instances_from_config")
+    @patch("claudefig.services.config_service.get_file_instances")
+    @patch("claudefig.services.config_service.load_config")
     def test_edit_validation_fails(
         self,
-        mock_config_class,
-        mock_preset_mgr_class,
-        mock_inst_mgr_class,
+        mock_load_config,
+        mock_get_file_instances,
+        mock_load_instances,
+        mock_get_instance,
+        mock_update_instance,
         cli_runner,
         tmp_path,
     ):
         """Test editing with validation failure."""
         from claudefig.models import FileInstance, FileType, ValidationResult
 
-        mock_cfg = Mock()
-        mock_cfg.get_file_instances.return_value = []
-        mock_config_class.return_value = mock_cfg
+        # Mock config loading
+        mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
+        mock_get_file_instances.return_value = []
+        mock_load_instances.return_value = ({}, [])
 
+        # Mock instance retrieval
         existing_instance = FileInstance(
             id="test-instance",
             type=FileType.CLAUDE_MD,
@@ -844,13 +956,12 @@ class TestFilesEdit:
             path="CLAUDE.md",
             enabled=True,
         )
+        mock_get_instance.return_value = existing_instance
 
-        mock_inst_mgr = Mock()
-        mock_inst_mgr.get_instance.return_value = existing_instance
-        mock_inst_mgr.update_instance.return_value = ValidationResult(
+        # Mock validation failure
+        mock_update_instance.return_value = ValidationResult(
             valid=False, errors=["Invalid preset"], warnings=[]
         )
-        mock_inst_mgr_class.return_value = mock_inst_mgr
 
         result = cli_runner.invoke(
             main,
