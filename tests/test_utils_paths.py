@@ -106,7 +106,7 @@ class TestFindFileUpwards:
             result = paths.find_file_upwards(test_dir, "config.toml")
 
             assert result is not None
-            assert result == target_file
+            assert result.resolve() == target_file.resolve()
 
     def test_finds_file_in_parent_directory(self):
         """Test finds file in parent directory."""
@@ -121,7 +121,7 @@ class TestFindFileUpwards:
             result = paths.find_file_upwards(child_dir, "config.toml")
 
             assert result is not None
-            assert result == target_file
+            assert result.resolve() == target_file.resolve()
 
     def test_finds_file_multiple_levels_up(self):
         """Test finds file multiple levels up."""
@@ -136,7 +136,7 @@ class TestFindFileUpwards:
             result = paths.find_file_upwards(deep_dir, "config.toml")
 
             assert result is not None
-            assert result == target_file
+            assert result.resolve() == target_file.resolve()
 
     def test_returns_none_when_file_not_found(self):
         """Test returns None when file doesn't exist."""
@@ -176,7 +176,7 @@ class TestFindFileUpwards:
             result = paths.find_file_upwards(subdir, "config.toml")
 
             # Should find closest one
-            assert result == subdir_file
+            assert result.resolve() == subdir_file.resolve()
 
 
 class TestIsSubdirectory:

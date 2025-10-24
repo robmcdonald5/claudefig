@@ -123,8 +123,8 @@ class TestConfigSaveErrors:
     """Tests for error handling during config save operations."""
 
     @pytest.mark.skipif(
-        platform.system() == "Windows",
-        reason="File permission tests unreliable on Windows - chmod doesn't prevent writes",
+        platform.system() in ["Windows", "Darwin"],
+        reason="File permission tests unreliable on Windows/macOS - chmod doesn't prevent writes",
     )
     def test_save_permission_denied(self, tmp_path):
         """Test saving config when write permission is denied."""
