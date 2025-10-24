@@ -1,14 +1,15 @@
 """Config panel - main menu for configuration options."""
 
 import contextlib
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Container, Grid
 from textual.widgets import Button, Label
 
-from claudefig.config import Config
-from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.preset_manager import PresetManager
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
 from claudefig.tui.screens import (
     CoreFilesScreen,
     FileInstancesScreen,
@@ -42,21 +43,24 @@ class ConfigPanel(Container):
     # Reverse map (row, col) -> button_id
     POSITION_TO_BUTTON = {v: k for k, v in GRID_POSITIONS.items()}
 
-    def __init__(self, config: Config, **kwargs) -> None:
+    def __init__(
+        self, config_data: dict[str, Any], config_repo: TomlConfigRepository, **kwargs
+    ) -> None:
         """Initialize config panel.
 
         Args:
-            config: Config object for current project
+            config_data: Configuration data dictionary
+            config_repo: Configuration repository
         """
         super().__init__(**kwargs)
-        self.config = config
+        self.config_data = config_data
+        self.config_repo = config_repo
         self.preset_manager = PresetManager()
-        self.instance_manager = FileInstanceManager(self.preset_manager)
 
     def compose(self) -> ComposeResult:
         """Compose the config menu panel."""
         # Check if config exists
-        if not self.config.config_path or not self.config.config_path.exists():
+        if not self.config_repo.exists():
             yield Label(
                 "No .claudefig.toml found in current directory.\n\n"
                 "Go to 'Presets' panel and use a preset to create a config.",
@@ -65,19 +69,22 @@ class ConfigPanel(Container):
             return
 
         # Load file instances
-        instances_data = self.config.get_file_instances()
+        instances_data = config_service.get_file_instances(self.config_data)
         if instances_data:
-            self.instance_manager.load_instances(instances_data)
+            from claudefig.services import file_instance_service
+
+            instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+            instances_list = list(instances_dict.values())
+        else:
+            instances_list = []
 
         # Header
         yield Label("Configuration Menu", classes="panel-title")
 
         # Summary info
-        enabled_count = sum(
-            1 for i in self.instance_manager.list_instances() if i.enabled
-        )
-        total_count = len(self.instance_manager.list_instances())
-        config_path_str = str(self.config.config_path)
+        enabled_count = sum(1 for i in instances_list if i.enabled)
+        total_count = len(instances_list)
+        config_path_str = str(self.config_repo.get_path())
         if len(config_path_str) > 60:
             config_path_str = "..." + config_path_str[-57:]
         yield Label(
@@ -197,34 +204,51 @@ class ConfigPanel(Container):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses and navigate to screens."""
+        from claudefig.services import config_service, file_instance_service
+
         button_id = event.button.id
 
         # Track this button as the last focused for when we return
         if button_id in self.GRID_POSITIONS:
             ConfigPanel._last_focused_button = button_id
 
+        # Load instances_dict for migrated screens
+        instances_data = config_service.get_file_instances(self.config_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+
         if button_id == "btn-overview":
+            # OverviewScreen has been migrated - uses new architecture
             self.app.push_screen(
                 OverviewScreen(
-                    config=self.config,
-                    instance_manager=self.instance_manager,
+                    config_data=self.config_data,
+                    config_repo=self.config_repo,
+                    instances_dict=instances_dict,
                 )
             )
         elif button_id == "btn-settings":
-            self.app.push_screen(ProjectSettingsScreen(config=self.config))
+            # ProjectSettingsScreen has been migrated - uses new architecture
+            self.app.push_screen(
+                ProjectSettingsScreen(
+                    config_data=self.config_data,
+                    config_repo=self.config_repo,
+                    instances_dict=instances_dict,
+                )
+            )
         elif button_id == "btn-core-files":
+            # CoreFilesScreen has been migrated - uses new architecture
             self.app.push_screen(
                 CoreFilesScreen(
-                    config=self.config,
-                    instance_manager=self.instance_manager,
-                    preset_manager=self.preset_manager,
+                    config_data=self.config_data,
+                    config_repo=self.config_repo,
+                    instances_dict=instances_dict,
                 )
             )
         elif button_id == "btn-file-instances":
+            # FileInstancesScreen has been migrated - uses new architecture
             self.app.push_screen(
                 FileInstancesScreen(
-                    config=self.config,
-                    instance_manager=self.instance_manager,
-                    preset_manager=self.preset_manager,
+                    config_data=self.config_data,
+                    config_repo=self.config_repo,
+                    instances_dict=instances_dict,
                 )
             )

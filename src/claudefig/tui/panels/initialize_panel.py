@@ -1,18 +1,20 @@
 """Initialize panel for project setup."""
 
 from pathlib import Path
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.widgets import Button, Label
 
-from claudefig.config import Config
 from claudefig.config_template_manager import ConfigTemplateManager
 from claudefig.exceptions import (
     ConfigFileExistsError,
     FileOperationError,
     InitializationRollbackError,
 )
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
 
 
 class InitializePanel(Container):
@@ -24,15 +26,23 @@ class InitializePanel(Container):
         ("down", "ignore_down", ""),
     ]
 
-    def __init__(self, config: Config, on_switch_to_presets, **kwargs) -> None:
+    def __init__(
+        self,
+        config_data: dict[str, Any],
+        config_repo: TomlConfigRepository,
+        on_switch_to_presets,
+        **kwargs
+    ) -> None:
         """Initialize panel.
 
         Args:
-            config: Config instance
+            config_data: Configuration data dictionary
+            config_repo: Configuration repository
             on_switch_to_presets: Callback to switch to presets panel
         """
         super().__init__(**kwargs)
-        self.config = config
+        self.config_data = config_data
+        self.config_repo = config_repo
         self.on_switch_to_presets_callback = on_switch_to_presets
         self.config_template_manager = ConfigTemplateManager()
 
@@ -107,11 +117,11 @@ class InitializePanel(Container):
                 self.app.notify("Applying default preset...", severity="information")
                 self.config_template_manager.apply_preset_to_project("default")
                 # Reload config after applying preset
-                self.config = Config()
+                self.config_data = config_service.load_config(self.config_repo)
 
             # Step 2: Run initializer to generate files
             self.app.notify("Generating files...", severity="information")
-            initializer = Initializer(self.config)
+            initializer = Initializer(self.config_repo.get_path())
 
             # Generate files (skip_prompts=True for TUI non-interactive mode)
             success = initializer.initialize(Path.cwd(), force=False, skip_prompts=True)
@@ -119,12 +129,12 @@ class InitializePanel(Container):
             # Step 3: Reload config everywhere
             if isinstance(self.app, MainScreen):
                 # Reload config in app
-                self.app.config = Config()
+                self.app.config_data = config_service.load_config(self.app.config_repo)
                 # Reload config in content panel so all panels get fresh config
                 content_panel = self.app.query_one("#content-panel", ContentPanel)
-                content_panel.config = self.app.config
+                content_panel.config_data = self.app.config_data
                 # Update local config reference
-                self.config = self.app.config
+                self.config_data = self.app.config_data
 
             # Step 4: Show success summary
             if success:

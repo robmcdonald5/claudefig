@@ -10,8 +10,9 @@ from textual.reactive import reactive
 from textual.widgets import Button, Label, Select
 from textual.widgets._select import NoSelection
 
-from claudefig.config import Config
 from claudefig.config_template_manager import ConfigTemplateManager
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
 from claudefig.exceptions import (
     ConfigFileExistsError,
     FileOperationError,
@@ -205,7 +206,9 @@ class PresetsPanel(Container, SystemUtilityMixin):
                     from claudefig.tui.app import MainScreen
 
                     if isinstance(self.app, MainScreen):
-                        self.app.config = Config()
+                        self.app.config_data = config_service.load_config(
+                            self.app.config_repo
+                        )
                         self.app._activate_section("config")
 
                 except ConfigFileExistsError as e:
