@@ -1,11 +1,15 @@
 """Initialization settings screen for editing init behavior."""
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Label, Static, Switch
 
-from claudefig.config import Config
+from claudefig.models import FileInstance
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
 from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 
 
@@ -21,14 +25,24 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         ("right", "focus_right", "Focus Right"),
     ]
 
-    def __init__(self, config: Config, **kwargs) -> None:
+    def __init__(
+        self,
+        config_data: dict[str, Any],
+        config_repo: TomlConfigRepository,
+        instances_dict: dict[str, FileInstance],
+        **kwargs,
+    ) -> None:
         """Initialize initialization settings screen.
 
         Args:
-            config: Configuration object
+            config_data: Configuration dictionary
+            config_repo: Configuration repository for saving
+            instances_dict: Dictionary of file instances (id -> FileInstance)
         """
         super().__init__(**kwargs)
-        self.config = config
+        self.config_data = config_data
+        self.config_repo = config_repo
+        self.instances_dict = instances_dict
 
     def compose(self) -> ComposeResult:
         """Compose the initialization settings screen."""
@@ -46,7 +60,9 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             with Vertical(classes="init-settings-list"):
                 # Overwrite setting - compact row
                 with Horizontal(classes="init-setting-row"):
-                    overwrite = self.config.get("init.overwrite_existing", False)
+                    overwrite = config_service.get_value(
+                        self.config_data, "init.overwrite_existing", False
+                    )
                     yield Switch(value=overwrite, id="switch-overwrite")
                     with Vertical(classes="init-setting-info"):
                         yield Label(
@@ -59,7 +75,9 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
 
                 # Backup setting - compact row (disabled when overwrite is off)
                 with Horizontal(classes="init-setting-row"):
-                    backup = self.config.get("init.create_backup", True)
+                    backup = config_service.get_value(
+                        self.config_data, "init.create_backup", True
+                    )
                     yield Switch(
                         value=backup, id="switch-backup", disabled=not overwrite
                     )
@@ -87,8 +105,10 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         """Handle switch changes and auto-save."""
         if event.switch.id == "switch-overwrite":
             # Save overwrite setting
-            self.config.set("init.overwrite_existing", event.value)
-            self.config.save()
+            config_service.set_value(
+                self.config_data, "init.overwrite_existing", event.value
+            )
+            config_service.save_config(self.config_data, self.config_repo)
 
             # Enable/disable backup switch based on overwrite
             backup_switch = self.query_one("#switch-backup", Switch)
@@ -98,6 +118,6 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
 
         elif event.switch.id == "switch-backup":
             # Save backup setting
-            self.config.set("init.create_backup", event.value)
-            self.config.save()
+            config_service.set_value(self.config_data, "init.create_backup", event.value)
+            config_service.save_config(self.config_data, self.config_repo)
             self.notify("Setting saved", severity="information")

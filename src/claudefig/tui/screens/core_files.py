@@ -1,20 +1,23 @@
 """Core files screen for managing single-instance file types."""
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Label
 
-from claudefig.config import Config
-from claudefig.file_instance_manager import FileInstanceManager
-from claudefig.models import FileType
+from claudefig.models import FileInstance, FileType
 from claudefig.preset_manager import PresetManager
-from claudefig.tui.base import BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.repositories.preset_repository import TomlPresetRepository
+from claudefig.services import config_service, file_instance_service
+from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 from claudefig.tui.widgets.compact_single_instance import CompactSingleInstanceControl
 
 
 class CoreFilesScreen(
-    Screen, BackButtonMixin, FileInstanceMixin, ScrollNavigationMixin
+    Screen, BackButtonMixin, ScrollNavigationMixin
 ):
     """Screen for managing single-instance core files."""
 
@@ -29,22 +32,39 @@ class CoreFilesScreen(
 
     def __init__(
         self,
-        config: Config,
-        instance_manager: FileInstanceManager,
-        preset_manager: PresetManager,
+        config_data: dict[str, Any],
+        config_repo: TomlConfigRepository,
+        instances_dict: dict[str, FileInstance],
         **kwargs,
     ) -> None:
         """Initialize core files screen.
 
         Args:
-            config: Configuration object
-            instance_manager: FileInstanceManager for CRUD operations
-            preset_manager: PresetManager for preset info
+            config_data: Configuration dictionary
+            config_repo: Configuration repository for saving
+            instances_dict: Dictionary of file instances (id -> FileInstance)
         """
         super().__init__(**kwargs)
-        self.config = config
-        self.instance_manager = instance_manager
-        self.preset_manager = preset_manager
+        self.config_data = config_data
+        self.config_repo = config_repo
+        self.instances_dict = instances_dict
+        self.preset_repo = TomlPresetRepository()
+        self.preset_manager = PresetManager()  # For CompactSingleInstanceControl
+
+    def sync_instances_to_config(self) -> None:
+        """Sync instances dict to config and save to disk.
+
+        This implements the state synchronization pattern:
+        1. Modify instances_dict (done by caller)
+        2. Sync instances → config (done here)
+        3. Sync config → disk (done here)
+        """
+        # Save instances to config format
+        instances_data = file_instance_service.save_instances_to_config(self.instances_dict)
+        config_service.set_file_instances(self.config_data, instances_data)
+
+        # Save config to disk
+        config_service.save_config(self.config_data, self.config_repo)
 
     def compose(self) -> ComposeResult:
         """Compose the core files screen."""
@@ -69,11 +89,9 @@ class CoreFilesScreen(
             with Vertical(classes="core-files-list"):
                 for file_type in single_instance_types:
                     # Find existing instance for this file type
-                    instances = [
-                        inst
-                        for inst in self.instance_manager.list_instances()
-                        if inst.type == file_type
-                    ]
+                    instances = file_instance_service.get_instances_by_type(
+                        self.instances_dict, file_type
+                    )
                     instance = instances[0] if instances else None
 
                     # Add compact control
@@ -104,25 +122,21 @@ class CoreFilesScreen(
         enabled = event.enabled
 
         # Find existing instance
-        instances = [
-            inst
-            for inst in self.instance_manager.list_instances()
-            if inst.type == file_type
-        ]
+        instances = file_instance_service.get_instances_by_type(
+            self.instances_dict, file_type
+        )
         instance = instances[0] if instances else None
 
         if enabled and not instance:
             # Create new instance with default template
             # For template directory types, use "default" as the template name
             # For other types, use the first available preset
-            from claudefig.models import FileInstance
-
             if file_type.template_directory:
                 # Use simple template name
                 default_template = "default"
             else:
                 # Use preset system
-                presets = self.preset_manager.list_presets(file_type=file_type)
+                presets = self.preset_repo.list_presets(file_type=file_type.value)
                 default_template = presets[0].id if presets else "default"
 
             new_instance = FileInstance(
@@ -132,14 +146,24 @@ class CoreFilesScreen(
                 path=file_type.default_path,
                 enabled=True,
             )
-            self.instance_manager.add_instance(new_instance)
+            file_instance_service.add_instance(
+                self.instances_dict,
+                new_instance,
+                self.preset_repo,
+                self.config_repo.config_path.parent,
+            )
 
             # Sync to config and save
             self.sync_instances_to_config()
         elif instance:
             # Update enabled status
             instance.enabled = enabled
-            self.instance_manager.update_instance(instance)
+            file_instance_service.update_instance(
+                self.instances_dict,
+                instance,
+                self.preset_repo,
+                self.config_repo.config_path.parent,
+            )
 
             # Sync to config and save
             self.sync_instances_to_config()
@@ -152,17 +176,20 @@ class CoreFilesScreen(
         preset_id = event.preset_id
 
         # Find existing instance
-        instances = [
-            inst
-            for inst in self.instance_manager.list_instances()
-            if inst.type == file_type
-        ]
+        instances = file_instance_service.get_instances_by_type(
+            self.instances_dict, file_type
+        )
         instance = instances[0] if instances else None
 
         if instance:
             # Update preset
             instance.preset = preset_id
-            self.instance_manager.update_instance(instance)
+            file_instance_service.update_instance(
+                self.instances_dict,
+                instance,
+                self.preset_repo,
+                self.config_repo.config_path.parent,
+            )
 
             # Sync to config and save
             self.sync_instances_to_config()

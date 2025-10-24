@@ -1,14 +1,17 @@
 """Project overview screen showing stats and quick actions."""
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.dom import DOMNode
 from textual.screen import Screen
 from textual.widgets import Button, Label, Static
 
-from claudefig.config import Config
-from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileInstance, FileType
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.repositories.preset_repository import TomlPresetRepository
+from claudefig.services import config_service, file_instance_service
 from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 from claudefig.tui.widgets import OverlayDropdown
 
@@ -27,19 +30,23 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
 
     def __init__(
         self,
-        config: Config,
-        instance_manager: FileInstanceManager,
+        config_data: dict[str, Any],
+        config_repo: TomlConfigRepository,
+        instances_dict: dict[str, FileInstance],
         **kwargs,
     ) -> None:
         """Initialize overview screen.
 
         Args:
-            config: Configuration object
-            instance_manager: FileInstanceManager for stats
+            config_data: Configuration dictionary
+            config_repo: Configuration repository for saving
+            instances_dict: Dictionary of file instances (id -> FileInstance)
         """
         super().__init__(**kwargs)
-        self.config = config
-        self.instance_manager = instance_manager
+        self.config_data = config_data
+        self.config_repo = config_repo
+        self.instances_dict = instances_dict
+        self.preset_repo = TomlPresetRepository()
 
     def compose(self) -> ComposeResult:
         """Compose the overview screen."""
@@ -50,12 +57,14 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             yield Label("PROJECT OVERVIEW", classes="screen-title")
 
             # Config info - single compact line
-            config_path = str(self.config.config_path)
+            config_path = str(self.config_repo.config_path)
             # Shorten path if too long
             if len(config_path) > 50:
                 config_path = "..." + config_path[-47:]
 
-            schema_version = self.config.get("claudefig.schema_version", "unknown")
+            schema_version = config_service.get_value(
+                self.config_data, "claudefig.schema_version", "unknown"
+            )
 
             yield Static(
                 f"Config: {config_path} | Schema: {schema_version}",
@@ -73,7 +82,7 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             )
 
             # SECTION 2: Files - OVERLAY DROPDOWN
-            instances = self.instance_manager.list_instances()
+            instances = list(self.instances_dict.values())
             total = len(instances)
             enabled = sum(1 for i in instances if i.enabled)
             disabled = total - enabled
@@ -130,7 +139,7 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         status_dropdown.set_content(*status_content)
 
         # Populate FILES dropdown
-        instances = self.instance_manager.list_instances()
+        instances = list(self.instances_dict.values())
         files_dropdown = self.query_one("#files-dropdown", OverlayDropdown)
         files_content = []
 
@@ -150,8 +159,8 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         files_dropdown.set_content(*files_content)
 
         # Populate SETTINGS dropdown
-        overwrite = "Yes" if self.config.get("init.overwrite_existing") else "No"
-        backup = "Yes" if self.config.get("init.create_backup", True) else "No"
+        overwrite = "Yes" if config_service.get_value(self.config_data, "init.overwrite_existing") else "No"
+        backup = "Yes" if config_service.get_value(self.config_data, "init.create_backup", True) else "No"
 
         settings_dropdown = self.query_one("#settings-dropdown", OverlayDropdown)
         settings_dropdown.set_content(
@@ -228,11 +237,15 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         all_errors = []
         all_warnings = []
 
-        for instance in self.instance_manager.list_instances():
+        for instance in self.instances_dict.values():
             # Only validate enabled instances
             if instance.enabled:
-                result = self.instance_manager.validate_instance(
-                    instance, is_update=True
+                result = file_instance_service.validate_instance(
+                    instance,
+                    self.instances_dict,
+                    self.preset_repo,
+                    self.config_repo.config_path.parent,
+                    is_update=True,
                 )
                 all_errors.extend(result.errors)
                 all_warnings.extend(result.warnings)
@@ -257,7 +270,7 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         Returns:
             Formatted status string
         """
-        instances = self.instance_manager.list_instances()
+        instances = list(self.instances_dict.values())
         enabled = sum(1 for i in instances if i.enabled)
 
         if status == "healthy":
