@@ -8,6 +8,11 @@ from textual.widgets import Button, Label
 
 from claudefig.config import Config
 from claudefig.config_template_manager import ConfigTemplateManager
+from claudefig.exceptions import (
+    ConfigFileExistsError,
+    FileOperationError,
+    InitializationRollbackError,
+)
 
 
 class InitializePanel(Container):
@@ -146,7 +151,12 @@ class InitializePanel(Container):
                 severity="error",
                 timeout=10,
             )
+        except FileOperationError as e:
+            self.app.notify(str(e), severity="error")
+        except ConfigFileExistsError as e:
+            self.app.notify(str(e), severity="error")
         except FileExistsError:
+            # Fallback for non-migrated code - backward compatibility
             self.app.notify(
                 ".claudefig.toml already exists! Go to Presets panel to overwrite.",
                 severity="error",

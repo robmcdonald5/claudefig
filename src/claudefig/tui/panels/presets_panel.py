@@ -1,16 +1,24 @@
 """Presets panel for managing global preset templates."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 from textual.widgets import Button, Label, Select
+from textual.widgets._select import NoSelection
 
 from claudefig.config import Config
 from claudefig.config_template_manager import ConfigTemplateManager
+from claudefig.exceptions import (
+    ConfigFileExistsError,
+    FileOperationError,
+    PresetExistsError,
+    PresetNotFoundError,
+    TemplateNotFoundError,
+)
 from claudefig.tui.base import SystemUtilityMixin
 from claudefig.tui.screens import (
     ApplyPresetScreen,
@@ -32,7 +40,7 @@ class PresetsPanel(Container, SystemUtilityMixin):
         """Initialize presets panel."""
         super().__init__(**kwargs)
         self.config_template_manager = ConfigTemplateManager()
-        self._presets_data = {}  # Cache preset data by name
+        self._presets_data: dict[str, dict[str, Any]] = {}  # Cache preset data by name
         self._last_focused_button_index = 0  # Track which button was last focused
 
     def compose(self) -> ComposeResult:
@@ -66,7 +74,7 @@ class PresetsPanel(Container, SystemUtilityMixin):
             ]
 
             # Determine initial value (will be fully restored in on_mount)
-            initial_value = Select.BLANK
+            initial_value: str | NoSelection = Select.BLANK
             if PresetsPanel._last_selected_preset in self._presets_data:
                 initial_value = PresetsPanel._last_selected_preset
 
@@ -200,7 +208,14 @@ class PresetsPanel(Container, SystemUtilityMixin):
                         self.app.config = Config()
                         self.app._activate_section("config")
 
+                except ConfigFileExistsError as e:
+                    self.app.notify(str(e), severity="error")
+                except TemplateNotFoundError as e:
+                    self.app.notify(str(e), severity="error")
+                except PresetNotFoundError as e:
+                    self.app.notify(str(e), severity="error")
                 except FileExistsError:
+                    # ConfigTemplateManager not yet migrated - backward compatibility
                     self.app.notify(".claudefig.toml already exists!", severity="error")
                 except Exception as e:
                     self.app.notify(f"Error applying preset: {e}", severity="error")
@@ -219,9 +234,17 @@ class PresetsPanel(Container, SystemUtilityMixin):
             # Refresh the panel to show new preset
             self.refresh(recompose=True)
 
+        except PresetExistsError as e:
+            self.app.notify(str(e), severity="error")
+        except ConfigFileExistsError as e:
+            self.app.notify(str(e), severity="error")
+        except FileOperationError as e:
+            self.app.notify(str(e), severity="error")
         except ValueError as e:
+            # ConfigTemplateManager not yet migrated - backward compatibility
             self.app.notify(str(e), severity="error")
         except FileNotFoundError as e:
+            # ConfigTemplateManager not yet migrated - backward compatibility
             self.app.notify(str(e), severity="error")
         except Exception as e:
             self.app.notify(f"Error creating preset: {e}", severity="error")
@@ -249,7 +272,12 @@ class PresetsPanel(Container, SystemUtilityMixin):
                     # Refresh the panel to remove deleted preset
                     self.refresh(recompose=True)
 
+                except PresetNotFoundError as e:
+                    self.app.notify(str(e), severity="error")
+                except FileOperationError as e:
+                    self.app.notify(str(e), severity="error")
                 except FileNotFoundError as e:
+                    # ConfigTemplateManager not yet migrated - backward compatibility
                     self.app.notify(str(e), severity="error")
                 except Exception as e:
                     self.app.notify(f"Error deleting preset: {e}", severity="error")

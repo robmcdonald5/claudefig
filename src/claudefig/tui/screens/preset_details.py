@@ -4,6 +4,7 @@ from textual.app import ComposeResult
 from textual.widgets import Button, Label
 
 from claudefig.config_template_manager import ConfigTemplateManager
+from claudefig.exceptions import FileReadError, PresetNotFoundError, TemplateNotFoundError
 from claudefig.tui.base import BaseModalScreen
 
 
@@ -62,7 +63,17 @@ class PresetDetailsScreen(BaseModalScreen):
             else:
                 yield Label("  No file instances", classes="dialog-text")
 
+        except PresetNotFoundError as e:
+            yield Label(str(e), classes="dialog-error")
+        except TemplateNotFoundError as e:
+            yield Label(str(e), classes="dialog-error")
+        except FileReadError as e:
+            yield Label(str(e), classes="dialog-error")
+        except FileNotFoundError as e:
+            # ConfigTemplateManager not yet migrated - backward compatibility
+            yield Label(f"Error loading preset: {e}", classes="dialog-error")
         except Exception as e:
+            # Catch other unexpected errors
             yield Label(f"Error loading preset: {e}", classes="dialog-error")
 
     def compose_actions(self) -> ComposeResult:

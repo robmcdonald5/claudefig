@@ -7,7 +7,7 @@ from typing import Optional
 from rich.console import Console
 
 from claudefig.config import Config
-from claudefig.exceptions import InitializationRollbackError
+from claudefig.exceptions import FileOperationError, InitializationRollbackError
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
@@ -122,8 +122,7 @@ class Initializer:
         try:
             repo_path = repo_path.resolve()
         except (OSError, RuntimeError) as e:
-            console.print(f"[red]Error:[/red] Cannot resolve path: {e}")
-            return False
+            raise FileOperationError(f"resolve path {repo_path}", str(e)) from e
 
         # Check if it's a git repository
         if not is_git_repository(repo_path) and not skip_prompts:
