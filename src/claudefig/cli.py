@@ -12,9 +12,6 @@ from claudefig.error_messages import (
     format_cli_error,
     format_cli_warning,
 )
-from claudefig.repositories.config_repository import TomlConfigRepository
-from claudefig.repositories.preset_repository import TomlPresetRepository
-from claudefig.services import config_service, file_instance_service
 from claudefig.exceptions import (
     BuiltInModificationError,
     ConfigFileExistsError,
@@ -23,13 +20,15 @@ from claudefig.exceptions import (
     InitializationRollbackError,
     InstanceNotFoundError,
     InstanceValidationError,
-    InvalidFileTypeError,
     PresetExistsError,
     PresetNotFoundError,
     TemplateNotFoundError,
 )
 from claudefig.initializer import Initializer
 from claudefig.logging_config import get_logger, setup_logging
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.repositories.preset_repository import TomlPresetRepository
+from claudefig.services import config_service, file_instance_service
 from claudefig.template_manager import FileTemplateManager
 
 console = Console()
@@ -173,8 +172,14 @@ def show():
         table.add_column("Setting", style="cyan", width=30)
         table.add_column("Value", style="green")
 
-        table.add_row("Template Source", config_service.get_value(config_data, "claudefig.template_source"))
-        table.add_row("Schema Version", str(config_service.get_value(config_data, "claudefig.schema_version")))
+        table.add_row(
+            "Template Source",
+            config_service.get_value(config_data, "claudefig.template_source"),
+        )
+        table.add_row(
+            "Schema Version",
+            str(config_service.get_value(config_data, "claudefig.schema_version")),
+        )
 
         custom_dir = config_service.get_value(config_data, "custom.template_dir")
         if custom_dir:
@@ -187,7 +192,9 @@ def show():
 
         instances_data = config_service.get_file_instances(config_data)
         if instances_data:
-            instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+            instances_dict, _ = file_instance_service.load_instances_from_config(
+                instances_data
+            )
             all_instances = file_instance_service.list_instances(instances_dict)
 
             # Count by type
@@ -412,7 +419,9 @@ def config_set_init(overwrite, backup, path):
             console.print(
                 f"Overwrite existing: {config_service.get_value(config_data, 'init.overwrite_existing', False)}"
             )
-            console.print(f"Create backups:     {config_service.get_value(config_data, 'init.create_backup', True)}")
+            console.print(
+                f"Create backups:     {config_service.get_value(config_data, 'init.create_backup', True)}"
+            )
             console.print(
                 "\n[dim]Use --overwrite/--no-overwrite or --backup/--no-backup to change settings[/dim]"
             )
@@ -464,13 +473,24 @@ def config_list(path):
 
         # Claudefig section
         table.add_row("[bold]Claudefig[/bold]", "")
-        table.add_row("  version", str(config_service.get_value(config_data, "claudefig.version")))
-        table.add_row("  schema_version", str(config_service.get_value(config_data, "claudefig.schema_version")))
-        table.add_row("  template_source", config_service.get_value(config_data, "claudefig.template_source"))
+        table.add_row(
+            "  version", str(config_service.get_value(config_data, "claudefig.version"))
+        )
+        table.add_row(
+            "  schema_version",
+            str(config_service.get_value(config_data, "claudefig.schema_version")),
+        )
+        table.add_row(
+            "  template_source",
+            config_service.get_value(config_data, "claudefig.template_source"),
+        )
 
         # Init section
         table.add_row("[bold]Init[/bold]", "")
-        table.add_row("  overwrite_existing", str(config_service.get_value(config_data, "init.overwrite_existing")))
+        table.add_row(
+            "  overwrite_existing",
+            str(config_service.get_value(config_data, "init.overwrite_existing")),
+        )
 
         # Custom section
         custom_dir = config_service.get_value(config_data, "custom.template_dir")
@@ -489,7 +509,9 @@ def config_list(path):
 
         instances_data = config_service.get_file_instances(config_data)
         if instances_data:
-            instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+            instances_dict, _ = file_instance_service.load_instances_from_config(
+                instances_data
+            )
             all_instances = file_instance_service.list_instances(instances_dict)
 
             if all_instances:
@@ -560,7 +582,9 @@ def files_list(path, file_type, enabled_only):
 
         # Load instances from config
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, load_errors = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Show load errors if any
         if load_errors:
@@ -582,7 +606,9 @@ def files_list(path, file_type, enabled_only):
                 raise click.Abort() from None
 
         # List instances with filters
-        instances = file_instance_service.list_instances(instances_dict, filter_type, enabled_only)
+        instances = file_instance_service.list_instances(
+            instances_dict, filter_type, enabled_only
+        )
 
         if not instances:
             console.print("[yellow]No file instances configured[/yellow]")
@@ -663,7 +689,9 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
 
         # Load existing instances
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, load_errors = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Show load errors if any
         if load_errors:
@@ -710,7 +738,9 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
                 console.print(f"  • {warning}")
 
         # Save instances back to config
-        updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+        updated_instances_data = file_instance_service.save_instances_to_config(
+            instances_dict
+        )
         config_service.set_file_instances(config_data, updated_instances_data)
         config_service.save_config(config_data, config_repo)
 
@@ -761,12 +791,16 @@ def files_remove(instance_id, path):
 
         # Load instances
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Remove instance
         if file_instance_service.remove_instance(instances_dict, instance_id):
             # Save instances back to config
-            updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+            updated_instances_data = file_instance_service.save_instances_to_config(
+                instances_dict
+            )
             config_service.set_file_instances(config_data, updated_instances_data)
             config_service.save_config(config_data, config_repo)
 
@@ -816,12 +850,16 @@ def files_enable(instance_id, path):
 
         # Load instances
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Enable instance
         if file_instance_service.enable_instance(instances_dict, instance_id):
             # Save instances back to config
-            updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+            updated_instances_data = file_instance_service.save_instances_to_config(
+                instances_dict
+            )
             config_service.set_file_instances(config_data, updated_instances_data)
             config_service.save_config(config_data, config_repo)
 
@@ -871,12 +909,16 @@ def files_disable(instance_id, path):
 
         # Load instances
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Disable instance
         if file_instance_service.disable_instance(instances_dict, instance_id):
             # Save instances back to config
-            updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+            updated_instances_data = file_instance_service.save_instances_to_config(
+                instances_dict
+            )
             config_service.set_file_instances(config_data, updated_instances_data)
             config_service.save_config(config_data, config_repo)
 
@@ -941,7 +983,9 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
 
         # Load instances
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Get existing instance
         instance = file_instance_service.get_instance(instances_dict, instance_id)
@@ -1001,7 +1045,9 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
                 console.print(f"  • {warning}")
 
         # Save instances back to config
-        updated_instances_data = file_instance_service.save_instances_to_config(instances_dict)
+        updated_instances_data = file_instance_service.save_instances_to_config(
+            instances_dict
+        )
         config_service.set_file_instances(config_data, updated_instances_data)
         config_service.save_config(config_data, config_repo)
 
@@ -1313,7 +1359,9 @@ def presets_create(preset_name, file_type, description, template_path, source, t
         raise click.Abort() from e
     except ValueError as e:
         # Catch validation errors (file type, etc.)
-        console.print(format_cli_error(ErrorMessages.operation_failed("creating preset", str(e))))
+        console.print(
+            format_cli_error(ErrorMessages.operation_failed("creating preset", str(e)))
+        )
         raise click.Abort() from e
     except Exception as e:
         console.print(
@@ -1363,14 +1411,12 @@ def presets_delete(preset_id, force):
         from claudefig.models import PresetSource
 
         if preset.source == PresetSource.BUILT_IN:
-            console.print(
-                format_cli_error("Cannot delete built-in presets")
-            )
+            console.print(format_cli_error("Cannot delete built-in presets"))
             raise click.Abort() from None
 
         # Confirmation prompt unless --force
         if not force:
-            console.print(f"\n[yellow]About to delete preset:[/yellow]")
+            console.print("\n[yellow]About to delete preset:[/yellow]")
             console.print(f"  ID:     {preset.id}")
             console.print(f"  Name:   {preset.name}")
             console.print(f"  Type:   {preset.type.display_name}")
@@ -1447,9 +1493,7 @@ def presets_edit(preset_id):
         from claudefig.models import PresetSource
 
         if preset.source == PresetSource.BUILT_IN:
-            console.print(
-                format_cli_error("Cannot edit built-in presets")
-            )
+            console.print(format_cli_error("Cannot edit built-in presets"))
             raise click.Abort() from None
 
         # Determine preset file path
@@ -1461,9 +1505,7 @@ def presets_edit(preset_id):
         preset_file = preset_dir / f"{preset_id.replace(':', '_')}.toml"
 
         if not preset_file.exists():
-            console.print(
-                format_cli_error(f"Preset file not found: {preset_file}")
-            )
+            console.print(format_cli_error(f"Preset file not found: {preset_file}"))
             raise click.Abort() from None
 
         console.print(f"[bold blue]Opening preset file:[/bold blue] {preset_file}\n")
@@ -1490,9 +1532,7 @@ def presets_edit(preset_id):
                     except FileNotFoundError:
                         continue
                 else:
-                    console.print(
-                        "[yellow]No suitable editor found[/yellow]"
-                    )
+                    console.print("[yellow]No suitable editor found[/yellow]")
                     console.print(f"\n[dim]Edit manually: {preset_file}[/dim]")
                     return
 
@@ -1780,7 +1820,9 @@ def templates_edit(template_name):
                 "[yellow]Warning: Editing default template - changes will affect new projects[/yellow]\n"
             )
 
-        console.print(f"[bold blue]Opening template file:[/bold blue] {template_file}\n")
+        console.print(
+            f"[bold blue]Opening template file:[/bold blue] {template_file}\n"
+        )
 
         # Determine editor based on environment and platform
         editor = os.environ.get("EDITOR")
@@ -1804,9 +1846,7 @@ def templates_edit(template_name):
                     except FileNotFoundError:
                         continue
                 else:
-                    console.print(
-                        "[yellow]No suitable editor found[/yellow]"
-                    )
+                    console.print("[yellow]No suitable editor found[/yellow]")
                     console.print(f"\n[dim]Edit manually: {template_file}[/dim]")
                     return
 
@@ -2022,7 +2062,9 @@ def validate(path):
 
         # Load instances
         instances_data = config_service.get_file_instances(config_data)
-        instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, load_errors = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         # Show load errors
         if load_errors:
@@ -2030,7 +2072,9 @@ def validate(path):
                 console.print(f"[red]Load error:[/red] {error}")
 
         # Get enabled instances
-        enabled_instances = file_instance_service.list_instances(instances_dict, enabled_only=True)
+        enabled_instances = file_instance_service.list_instances(
+            instances_dict, enabled_only=True
+        )
 
         if not enabled_instances:
             logger.warning("No enabled file instances to validate")

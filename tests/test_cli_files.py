@@ -104,7 +104,7 @@ class TestFilesList:
         )
         mock_load_instances.return_value = (
             {"test-claude-md": claude_instance, "test-settings": settings_instance},
-            []
+            [],
         )
         mock_list_instances.return_value = [claude_instance, settings_instance]
 

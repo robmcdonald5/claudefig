@@ -3,8 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from claudefig.services import validation_service
 
 
@@ -152,7 +150,9 @@ class TestValidatePathSafe:
             repo_root.mkdir()
 
             # Try to escape using symlink-like resolution
-            result = validation_service.validate_path_safe("subdir/../../outside", repo_root)
+            result = validation_service.validate_path_safe(
+                "subdir/../../outside", repo_root
+            )
 
             # Should be rejected because resolved path escapes repo
             assert not result.valid
@@ -174,7 +174,9 @@ class TestValidateDictStructure:
 
     def test_rejects_non_dict(self):
         """Test non-dictionary data is rejected."""
-        result = validation_service.validate_dict_structure("not a dict", ["key"], "data")
+        result = validation_service.validate_dict_structure(
+            "not a dict", ["key"], "data"
+        )
 
         assert not result.valid
         assert "must be a dictionary" in result.errors[0]
@@ -202,7 +204,9 @@ class TestValidateDictStructure:
 
     def test_includes_dict_name_in_error(self):
         """Test error includes dict name."""
-        result = validation_service.validate_dict_structure("string", ["key"], "my_config")
+        result = validation_service.validate_dict_structure(
+            "string", ["key"], "my_config"
+        )
 
         assert "my_config" in result.errors[0]
 
@@ -291,13 +295,17 @@ class TestValidateOneOf:
 
     def test_value_in_allowed_list(self):
         """Test value in allowed list is valid."""
-        result = validation_service.validate_one_of("claude_md", ["claude_md", "gitignore"], "type")
+        result = validation_service.validate_one_of(
+            "claude_md", ["claude_md", "gitignore"], "type"
+        )
 
         assert result.valid
 
     def test_rejects_value_not_in_list(self):
         """Test value not in list is rejected."""
-        result = validation_service.validate_one_of("invalid", ["claude_md", "gitignore"], "type")
+        result = validation_service.validate_one_of(
+            "invalid", ["claude_md", "gitignore"], "type"
+        )
 
         assert not result.valid
         assert "must be one of" in result.errors[0]
@@ -336,10 +344,14 @@ class TestValidateRegex:
         """Test email validation pattern."""
         pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
-        result_valid = validation_service.validate_regex("test@example.com", pattern, "email")
+        result_valid = validation_service.validate_regex(
+            "test@example.com", pattern, "email"
+        )
         assert result_valid.valid
 
-        result_invalid = validation_service.validate_regex("not-an-email", pattern, "email")
+        result_invalid = validation_service.validate_regex(
+            "not-an-email", pattern, "email"
+        )
         assert not result_invalid.valid
 
 
@@ -418,7 +430,9 @@ class TestValidateFileExtension:
 
     def test_valid_markdown_extension(self):
         """Test valid markdown extension."""
-        result = validation_service.validate_file_extension("CLAUDE.md", [".md"], "file")
+        result = validation_service.validate_file_extension(
+            "CLAUDE.md", [".md"], "file"
+        )
 
         assert result.valid
 
@@ -430,13 +444,17 @@ class TestValidateFileExtension:
 
     def test_multiple_allowed_extensions(self):
         """Test multiple allowed extensions."""
-        result = validation_service.validate_file_extension("config.toml", [".json", ".toml", ".yaml"], "config")
+        result = validation_service.validate_file_extension(
+            "config.toml", [".json", ".toml", ".yaml"], "config"
+        )
 
         assert result.valid
 
     def test_rejects_wrong_extension(self):
         """Test rejects wrong extension."""
-        result = validation_service.validate_file_extension("script.py", [".md", ".txt"], "file")
+        result = validation_service.validate_file_extension(
+            "script.py", [".md", ".txt"], "file"
+        )
 
         assert not result.valid
         assert "must have one of these extensions" in result.errors[0]
@@ -454,13 +472,17 @@ class TestValidateNoConflicts:
 
     def test_no_conflict_when_unique(self):
         """Test no conflict when value is unique."""
-        result = validation_service.validate_no_conflicts("new", ["existing1", "existing2"], "name")
+        result = validation_service.validate_no_conflicts(
+            "new", ["existing1", "existing2"], "name"
+        )
 
         assert result.valid
 
     def test_rejects_exact_duplicate(self):
         """Test rejects exact duplicate."""
-        result = validation_service.validate_no_conflicts("test", ["test", "other"], "name")
+        result = validation_service.validate_no_conflicts(
+            "test", ["test", "other"], "name"
+        )
 
         assert not result.valid
         assert "already exists" in result.errors[0]

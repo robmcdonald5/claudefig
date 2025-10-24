@@ -7,6 +7,15 @@ This package provides utility functions organized by category:
 """
 
 # Platform utilities
+# Path utilities
+from claudefig.utils.paths import (
+    ensure_directory,
+    find_file_upwards,
+    get_relative_path,
+    is_git_repository,
+    is_subdirectory,
+    safe_path_join,
+)
 from claudefig.utils.platform import (
     get_editor_command,
     get_platform,
@@ -16,16 +25,6 @@ from claudefig.utils.platform import (
     open_file_in_editor,
     open_folder_in_explorer,
     run_platform_command,
-)
-
-# Path utilities
-from claudefig.utils.paths import (
-    ensure_directory,
-    find_file_upwards,
-    get_relative_path,
-    is_git_repository,
-    is_subdirectory,
-    safe_path_join,
 )
 
 __all__ = [

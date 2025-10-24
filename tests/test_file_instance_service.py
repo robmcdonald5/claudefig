@@ -1,9 +1,5 @@
 """Tests for file instance service layer."""
 
-from pathlib import Path
-
-import pytest
-
 from claudefig.models import FileInstance, FileType, Preset, PresetSource
 from claudefig.repositories.preset_repository import FakePresetRepository
 from claudefig.services import file_instance_service
@@ -54,7 +50,9 @@ class TestListInstances:
             ),
         }
 
-        result = file_instance_service.list_instances(instances, file_type=FileType.CLAUDE_MD)
+        result = file_instance_service.list_instances(
+            instances, file_type=FileType.CLAUDE_MD
+        )
 
         assert len(result) == 1
         assert result[0].type == FileType.CLAUDE_MD
@@ -496,7 +494,9 @@ class TestGetInstancesByType:
             ),
         }
 
-        result = file_instance_service.get_instances_by_type(instances, FileType.CLAUDE_MD)
+        result = file_instance_service.get_instances_by_type(
+            instances, FileType.CLAUDE_MD
+        )
 
         assert len(result) == 1
         assert result[0].type == FileType.CLAUDE_MD
@@ -513,7 +513,9 @@ class TestGetInstancesByType:
             ),
         }
 
-        result = file_instance_service.get_instances_by_type(instances, FileType.GITIGNORE)
+        result = file_instance_service.get_instances_by_type(
+            instances, FileType.GITIGNORE
+        )
 
         assert result == []
 
@@ -540,7 +542,9 @@ class TestLoadInstancesFromConfig:
             },
         ]
 
-        instances_dict, errors = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, errors = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         assert len(instances_dict) == 2
         assert "test-1" in instances_dict
@@ -566,7 +570,9 @@ class TestLoadInstancesFromConfig:
             },
         ]
 
-        instances_dict, errors = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, errors = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         assert len(instances_dict) == 1
         assert "test-1" in instances_dict
@@ -577,7 +583,9 @@ class TestLoadInstancesFromConfig:
         """Test handles empty instances data."""
         instances_data = []
 
-        instances_dict, errors = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, errors = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         assert instances_dict == {}
         assert errors == []

@@ -57,8 +57,6 @@ See FileInstancesScreen._remove_instance() for recompose examples.
 """
 
 import contextlib
-import platform
-import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -529,7 +527,6 @@ class ScrollNavigationMixin:
             return
 
         # Get all focusable widgets in this horizontal container
-        from textual.widgets import Button, Select
 
         focusable_widgets = [
             widget
@@ -573,7 +570,6 @@ class ScrollNavigationMixin:
             return
 
         # Get all focusable widgets in this horizontal container
-        from textual.widgets import Button, Select
 
         focusable_widgets = [
             widget
@@ -682,7 +678,9 @@ class SystemUtilityMixin:
             - Uses appropriate system command
             - Shows notification to user
         """
-        from claudefig.utils.platform import open_folder_in_explorer as platform_open_folder
+        from claudefig.utils.platform import (
+            open_folder_in_explorer as platform_open_folder,
+        )
 
         try:
             platform_open_folder(folder_path, create_if_missing=True)

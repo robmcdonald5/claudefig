@@ -101,7 +101,9 @@ def delete_preset(repo: AbstractPresetRepository, preset_id: str) -> None:
 
 
 def render_preset(
-    repo: AbstractPresetRepository, preset: Preset, variables: dict[str, Any] | None = None
+    repo: AbstractPresetRepository,
+    preset: Preset,
+    variables: dict[str, Any] | None = None,
 ) -> str:
     """Render a preset template with variable substitution.
 
@@ -218,11 +220,13 @@ def validate_preset_variables(
         result.add_error(f"Template file not found: {e}")
     except FileReadError as e:
         result.add_error(f"Failed to read template file: {e}")
-    except (FileNotFoundError, IOError) as e:
+    except (OSError, FileNotFoundError) as e:
         # Catch any other file-related exceptions (for backward compatibility)
         result.add_error(f"Failed to read template file: {e}")
     except Exception as e:
-        result.add_error(f"Unexpected error validating template: {type(e).__name__}: {e}")
+        result.add_error(
+            f"Unexpected error validating template: {type(e).__name__}: {e}"
+        )
 
     return result
 

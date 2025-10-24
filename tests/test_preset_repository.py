@@ -4,17 +4,17 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import tomli_w
 
 from claudefig.exceptions import (
     BuiltInModificationError,
-    FileOperationError,
-    FileWriteError,
     PresetExistsError,
     PresetNotFoundError,
 )
 from claudefig.models import FileType, Preset, PresetSource
-from claudefig.repositories.preset_repository import FakePresetRepository, TomlPresetRepository
+from claudefig.repositories.preset_repository import (
+    FakePresetRepository,
+    TomlPresetRepository,
+)
 
 
 class TestTomlPresetRepository:
@@ -25,7 +25,9 @@ class TestTomlPresetRepository:
         user_path = Path("/tmp/user")
         project_path = Path("/tmp/project")
 
-        repo = TomlPresetRepository(user_presets_dir=user_path, project_presets_dir=project_path)
+        repo = TomlPresetRepository(
+            user_presets_dir=user_path, project_presets_dir=project_path
+        )
 
         assert repo.user_presets_dir == user_path
         assert repo.project_presets_dir == project_path

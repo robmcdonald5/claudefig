@@ -31,7 +31,7 @@ class InitializePanel(Container):
         config_data: dict[str, Any],
         config_repo: TomlConfigRepository,
         on_switch_to_presets,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Initialize panel.
 
@@ -104,7 +104,6 @@ class InitializePanel(Container):
 
     async def _start_initialization(self) -> None:
         """Start the initialization process."""
-        from claudefig.exceptions import InitializationRollbackError
         from claudefig.initializer import Initializer
         from claudefig.tui.app import MainScreen
         from claudefig.tui.panels.content_panel import ContentPanel

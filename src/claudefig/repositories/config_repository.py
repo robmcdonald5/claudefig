@@ -59,6 +59,7 @@ class TomlConfigRepository(AbstractConfigRepository):
         try:
             with open(self.config_path, "rb") as f:
                 from typing import cast
+
                 return cast(dict[str, Any], tomllib.load(f))
         except tomllib.TOMLDecodeError as e:
             raise ValueError(
@@ -144,9 +145,7 @@ class TomlConfigRepository(AbstractConfigRepository):
             shutil.copy2(self.config_path, backup_path)
             return backup_path
         except Exception as e:
-            raise FileOperationError(
-                f"create backup at {backup_path}", str(e)
-            ) from e
+            raise FileOperationError(f"create backup at {backup_path}", str(e)) from e
 
     def delete(self) -> None:
         """Delete the configuration file.
@@ -161,9 +160,7 @@ class TomlConfigRepository(AbstractConfigRepository):
         try:
             self.config_path.unlink()
         except Exception as e:
-            raise FileOperationError(
-                f"delete config {self.config_path}", str(e)
-            ) from e
+            raise FileOperationError(f"delete config {self.config_path}", str(e)) from e
 
 
 class FakeConfigRepository(AbstractConfigRepository):

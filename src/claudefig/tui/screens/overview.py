@@ -159,8 +159,16 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         files_dropdown.set_content(*files_content)
 
         # Populate SETTINGS dropdown
-        overwrite = "Yes" if config_service.get_value(self.config_data, "init.overwrite_existing") else "No"
-        backup = "Yes" if config_service.get_value(self.config_data, "init.create_backup", True) else "No"
+        overwrite = (
+            "Yes"
+            if config_service.get_value(self.config_data, "init.overwrite_existing")
+            else "No"
+        )
+        backup = (
+            "Yes"
+            if config_service.get_value(self.config_data, "init.create_backup", True)
+            else "No"
+        )
 
         settings_dropdown = self.query_one("#settings-dropdown", OverlayDropdown)
         settings_dropdown.set_content(

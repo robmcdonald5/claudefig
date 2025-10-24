@@ -16,9 +16,7 @@ from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 from claudefig.tui.widgets.compact_single_instance import CompactSingleInstanceControl
 
 
-class CoreFilesScreen(
-    Screen, BackButtonMixin, ScrollNavigationMixin
-):
+class CoreFilesScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
     """Screen for managing single-instance core files."""
 
     BINDINGS = [
@@ -60,7 +58,9 @@ class CoreFilesScreen(
         3. Sync config → disk (done here)
         """
         # Save instances to config format
-        instances_data = file_instance_service.save_instances_to_config(self.instances_dict)
+        instances_data = file_instance_service.save_instances_to_config(
+            self.instances_dict
+        )
         config_service.set_file_instances(self.config_data, instances_data)
 
         # Save config to disk

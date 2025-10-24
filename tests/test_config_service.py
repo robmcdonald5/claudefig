@@ -1,9 +1,6 @@
 """Tests for configuration service layer."""
 
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from claudefig.repositories.config_repository import FakeConfigRepository
 from claudefig.services import config_service
@@ -491,7 +488,9 @@ class TestValidateConfigSchema:
         result = config_service.validate_config_schema(data)
 
         assert not result.valid
-        assert any("overwrite_existing" in err and "boolean" in err for err in result.errors)
+        assert any(
+            "overwrite_existing" in err and "boolean" in err for err in result.errors
+        )
 
     def test_validates_init_create_backup_is_bool(self):
         """Test init.create_backup must be boolean."""
@@ -555,7 +554,12 @@ class TestValidateConfigSchema:
             "claudefig": {"version": "2.0", "schema_version": "2.0"},
             "init": {"overwrite_existing": False, "create_backup": True},
             "files": [
-                {"id": "1", "type": "claude_md", "preset": "default", "path": "CLAUDE.md"}
+                {
+                    "id": "1",
+                    "type": "claude_md",
+                    "preset": "default",
+                    "path": "CLAUDE.md",
+                }
             ],
             "custom": {"template_dir": "/templates"},
         }

@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from claudefig.exceptions import BuiltInModificationError, PresetExistsError, TemplateNotFoundError
+from claudefig.exceptions import (
+    BuiltInModificationError,
+    PresetExistsError,
+)
 from claudefig.models import FileType, Preset, PresetSource
 from claudefig.repositories.preset_repository import FakePresetRepository
 from claudefig.services import preset_service
@@ -141,7 +144,7 @@ class TestCreatePreset:
             source=PresetSource.PROJECT,
         )
 
-        result = preset_service.create_preset(repo, preset, PresetSource.PROJECT)
+        preset_service.create_preset(repo, preset, PresetSource.PROJECT)
 
         assert repo.exists("claude_md:new")
         retrieved = repo.get_preset("claude_md:new")
@@ -464,7 +467,9 @@ class TestValidatePresetVariables:
 
             assert result.valid
             # Should not warn about missing 'author' since it's provided
-            assert not any("author" in warn and "uses variable" in warn for warn in result.warnings)
+            assert not any(
+                "author" in warn and "uses variable" in warn for warn in result.warnings
+            )
 
     def test_fake_repository_does_not_raise_template_errors(self):
         """Test FakePresetRepository provides mock template even for invalid paths."""

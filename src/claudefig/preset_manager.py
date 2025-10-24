@@ -108,7 +108,9 @@ class PresetManager:
             ValueError: If preset already exists or source is BUILT_IN
         """
         # Delegate to service layer
-        return preset_service.create_preset(repo=self._repo, preset=preset, source=source)
+        return preset_service.create_preset(
+            repo=self._repo, preset=preset, source=source
+        )
 
     def delete_preset(self, preset_id: str) -> bool:
         """Delete a preset.
@@ -194,7 +196,6 @@ class PresetManager:
         preset_id = f"{file_type.value}:{preset_name}"
         return self.get_preset(preset_id)
 
-
     def clear_cache(self) -> None:
         """Clear the preset cache to force reload."""
         # Delegate to repository
@@ -230,6 +231,7 @@ class PresetManager:
         if preset_id in visited:
             # Circular dependency detected
             from claudefig.exceptions import CircularDependencyError
+
             cycle_path = list(visited) + [preset_id]
             raise CircularDependencyError(cycle_path)
 

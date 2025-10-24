@@ -4,7 +4,11 @@ from textual.app import ComposeResult
 from textual.widgets import Button, Label
 
 from claudefig.config_template_manager import ConfigTemplateManager
-from claudefig.exceptions import FileReadError, PresetNotFoundError, TemplateNotFoundError
+from claudefig.exceptions import (
+    FileReadError,
+    PresetNotFoundError,
+    TemplateNotFoundError,
+)
 from claudefig.tui.base import BaseModalScreen
 
 

@@ -132,9 +132,7 @@ def validate_dict_structure(
     return result
 
 
-def validate_type(
-    value: Any, expected_type: type, field_name: str
-) -> ValidationResult:
+def validate_type(value: Any, expected_type: type, field_name: str) -> ValidationResult:
     """Validate that a value is of expected type.
 
     Args:
@@ -149,8 +147,7 @@ def validate_type(
 
     if not isinstance(value, expected_type):
         result.add_error(
-            f"{field_name} must be {expected_type.__name__}, "
-            f"got {type(value).__name__}"
+            f"{field_name} must be {expected_type.__name__}, got {type(value).__name__}"
         )
 
     return result
@@ -196,9 +193,7 @@ def validate_one_of(
     result = ValidationResult(valid=True)
 
     if value not in allowed_values:
-        result.add_error(
-            f"{field_name} must be one of {allowed_values}, got {value!r}"
-        )
+        result.add_error(f"{field_name} must be one of {allowed_values}, got {value!r}")
 
     return result
 
@@ -306,9 +301,7 @@ def validate_no_conflicts(
 
     compare_value = value if case_sensitive else value.lower()
     compare_existing = (
-        existing_values
-        if case_sensitive
-        else [v.lower() for v in existing_values]
+        existing_values if case_sensitive else [v.lower() for v in existing_values]
     )
 
     if compare_value in compare_existing:

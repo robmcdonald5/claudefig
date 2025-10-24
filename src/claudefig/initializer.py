@@ -2,7 +2,7 @@
 
 import shutil
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from rich.console import Console
 
@@ -164,7 +164,9 @@ class Initializer:
                 config_service.set_file_instances(self.config_data, instances_data)
 
             # Load instances into dictionary
-            self.instances_dict, load_errors = file_instance_service.load_instances_from_config(instances_data)
+            self.instances_dict, load_errors = (
+                file_instance_service.load_instances_from_config(instances_data)
+            )
 
             # Show load errors if any
             if load_errors:
@@ -182,7 +184,9 @@ class Initializer:
             success = True
             files_created = 0
 
-            enabled_instances = file_instance_service.list_instances(self.instances_dict, enabled_only=True)
+            enabled_instances = file_instance_service.list_instances(
+                self.instances_dict, enabled_only=True
+            )
 
             if not enabled_instances:
                 console.print("[yellow]No enabled file instances to generate[/yellow]")
@@ -308,9 +312,7 @@ class Initializer:
 
         # Check if file/directory already exists
         if dest_path.exists() and not force and not instance.type.append_mode:
-            console.print(
-                f"[blue]i[/blue] Already exists (skipped): {dest_path}"
-            )
+            console.print(f"[blue]i[/blue] Already exists (skipped): {dest_path}")
             return True  # Treat existing files as success (skip)
 
         try:
@@ -377,9 +379,7 @@ class Initializer:
 
         # Check if file already exists
         if dest_path.exists() and not force:
-            console.print(
-                f"[blue]i[/blue] Already exists (skipped): {dest_path}"
-            )
+            console.print(f"[blue]i[/blue] Already exists (skipped): {dest_path}")
             return True  # Treat existing files as success (skip)
 
         try:
@@ -417,7 +417,9 @@ class Initializer:
             True if successful
         """
         # Get template content
-        template_name = config_service.get_value(self.config_data, "claudefig.template_source", "default")
+        template_name = config_service.get_value(
+            self.config_data, "claudefig.template_source", "default"
+        )
 
         try:
             # Try to read template file
@@ -480,7 +482,9 @@ class Initializer:
         Returns:
             True if successful
         """
-        template_name = config_service.get_value(self.config_data, "claudefig.template_source", "default")
+        template_name = config_service.get_value(
+            self.config_data, "claudefig.template_source", "default"
+        )
 
         try:
             # Read gitignore entries template
@@ -535,7 +539,9 @@ class Initializer:
         Returns:
             True if successful
         """
-        template_name = config_service.get_value(self.config_data, "claudefig.template_source", "default")
+        template_name = config_service.get_value(
+            self.config_data, "claudefig.template_source", "default"
+        )
 
         # Map file types to template paths
         template_dir_map = {

@@ -11,8 +11,6 @@ from textual.widgets import Button, Label, Select
 from textual.widgets._select import NoSelection
 
 from claudefig.config_template_manager import ConfigTemplateManager
-from claudefig.repositories.config_repository import TomlConfigRepository
-from claudefig.services import config_service
 from claudefig.exceptions import (
     ConfigFileExistsError,
     FileOperationError,
@@ -20,6 +18,7 @@ from claudefig.exceptions import (
     PresetNotFoundError,
     TemplateNotFoundError,
 )
+from claudefig.services import config_service
 from claudefig.tui.base import SystemUtilityMixin
 from claudefig.tui.screens import (
     ApplyPresetScreen,

@@ -1,15 +1,13 @@
 """Interactive TUI (Text User Interface) for claudefig."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Static
-
-from typing import Any
 
 from claudefig import __version__
 from claudefig.repositories.config_repository import TomlConfigRepository

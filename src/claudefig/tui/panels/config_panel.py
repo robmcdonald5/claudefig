@@ -73,7 +73,9 @@ class ConfigPanel(Container):
         if instances_data:
             from claudefig.services import file_instance_service
 
-            instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+            instances_dict, _ = file_instance_service.load_instances_from_config(
+                instances_data
+            )
             instances_list = list(instances_dict.values())
         else:
             instances_list = []
@@ -214,7 +216,9 @@ class ConfigPanel(Container):
 
         # Load instances_dict for migrated screens
         instances_data = config_service.get_file_instances(self.config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
+        instances_dict, _ = file_instance_service.load_instances_from_config(
+            instances_data
+        )
 
         if button_id == "btn-overview":
             # OverviewScreen has been migrated - uses new architecture

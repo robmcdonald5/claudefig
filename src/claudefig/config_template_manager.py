@@ -48,7 +48,11 @@ PRESET_DEFINITIONS = {
             ("claude_md", "claude_md:default", "CLAUDE.md"),
             ("gitignore", "gitignore:standard", ".gitignore"),
             ("settings_json", "settings_json:default", ".claude/settings.json"),
-            ("settings_local_json", "settings_local_json:default", ".claude/settings.local.json"),
+            (
+                "settings_local_json",
+                "settings_local_json:default",
+                ".claude/settings.local.json",
+            ),
             ("commands", "commands:default", ".claude/commands/"),
             ("agents", "agents:default", ".claude/agents/"),
             ("hooks", "hooks:default", ".claude/hooks/"),
@@ -107,7 +111,7 @@ class ConfigTemplateManager:
 
     def _ensure_default_preset(self) -> None:
         """Create default.toml preset and variants if they don't exist."""
-        for preset_name in PRESET_DEFINITIONS.keys():
+        for preset_name in PRESET_DEFINITIONS:
             preset_path = self.global_presets_dir / f"{preset_name}.toml"
             if not preset_path.exists():
                 config_data = self._build_from_definition(preset_name)
@@ -133,16 +137,18 @@ class ConfigTemplateManager:
 
         # Build files list from definition
         files = []
-        for i, (file_type, preset, path) in enumerate(definition["files"], 1):
+        for _i, (file_type, preset, path) in enumerate(definition["files"], 1):
             file_id = f"{preset_name}-{file_type.replace('_', '-')}"
-            files.append({
-                "id": file_id,
-                "type": file_type,
-                "preset": preset,
-                "path": path,
-                "enabled": True,
-                "variables": {},
-            })
+            files.append(
+                {
+                    "id": file_id,
+                    "type": file_type,
+                    "preset": preset,
+                    "path": path,
+                    "enabled": True,
+                    "variables": {},
+                }
+            )
 
         # Return complete config structure
         return {

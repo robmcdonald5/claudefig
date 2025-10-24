@@ -186,9 +186,7 @@ def get_file_instances(data: dict[str, Any]) -> list[dict[str, Any]]:
     return cast(list[dict[str, Any]], data.get("files", []))
 
 
-def set_file_instances(
-    data: dict[str, Any], instances: list[dict[str, Any]]
-) -> None:
+def set_file_instances(data: dict[str, Any], instances: list[dict[str, Any]]) -> None:
     """Set file instances in configuration.
 
     Args:
@@ -279,9 +277,7 @@ def validate_config_schema(data: dict[str, Any]) -> ValidationResult:
         else:
             # Check for required keys
             if "schema_version" not in claudefig:
-                result.add_warning(
-                    "Missing 'claudefig.schema_version' - using default"
-                )
+                result.add_warning("Missing 'claudefig.schema_version' - using default")
 
             # Validate schema version
             schema_version = claudefig.get("schema_version")
@@ -315,9 +311,7 @@ def validate_config_schema(data: dict[str, Any]) -> ValidationResult:
             # Validate each file instance has required fields
             for i, file_inst in enumerate(files):
                 if not isinstance(file_inst, dict):
-                    result.add_error(
-                        f"File instance at index {i} must be a dictionary"
-                    )
+                    result.add_error(f"File instance at index {i} must be a dictionary")
                     continue
 
                 required_fields = ["id", "type", "preset", "path"]

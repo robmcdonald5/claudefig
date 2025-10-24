@@ -91,7 +91,9 @@ def open_file_in_editor(file_path: Union[Path, str]) -> bool:
         raise RuntimeError(f"Failed to open file: {e}") from e
 
 
-def open_folder_in_explorer(folder_path: Union[Path, str], create_if_missing: bool = True) -> bool:
+def open_folder_in_explorer(
+    folder_path: Union[Path, str], create_if_missing: bool = True
+) -> bool:
     """Open a folder in the system's file explorer.
 
     Args:

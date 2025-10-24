@@ -2,7 +2,6 @@
 
 import sys
 from pathlib import Path
-from typing import Any
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -303,7 +302,6 @@ class TomlPresetRepository(AbstractPresetRepository):
 
     def _load_builtin_presets(self) -> None:
         """Load built-in presets shipped with claudefig."""
-        from claudefig.models import FileType
 
         builtin_presets = [
             # CLAUDE.md presets
@@ -464,7 +462,7 @@ class TomlPresetRepository(AbstractPresetRepository):
                 # Add to cache (overwrites if already exists = priority)
                 self._preset_cache[preset.id] = preset
 
-            except (OSError, IOError) as e:
+            except OSError as e:
                 # File system errors
                 error_msg = f"Failed to read preset file {preset_file}: {e}"
                 self._load_errors.append(error_msg)

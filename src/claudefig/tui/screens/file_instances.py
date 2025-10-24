@@ -1,14 +1,13 @@
 """File instances screen for managing multi-instance file types."""
 
 from pathlib import Path
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import Button, Label, Select, TabbedContent, TabPane
-
-from typing import Any
 
 from claudefig.error_messages import ErrorMessages
 from claudefig.exceptions import (
@@ -76,7 +75,9 @@ class FileInstancesScreen(
         3. Sync config → disk (done here)
         """
         # Save instances to config format
-        instances_data = file_instance_service.save_instances_to_config(self.instances_dict)
+        instances_data = file_instance_service.save_instances_to_config(
+            self.instances_dict
+        )
         config_service.set_file_instances(self.config_data, instances_data)
 
         # Save config to disk
@@ -164,12 +165,17 @@ class FileInstancesScreen(
                                 FileType.SETTINGS_JSON: "settings_json",
                             }
 
-                            type_dir = components_dir / type_dirs.get(file_type, file_type.value)
+                            type_dir = components_dir / type_dirs.get(
+                                file_type, file_type.value
+                            )
                             components = []
 
                             if type_dir.exists():
                                 # For folder-based components (CLAUDE_MD, GITIGNORE)
-                                if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                                if file_type in (
+                                    FileType.CLAUDE_MD,
+                                    FileType.GITIGNORE,
+                                ):
                                     components = [
                                         (item.name, item)
                                         for item in type_dir.iterdir()
@@ -330,6 +336,7 @@ class FileInstancesScreen(
 
             # Load component from library
             import json
+
             from claudefig.user_config import get_components_dir
 
             components_dir = get_components_dir()

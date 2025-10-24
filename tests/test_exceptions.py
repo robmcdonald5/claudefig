@@ -1,7 +1,5 @@
 """Tests for custom exception hierarchy."""
 
-import pytest
-
 from claudefig import exceptions
 
 
@@ -46,7 +44,9 @@ class TestValidationErrors:
 
     def test_invalid_preset_name_with_reason(self):
         """Test InvalidPresetNameError with reason."""
-        error = exceptions.InvalidPresetNameError("123", reason="cannot start with number")
+        error = exceptions.InvalidPresetNameError(
+            "123", reason="cannot start with number"
+        )
 
         assert "'123'" in str(error)
         assert "cannot start with number" in str(error)
@@ -189,7 +189,9 @@ class TestPermissionErrors:
 
     def test_builtin_modification_error_delete_operation(self):
         """Test BuiltInModificationError with delete operation."""
-        error = exceptions.BuiltInModificationError("claude_md:default", operation="delete")
+        error = exceptions.BuiltInModificationError(
+            "claude_md:default", operation="delete"
+        )
 
         assert "Cannot delete built-in preset: 'claude_md:default'" in str(error)
         assert error.details["operation"] == "delete"
@@ -295,15 +297,25 @@ class TestExceptionInheritance:
         assert issubclass(exceptions.InvalidFileTypeError, exceptions.ValidationError)
 
         # Resource not found errors
-        assert issubclass(exceptions.PresetNotFoundError, exceptions.ResourceNotFoundError)
-        assert issubclass(exceptions.TemplateNotFoundError, exceptions.ResourceNotFoundError)
+        assert issubclass(
+            exceptions.PresetNotFoundError, exceptions.ResourceNotFoundError
+        )
+        assert issubclass(
+            exceptions.TemplateNotFoundError, exceptions.ResourceNotFoundError
+        )
 
         # Conflict errors
-        assert issubclass(exceptions.PresetExistsError, exceptions.ResourceConflictError)
-        assert issubclass(exceptions.InstanceExistsError, exceptions.ResourceConflictError)
+        assert issubclass(
+            exceptions.PresetExistsError, exceptions.ResourceConflictError
+        )
+        assert issubclass(
+            exceptions.InstanceExistsError, exceptions.ResourceConflictError
+        )
 
         # Permission errors
-        assert issubclass(exceptions.BuiltInModificationError, exceptions.PermissionError)
+        assert issubclass(
+            exceptions.BuiltInModificationError, exceptions.PermissionError
+        )
 
         # Template errors
         assert issubclass(exceptions.TemplateRenderError, exceptions.TemplateError)

@@ -75,7 +75,9 @@ def add_instance(
     Returns:
         ValidationResult indicating success or failure.
     """
-    result = validate_instance(instance, instances, preset_repo, repo_path, is_update=False)
+    result = validate_instance(
+        instance, instances, preset_repo, repo_path, is_update=False
+    )
 
     if result.valid:
         instances[instance.id] = instance
@@ -105,7 +107,9 @@ def update_instance(
         result.add_error(f"Instance '{instance.id}' not found")
         return result
 
-    result = validate_instance(instance, instances, preset_repo, repo_path, is_update=True)
+    result = validate_instance(
+        instance, instances, preset_repo, repo_path, is_update=True
+    )
 
     if result.valid:
         instances[instance.id] = instance
@@ -394,7 +398,9 @@ def get_instances_by_type(
     return [i for i in instances.values() if i.type == file_type]
 
 
-def load_instances_from_config(instances_data: list[dict]) -> tuple[dict[str, FileInstance], list[str]]:
+def load_instances_from_config(
+    instances_data: list[dict],
+) -> tuple[dict[str, FileInstance], list[str]]:
     """Load file instances from configuration data.
 
     Args:

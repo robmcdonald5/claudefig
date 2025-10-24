@@ -42,13 +42,18 @@ class ContentPanel(Container):
         if section == "init":
             self.mount(
                 InitializePanel(
-                    self.config_data, self.config_repo, self._switch_to_presets, id="init-panel"
+                    self.config_data,
+                    self.config_repo,
+                    self._switch_to_presets,
+                    id="init-panel",
                 )
             )
         elif section == "presets":
             self.mount(PresetsPanel(id="presets-panel"))
         elif section == "config":
-            self.mount(ConfigPanel(self.config_data, self.config_repo, id="config-panel"))
+            self.mount(
+                ConfigPanel(self.config_data, self.config_repo, id="config-panel")
+            )
 
     def _switch_to_presets(self) -> None:
         """Switch to presets section."""

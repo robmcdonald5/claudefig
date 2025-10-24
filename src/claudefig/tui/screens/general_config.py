@@ -1,12 +1,10 @@
 """General config editor screen."""
 
-from pathlib import Path
 from typing import Any, Union
 
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
-from textual.reactive import reactive
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 

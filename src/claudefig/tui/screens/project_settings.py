@@ -118,6 +118,8 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
 
         elif event.switch.id == "switch-backup":
             # Save backup setting
-            config_service.set_value(self.config_data, "init.create_backup", event.value)
+            config_service.set_value(
+                self.config_data, "init.create_backup", event.value
+            )
             config_service.save_config(self.config_data, self.config_repo)
             self.notify("Setting saved", severity="information")

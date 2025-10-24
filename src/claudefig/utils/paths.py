@@ -48,7 +48,9 @@ def is_git_repository(path: Path) -> bool:
     return False
 
 
-def find_file_upwards(start_path: Path, filename: str, max_levels: int = 10) -> Path | None:
+def find_file_upwards(
+    start_path: Path, filename: str, max_levels: int = 10
+) -> Path | None:
     """Search for a file by walking up the directory tree.
 
     Args:
