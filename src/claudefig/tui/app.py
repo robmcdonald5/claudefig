@@ -9,8 +9,11 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Static
 
+from typing import Any
+
 from claudefig import __version__
-from claudefig.config import Config
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
 from claudefig.tui.panels import ContentPanel
 
 
@@ -21,7 +24,8 @@ class MainScreen(App):
     SUB_TITLE = f"v{__version__}"
 
     # Type hints for attributes accessed by child widgets
-    config: Config
+    config_data: dict[str, Any]
+    config_repo: TomlConfigRepository
 
     # Load CSS from external file
     CSS_PATH = Path(__file__).parent / "styles.tcss"
@@ -42,7 +46,17 @@ class MainScreen(App):
     def __init__(self, **kwargs):
         """Initialize the app."""
         super().__init__(**kwargs)
-        self.config = Config()
+
+        # Load config using new architecture
+        config_path = config_service.find_config_path()
+        if not config_path:
+            config_path = Path.cwd() / ".claudefig.toml"
+
+        self.config_repo = TomlConfigRepository(config_path)
+        if config_path.exists():
+            self.config_data = config_service.load_config(self.config_repo)
+        else:
+            self.config_data = config_service.DEFAULT_CONFIG.copy()
 
     def compose(self) -> ComposeResult:
         """Compose the application layout."""
@@ -61,7 +75,7 @@ class MainScreen(App):
                     yield Button("Exit", id="exit")
 
             # Right panel - Content
-            yield ContentPanel(self.config, id="content-panel")
+            yield ContentPanel(self.config_data, self.config_repo, id="content-panel")
 
         yield Footer()
 
