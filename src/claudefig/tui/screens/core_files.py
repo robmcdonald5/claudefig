@@ -23,6 +23,8 @@ class CoreFilesScreen(
         ("backspace", "pop_screen", "Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
     def __init__(

@@ -17,6 +17,8 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         ("backspace", "pop_screen", "Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
     def __init__(self, config: Config, **kwargs) -> None:

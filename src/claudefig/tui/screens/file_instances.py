@@ -10,6 +10,12 @@ from textual.widgets import Button, Label, Select, TabbedContent, TabPane
 
 from claudefig.config import Config
 from claudefig.error_messages import ErrorMessages
+from claudefig.exceptions import (
+    ConfigFileNotFoundError,
+    FileOperationError,
+    InstanceNotFoundError,
+    InstanceValidationError,
+)
 from claudefig.file_instance_manager import FileInstanceManager
 from claudefig.models import FileType
 from claudefig.preset_manager import PresetManager
@@ -37,6 +43,8 @@ class FileInstancesScreen(
         ("backspace", "pop_screen", "Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
     def __init__(
@@ -67,14 +75,13 @@ class FileInstancesScreen(
 
         Prevents up/down arrows from opening component Select dropdowns.
         Only Enter opens dropdowns, backspace/esc closes them.
-        Adds left/right navigation for horizontal button groups.
 
         Args:
             event: The key event
         """
         focused = self.focused
 
-        # If a component Select is focused and prevent up/down from opening the dropdown
+        # If a component Select is focused, prevent up/down from opening the dropdown
         if (
             isinstance(focused, Select)
             and focused.id
@@ -90,82 +97,6 @@ class FileInstancesScreen(
             else:
                 self.action_focus_next()
             event.stop()
-
-        # Handle left/right navigation for horizontal groups
-        if (
-            event.key in ("left", "right")
-            and focused
-            and self._handle_horizontal_navigation(event.key, focused)
-        ):
-            event.prevent_default()
-            event.stop()
-
-    def _handle_horizontal_navigation(self, key: str, focused) -> bool:
-        """Handle left/right navigation within horizontal groups.
-
-        Supports navigation in:
-        1. Tab actions (Select dropdown <-> Open Folder button)
-        2. Instance actions (Edit <-> Remove <-> Toggle buttons per instance)
-
-        Args:
-            key: Either "left" or "right"
-            focused: The currently focused widget
-
-        Returns:
-            True if navigation was handled, False otherwise
-        """
-        from textual.containers import Horizontal
-
-        # Find the horizontal parent container
-        horizontal_parent = None
-        current = focused.parent
-
-        # Walk up the tree to find a Horizontal container
-        while current:
-            # Check if it's a Horizontal navigation group we care about
-            if (
-                isinstance(current, Horizontal)
-                and hasattr(current, "classes")
-                and (
-                    "tab-actions" in current.classes
-                    or "instance-actions" in current.classes
-                )
-            ):
-                horizontal_parent = current
-                break
-            current = current.parent
-
-        if not horizontal_parent:
-            return False
-
-        # Get all focusable widgets in this horizontal container
-        focusable_widgets = [
-            widget
-            for widget in horizontal_parent.query("Select, Button")
-            if widget.can_focus and widget.display and not widget.disabled
-        ]
-
-        if len(focusable_widgets) <= 1:
-            return False
-
-        try:
-            current_index = focusable_widgets.index(focused)
-        except ValueError:
-            return False
-
-        # Navigate left or right
-        if key == "left":
-            new_index = current_index - 1
-            if new_index >= 0:
-                focusable_widgets[new_index].focus()
-                return True
-        elif key == "right":
-            new_index = current_index + 1
-            if new_index < len(focusable_widgets):
-                focusable_widgets[new_index].focus()
-                return True
-
-        return False
 
     def compose(self) -> ComposeResult:
         """Compose the file instances screen."""
@@ -396,7 +327,14 @@ class FileInstancesScreen(
                 )
                 self.notify(error_msg, severity="error")
 
+        except InstanceValidationError as e:
+            self.notify(str(e), severity="error")
+        except ConfigFileNotFoundError as e:
+            self.notify(str(e), severity="error")
+        except FileOperationError as e:
+            self.notify(str(e), severity="error")
         except Exception as e:
+            # Catch any other unexpected errors
             self.notify(
                 ErrorMessages.operation_failed("adding component", str(e)),
                 severity="error",
@@ -556,14 +494,14 @@ class FileInstancesScreen(
 
             if selected_path:
                 # Convert to path relative to project directory
-                selected_path = Path(selected_path)
+                selected_path_obj = Path(selected_path)
                 try:
                     # Try to make it relative to project dir
-                    relative_path = selected_path.relative_to(project_dir)
+                    relative_path = selected_path_obj.relative_to(project_dir)
                     new_path = str(relative_path)
                 except ValueError:
                     # If path is outside project, use absolute path
-                    new_path = str(selected_path)
+                    new_path = str(selected_path_obj)
 
                 # Update the instance path
                 instance.path = new_path
@@ -582,7 +520,14 @@ class FileInstancesScreen(
                         item.file_path = new_path
                         break
 
+        except InstanceNotFoundError as e:
+            self.notify(str(e), severity="error")
+        except ConfigFileNotFoundError as e:
+            self.notify(str(e), severity="error")
+        except FileOperationError as e:
+            self.notify(str(e), severity="error")
         except Exception as e:
+            # Catch any other unexpected errors (e.g., tkinter issues)
             self.notify(
                 ErrorMessages.operation_failed("selecting path", str(e)),
                 severity="error",

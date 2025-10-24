@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
+from textual.dom import DOMNode
 from textual.screen import Screen
 from textual.widgets import Button, Label, Static
 
@@ -20,6 +21,8 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         ("backspace", "collapse_or_back", "Collapse/Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
     def __init__(
@@ -152,8 +155,8 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
 
         settings_dropdown = self.query_one("#settings-dropdown", OverlayDropdown)
         settings_dropdown.set_content(
-            Static(f"• Overwrite existing files: {overwrite}"),  # type: ignore[arg-type]
-            Static(f"• Create backup files: {backup}"),  # type: ignore[arg-type]
+            Static(f"• Overwrite existing files: {overwrite}"),
+            Static(f"• Create backup files: {backup}"),
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -165,7 +168,7 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
     def on_click(self, event) -> None:
         """Handle clicks on the screen - close other dropdowns when one opens."""
         # Walk up to find if a dropdown was clicked
-        current = event.widget
+        current: DOMNode | None = event.widget
         while current:
             if isinstance(current, OverlayDropdown):
                 # Schedule closing other dropdowns after this click completes
@@ -177,7 +180,7 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         """Handle key presses - close other dropdowns when one is toggled with Enter."""
         if event.key == "enter":
             focused = self.app.focused
-            current = focused
+            current: DOMNode | None = focused
             while current:
                 if isinstance(current, OverlayDropdown):
                     # Schedule closing other dropdowns after Enter is processed
@@ -203,7 +206,7 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         # Check if focus is within an OverlayDropdown
         if focused:
             # Walk up the DOM tree to find an OverlayDropdown
-            current = focused
+            current: DOMNode | None = focused
             while current:
                 if isinstance(current, OverlayDropdown):
                     # If expanded, collapse it

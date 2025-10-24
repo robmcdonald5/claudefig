@@ -11,6 +11,8 @@ from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
 from claudefig.config import Config
+from claudefig.exceptions import ConfigFileNotFoundError, FileWriteError
+from claudefig.services.validation_service import validate_not_empty
 from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 
 
@@ -22,6 +24,8 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         ("backspace", "go_back", "Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
     config: reactive[Config] = reactive(lambda: Config())
@@ -139,12 +143,15 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         key = key_input.value.strip()
         value_str = value_input.value.strip()
 
-        if not key:
-            self.app.notify("Please enter a key", severity="warning")
+        # Validate inputs using centralized validation
+        key_validation = validate_not_empty(key, "Key")
+        if key_validation.has_errors:
+            self.app.notify(key_validation.errors[0], severity="warning")
             return
 
-        if not value_str:
-            self.app.notify("Please enter a value", severity="warning")
+        value_validation = validate_not_empty(value_str, "Value")
+        if value_validation.has_errors:
+            self.app.notify(value_validation.errors[0], severity="warning")
             return
 
         try:
@@ -175,7 +182,12 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             key_input.value = ""
             value_input.value = ""
 
+        except ConfigFileNotFoundError as e:
+            self.app.notify(str(e), severity="error")
+        except FileWriteError as e:
+            self.app.notify(str(e), severity="error")
         except Exception as e:
+            # Catch other unexpected errors (e.g., parsing errors)
             self.app.notify(f"Error setting config: {e}", severity="error")
 
     @on(Button.Pressed, "#btn-refresh")
