@@ -13,6 +13,19 @@ from claudefig.error_messages import (
     format_cli_error,
     format_cli_warning,
 )
+from claudefig.exceptions import (
+    BuiltInModificationError,
+    ConfigFileExistsError,
+    ConfigFileNotFoundError,
+    FileOperationError,
+    InitializationRollbackError,
+    InstanceNotFoundError,
+    InstanceValidationError,
+    InvalidFileTypeError,
+    PresetExistsError,
+    PresetNotFoundError,
+    TemplateNotFoundError,
+)
 from claudefig.initializer import Initializer
 from claudefig.logging_config import get_logger, setup_logging
 from claudefig.template_manager import FileTemplateManager
@@ -121,6 +134,14 @@ def init(path, force):
         else:
             logger.warning("Initialization completed with warnings")
             raise click.Abort()
+    except FileOperationError as e:
+        logger.error(f"File operation failed: {e}", exc_info=True)
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except InitializationRollbackError as e:
+        logger.error(f"Initialization rolled back: {e}", exc_info=True)
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         logger.error(f"Initialization failed: {e}", exc_info=True)
         console.print(
@@ -199,6 +220,8 @@ def show():
             console.print("[yellow]No file instances configured[/yellow]")
             console.print("[dim]Use 'claudefig files add' to add file instances[/dim]")
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
     except Exception as e:
         console.print(
             format_cli_error(
@@ -278,6 +301,9 @@ def config_get(key, path):
         else:
             console.print(f"[cyan]{key}:[/cyan] {value}")
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(f"[red]Error getting config:[/red] {e}")
         raise click.Abort() from e
@@ -321,6 +347,9 @@ def config_set(key, value, path):
         console.print(f"[green]+[/green] Set [cyan]{key}[/cyan] = {parsed_value}")
         console.print(f"[dim]Config saved to: {config_path}[/dim]")
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(f"[red]Error setting config:[/red] {e}")
         raise click.Abort() from e
@@ -388,6 +417,9 @@ def config_set_init(overwrite, backup, path):
             console.print(f"  {change}")
         console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(f"[red]Error setting init config:[/red] {e}")
         raise click.Abort() from e
@@ -479,6 +511,9 @@ def config_list(path):
 
         console.print("\n[dim]Use 'claudefig files list' for more details[/dim]")
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(f"[red]Error listing config:[/red] {e}")
         raise click.Abort() from e
@@ -674,6 +709,12 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
         console.print(f"  Enabled: {instance.enabled}")
         console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
 
+    except InstanceValidationError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(
             format_cli_error(
@@ -715,6 +756,9 @@ def files_remove(instance_id, path):
                 )
             )
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(
             format_cli_error(
@@ -767,6 +811,9 @@ def files_enable(instance_id, path):
                 )
             )
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(
             format_cli_error(
@@ -819,6 +866,9 @@ def files_disable(instance_id, path):
                 )
             )
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(
             format_cli_error(
@@ -936,6 +986,12 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
             console.print(f"  {change}")
         console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
 
+    except ConfigFileNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except InstanceNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         console.print(
             format_cli_error(
@@ -947,7 +1003,14 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
 
 @main.group()
 def presets():
-    """Manage presets (templates for file types)."""
+    """Manage presets (templates for file types).
+
+    Presets are reusable templates for different file types like CLAUDE.md,
+    settings.json, commands, agents, etc. You can use built-in presets or
+    create your own custom presets.
+
+    Use 'claudefig presets --help' to see all available commands.
+    """
     pass
 
 
@@ -1113,9 +1176,321 @@ def presets_open():
         console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
 
 
+@presets.command("create")
+@click.argument("preset_name")
+@click.option(
+    "--type",
+    "file_type",
+    required=True,
+    help="File type for this preset (e.g., claude_md, settings_json)",
+)
+@click.option(
+    "--description",
+    default="",
+    help="Description of the preset",
+)
+@click.option(
+    "--template",
+    "template_path",
+    type=click.Path(exists=True),
+    help="Path to template file",
+)
+@click.option(
+    "--source",
+    type=click.Choice(["user", "project"], case_sensitive=False),
+    default="user",
+    help="Where to store the preset (default: user)",
+)
+@click.option(
+    "--tags",
+    help="Comma-separated tags for the preset",
+)
+def presets_create(preset_name, file_type, description, template_path, source, tags):
+    """Create a new custom preset.
+
+    Create a new preset from scratch or from an existing template file.
+    Presets can be stored at user level (~/.claudefig/presets/) or
+    project level (.claudefig/presets/).
+
+    PRESET_NAME: Name for the preset (e.g., "my_backend")
+
+    Examples:
+
+        # Create a simple preset
+        claudefig presets create my_preset --type claude_md
+
+        # Create from template file
+        claudefig presets create backend --type claude_md --template my_template.md
+
+        # Create with metadata
+        claudefig presets create api --type claude_md --description "API docs" --tags "backend,api"
+    """
+    from claudefig.models import FileType, Preset, PresetSource
+    from claudefig.preset_manager import PresetManager
+
+    try:
+        # Validate file type
+        try:
+            preset_type = FileType(file_type)
+        except ValueError:
+            valid_types = [ft.value for ft in FileType]
+            console.print(
+                format_cli_error(
+                    ErrorMessages.invalid_type("file type", file_type, valid_types)
+                )
+            )
+            raise click.Abort() from None
+
+        # Parse source
+        preset_source = (
+            PresetSource.USER if source.lower() == "user" else PresetSource.PROJECT
+        )
+
+        # Parse tags
+        tag_list = []
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+
+        # Create preset ID
+        preset_id = f"{preset_type.value}:{preset_name}"
+
+        # Create Preset object
+        preset = Preset(
+            id=preset_id,
+            type=preset_type,
+            name=preset_name,
+            description=description,
+            source=preset_source,
+            tags=tag_list,
+            template_path=Path(template_path) if template_path else None,
+        )
+
+        # Create via preset manager
+        preset_manager = PresetManager()
+        preset_manager.add_preset(preset, preset_source)
+
+        console.print(f"\n[green]+[/green] Created preset: [bold]{preset_id}[/bold]")
+        console.print(f"  Type:        {preset_type.display_name}")
+        console.print(f"  Source:      {preset_source.value}")
+        if description:
+            console.print(f"  Description: {description}")
+        if template_path:
+            console.print(f"  Template:    {template_path}")
+        if tag_list:
+            console.print(f"  Tags:        {', '.join(tag_list)}")
+
+    except BuiltInModificationError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except PresetExistsError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except ValueError as e:
+        # Catch validation errors (file type, etc.)
+        console.print(format_cli_error(ErrorMessages.operation_failed("creating preset", str(e))))
+        raise click.Abort() from e
+    except Exception as e:
+        console.print(
+            format_cli_error(ErrorMessages.operation_failed("creating preset", str(e)))
+        )
+        raise click.Abort() from e
+
+
+@presets.command("delete")
+@click.argument("preset_id")
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+def presets_delete(preset_id, force):
+    """Delete a user or project preset.
+
+    Deletes a custom preset from the user or project presets directory.
+    Built-in presets cannot be deleted. You will be prompted for confirmation
+    unless you use the --force flag.
+
+    PRESET_ID: Preset ID in format "file_type:preset_name" (e.g., "claude_md:my_backend")
+
+    Examples:
+
+        # Delete with confirmation prompt
+        claudefig presets delete claude_md:my_preset
+
+        # Delete without confirmation
+        claudefig presets delete claude_md:my_preset --force
+    """
+    from claudefig.preset_manager import PresetManager
+
+    try:
+        preset_manager = PresetManager()
+
+        # Check if preset exists
+        preset = preset_manager.get_preset(preset_id)
+        if not preset:
+            console.print(
+                format_cli_warning(ErrorMessages.not_found("preset", preset_id))
+            )
+            return
+
+        # Check if it's a built-in preset
+        from claudefig.models import PresetSource
+
+        if preset.source == PresetSource.BUILT_IN:
+            console.print(
+                format_cli_error("Cannot delete built-in presets")
+            )
+            raise click.Abort() from None
+
+        # Confirmation prompt unless --force
+        if not force:
+            console.print(f"\n[yellow]About to delete preset:[/yellow]")
+            console.print(f"  ID:     {preset.id}")
+            console.print(f"  Name:   {preset.name}")
+            console.print(f"  Type:   {preset.type.display_name}")
+            console.print(f"  Source: {preset.source.value}")
+
+            if not click.confirm("\nAre you sure you want to delete this preset?"):
+                console.print("[dim]Cancelled[/dim]")
+                return
+
+        # Delete the preset
+        preset_manager.delete_preset(preset_id)
+
+        console.print(f"\n[green]+[/green] Deleted preset: [bold]{preset_id}[/bold]")
+
+    except PresetNotFoundError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except BuiltInModificationError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except FileOperationError as e:
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except (FileNotFoundError, PermissionError, OSError) as e:
+        # Catch any remaining OS-level errors (for backward compatibility)
+        console.print(format_cli_error(f"Failed to delete preset: {e}"))
+        raise click.Abort() from e
+    except Exception as e:
+        # Catch remaining unexpected errors
+        console.print(
+            format_cli_error(ErrorMessages.operation_failed("deleting preset", str(e)))
+        )
+        raise click.Abort() from e
+
+
+@presets.command("edit")
+@click.argument("preset_id")
+def presets_edit(preset_id):
+    """Edit a preset's TOML file in your default editor.
+
+    Opens the preset's .toml configuration file in your system's default
+    text editor (or $EDITOR if set). You can edit the preset's metadata,
+    template content, and variables.
+
+    PRESET_ID: Preset ID in format "file_type:preset_name" (e.g., "claude_md:my_backend")
+
+    Examples:
+
+        # Edit a user preset
+        claudefig presets edit claude_md:my_preset
+
+        # Edit and customize a preset
+        claudefig presets edit settings_json:custom
+    """
+    import os
+    import platform
+    import subprocess
+
+    from claudefig.preset_manager import PresetManager
+    from claudefig.user_config import get_user_config_dir
+
+    try:
+        preset_manager = PresetManager()
+
+        # Check if preset exists
+        preset = preset_manager.get_preset(preset_id)
+        if not preset:
+            console.print(
+                format_cli_warning(ErrorMessages.not_found("preset", preset_id))
+            )
+            return
+
+        # Check if it's a built-in preset
+        from claudefig.models import PresetSource
+
+        if preset.source == PresetSource.BUILT_IN:
+            console.print(
+                format_cli_error("Cannot edit built-in presets")
+            )
+            raise click.Abort() from None
+
+        # Determine preset file path
+        if preset.source == PresetSource.USER:
+            preset_dir = get_user_config_dir() / "presets"
+        else:  # PROJECT
+            preset_dir = Path.cwd() / ".claudefig" / "presets"
+
+        preset_file = preset_dir / f"{preset_id.replace(':', '_')}.toml"
+
+        if not preset_file.exists():
+            console.print(
+                format_cli_error(f"Preset file not found: {preset_file}")
+            )
+            raise click.Abort() from None
+
+        console.print(f"[bold blue]Opening preset file:[/bold blue] {preset_file}\n")
+
+        # Determine editor based on environment and platform
+        editor = os.environ.get("EDITOR")
+
+        if editor:
+            # Use EDITOR environment variable
+            subprocess.run([editor, str(preset_file)], check=True)
+        else:
+            # Fall back to platform defaults
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["notepad", str(preset_file)], check=True)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", "-t", str(preset_file)], check=True)
+            else:  # Linux and others
+                # Try common editors
+                for cmd in ["nano", "vim", "vi", "gedit"]:
+                    try:
+                        subprocess.run([cmd, str(preset_file)], check=True)
+                        break
+                    except FileNotFoundError:
+                        continue
+                else:
+                    console.print(
+                        "[yellow]No suitable editor found[/yellow]"
+                    )
+                    console.print(f"\n[dim]Edit manually: {preset_file}[/dim]")
+                    return
+
+        console.print("[green]+[/green] Preset file edited")
+
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Error opening editor:[/red] {e}")
+    except Exception as e:
+        console.print(
+            format_cli_error(ErrorMessages.operation_failed("editing preset", str(e)))
+        )
+        raise click.Abort() from e
+
+
 @main.group()
 def templates():
-    """Manage global config templates (presets for entire project configs)."""
+    """Manage global config templates (presets for entire project configs).
+
+    Templates let you save and reuse complete project configurations across
+    multiple projects. Save your current project setup as a template, then
+    apply it to new projects for consistent configuration.
+
+    Use 'claudefig templates --help' to see all available commands.
+    """
     pass
 
 
@@ -1263,13 +1638,29 @@ def templates_apply(template_name, path):
         )
         console.print(f"[dim]Created: {repo_path / '.claudefig.toml'}[/dim]")
 
+    except TemplateNotFoundError as e:
+        console.print(f"[red]Template not found:[/red] {template_name}")
+        console.print(
+            "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+        )
+        raise click.Abort() from e
+    except ConfigFileExistsError as e:
+        console.print(
+            f"[red]Error:[/red] .claudefig.toml already exists in {repo_path}"
+        )
+        console.print(
+            "[dim]Remove existing config or choose a different directory[/dim]"
+        )
+        raise click.Abort() from e
     except FileNotFoundError as e:
+        # ConfigTemplateManager not yet migrated - catch for backward compatibility
         console.print(f"[red]Template not found:[/red] {template_name}")
         console.print(
             "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
         )
         raise click.Abort() from e
     except FileExistsError:
+        # ConfigTemplateManager not yet migrated - catch for backward compatibility
         console.print(
             f"[red]Error:[/red] .claudefig.toml already exists in {repo_path}"
         )
@@ -1301,14 +1692,106 @@ def templates_delete(template_name):
             f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]"
         )
 
+    except TemplateNotFoundError as e:
+        console.print(f"[yellow]Template not found:[/yellow] {template_name}")
+        raise click.Abort() from e
     except ValueError as e:
+        # Catch validation errors (protected templates, etc.)
         console.print(f"[red]Error:[/red] {e}")
         raise click.Abort() from e
     except FileNotFoundError:
+        # ConfigTemplateManager not yet migrated - catch for backward compatibility
         console.print(f"[yellow]Template not found:[/yellow] {template_name}")
         raise click.Abort() from None
     except Exception as e:
         console.print(f"[red]Error deleting template:[/red] {e}")
+        raise click.Abort() from e
+
+
+@templates.command("edit")
+@click.argument("template_name")
+def templates_edit(template_name):
+    """Edit a global template's TOML file in your default editor.
+
+    Opens the template's .toml configuration file in your system's default
+    text editor (or $EDITOR if set). You can edit the template's metadata
+    and file instance configurations.
+
+    TEMPLATE_NAME: Name of the template to edit (e.g., "default", "my_fastapi_project")
+
+    Examples:
+
+        # Edit a template
+        claudefig templates edit my_template
+
+        # Edit and customize the default template
+        claudefig templates edit default
+    """
+    import os
+    import platform
+    import subprocess
+
+    from claudefig.config_template_manager import ConfigTemplateManager
+
+    try:
+        manager = ConfigTemplateManager()
+
+        # Check if template exists
+        template_file = manager.global_presets_dir / f"{template_name}.toml"
+
+        if not template_file.exists():
+            console.print(
+                format_cli_warning(ErrorMessages.not_found("template", template_name))
+            )
+            console.print(
+                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+            )
+            return
+
+        # Check if it's a default template
+        if template_name == "default":
+            console.print(
+                "[yellow]Warning: Editing default template - changes will affect new projects[/yellow]\n"
+            )
+
+        console.print(f"[bold blue]Opening template file:[/bold blue] {template_file}\n")
+
+        # Determine editor based on environment and platform
+        editor = os.environ.get("EDITOR")
+
+        if editor:
+            # Use EDITOR environment variable
+            subprocess.run([editor, str(template_file)], check=True)
+        else:
+            # Fall back to platform defaults
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["notepad", str(template_file)], check=True)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", "-t", str(template_file)], check=True)
+            else:  # Linux and others
+                # Try common editors
+                for cmd in ["nano", "vim", "vi", "gedit"]:
+                    try:
+                        subprocess.run([cmd, str(template_file)], check=True)
+                        break
+                    except FileNotFoundError:
+                        continue
+                else:
+                    console.print(
+                        "[yellow]No suitable editor found[/yellow]"
+                    )
+                    console.print(f"\n[dim]Edit manually: {template_file}[/dim]")
+                    return
+
+        console.print("[green]+[/green] Template file edited")
+
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Error opening editor:[/red] {e}")
+    except Exception as e:
+        console.print(
+            format_cli_error(ErrorMessages.operation_failed("editing template", str(e)))
+        )
         raise click.Abort() from e
 
 
@@ -1460,6 +1943,14 @@ def sync(path, force):
             console.print("\n[yellow]![/yellow] Some files failed to synchronize")
             raise click.Abort()
 
+    except FileOperationError as e:
+        logger.error(f"File operation failed: {e}", exc_info=True)
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
+    except InitializationRollbackError as e:
+        logger.error(f"Synchronization rolled back: {e}", exc_info=True)
+        console.print(format_cli_error(str(e)))
+        raise click.Abort() from e
     except Exception as e:
         logger.error(f"Synchronization failed: {e}", exc_info=True)
         console.print(
