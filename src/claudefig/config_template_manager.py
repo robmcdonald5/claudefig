@@ -9,7 +9,7 @@ or existing projects.
 import shutil
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -22,6 +22,60 @@ from claudefig.preset_validator import PresetValidator
 
 if TYPE_CHECKING:
     from claudefig.config import Config
+
+
+# Data-driven preset definitions
+# Each preset is defined by its description and list of file configurations
+PRESET_DEFINITIONS = {
+    "default": {
+        "description": "Default Claude Code configuration with recommended settings",
+        "files": [
+            ("claude_md", "claude_md:default", "CLAUDE.md"),
+            ("gitignore", "gitignore:standard", ".gitignore"),
+            ("settings_json", "settings_json:default", ".claude/settings.json"),
+            ("commands", "commands:default", ".claude/commands/"),
+        ],
+    },
+    "minimal": {
+        "description": "Minimal Claude Code setup - just CLAUDE.md",
+        "files": [
+            ("claude_md", "claude_md:minimal", "CLAUDE.md"),
+        ],
+    },
+    "full": {
+        "description": "Full Claude Code setup with all features enabled",
+        "files": [
+            ("claude_md", "claude_md:default", "CLAUDE.md"),
+            ("gitignore", "gitignore:standard", ".gitignore"),
+            ("settings_json", "settings_json:default", ".claude/settings.json"),
+            ("settings_local_json", "settings_local_json:default", ".claude/settings.local.json"),
+            ("commands", "commands:default", ".claude/commands/"),
+            ("agents", "agents:default", ".claude/agents/"),
+            ("hooks", "hooks:default", ".claude/hooks/"),
+            ("output_styles", "output_styles:default", ".claude/output-styles/"),
+            ("statusline", "statusline:default", ".claude/statusline.sh"),
+            ("mcp", "mcp:default", ".claude/mcp/"),
+        ],
+    },
+    "backend": {
+        "description": "Backend-focused Claude Code setup",
+        "files": [
+            ("claude_md", "claude_md:backend", "CLAUDE.md"),
+            ("gitignore", "gitignore:python", ".gitignore"),
+            ("settings_json", "settings_json:default", ".claude/settings.json"),
+            ("commands", "commands:default", ".claude/commands/"),
+        ],
+    },
+    "frontend": {
+        "description": "Frontend-focused Claude Code setup",
+        "files": [
+            ("claude_md", "claude_md:frontend", "CLAUDE.md"),
+            ("gitignore", "gitignore:standard", ".gitignore"),
+            ("settings_json", "settings_json:default", ".claude/settings.json"),
+            ("commands", "commands:default", ".claude/commands/"),
+        ],
+    },
+}
 
 
 class ConfigTemplateManager:
@@ -53,308 +107,52 @@ class ConfigTemplateManager:
 
     def _ensure_default_preset(self) -> None:
         """Create default.toml preset and variants if they don't exist."""
-        presets_to_create = {
-            "default": self._create_default_preset_config,
-            "minimal": self._create_minimal_preset_config,
-            "full": self._create_full_preset_config,
-            "backend": self._create_backend_preset_config,
-            "frontend": self._create_frontend_preset_config,
-        }
-
-        for preset_name, config_func in presets_to_create.items():
+        for preset_name in PRESET_DEFINITIONS.keys():
             preset_path = self.global_presets_dir / f"{preset_name}.toml"
             if not preset_path.exists():
-                config_data = config_func()
+                config_data = self._build_from_definition(preset_name)
                 with open(preset_path, "wb") as f:
                     tomli_w.dump(config_data, f)
 
-    def _create_default_preset_config(self) -> dict:
-        """Create the default preset configuration.
+    def _build_from_definition(self, preset_name: str) -> dict:
+        """Build a preset configuration from its definition.
+
+        Args:
+            preset_name: Name of preset to build (must exist in PRESET_DEFINITIONS)
 
         Returns:
-            Default preset configuration dict
+            Complete preset configuration dict
+
+        Raises:
+            KeyError: If preset_name not found in PRESET_DEFINITIONS
         """
+        if preset_name not in PRESET_DEFINITIONS:
+            raise KeyError(f"Unknown preset: {preset_name}")
+
+        definition = PRESET_DEFINITIONS[preset_name]
+
+        # Build files list from definition
+        files = []
+        for i, (file_type, preset, path) in enumerate(definition["files"], 1):
+            file_id = f"{preset_name}-{file_type.replace('_', '-')}"
+            files.append({
+                "id": file_id,
+                "type": file_type,
+                "preset": preset,
+                "path": path,
+                "enabled": True,
+                "variables": {},
+            })
+
+        # Return complete config structure
         return {
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": "Default Claude Code configuration with recommended settings",
+                "description": definition["description"],
             },
             "init": {"overwrite_existing": False},
-            "files": [
-                {
-                    "id": "default-claude-md",
-                    "type": "claude_md",
-                    "preset": "claude_md:default",
-                    "path": "CLAUDE.md",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "default-gitignore",
-                    "type": "gitignore",
-                    "preset": "gitignore:standard",
-                    "path": ".gitignore",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "default-settings",
-                    "type": "settings_json",
-                    "preset": "settings_json:default",
-                    "path": ".claude/settings.json",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "default-commands",
-                    "type": "commands",
-                    "preset": "commands:default",
-                    "path": ".claude/commands/",
-                    "enabled": True,
-                    "variables": {},
-                },
-            ],
-            "custom": {"template_dir": "", "presets_dir": ""},
-        }
-
-    def _create_minimal_preset_config(self) -> dict:
-        """Create minimal preset configuration.
-
-        Returns:
-            Minimal preset configuration dict
-        """
-        return {
-            "claudefig": {
-                "version": "2.0",
-                "schema_version": "2.0",
-                "description": "Minimal Claude Code setup - just CLAUDE.md",
-            },
-            "init": {"overwrite_existing": False},
-            "files": [
-                {
-                    "id": "minimal-claude-md",
-                    "type": "claude_md",
-                    "preset": "claude_md:minimal",
-                    "path": "CLAUDE.md",
-                    "enabled": True,
-                    "variables": {},
-                }
-            ],
-            "custom": {"template_dir": "", "presets_dir": ""},
-        }
-
-    def _create_full_preset_config(self) -> dict:
-        """Create full preset configuration with all features.
-
-        Returns:
-            Full preset configuration dict
-        """
-        return {
-            "claudefig": {
-                "version": "2.0",
-                "schema_version": "2.0",
-                "description": "Full Claude Code setup with all features enabled",
-            },
-            "init": {"overwrite_existing": False},
-            "files": [
-                {
-                    "id": "full-claude-md",
-                    "type": "claude_md",
-                    "preset": "claude_md:default",
-                    "path": "CLAUDE.md",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-gitignore",
-                    "type": "gitignore",
-                    "preset": "gitignore:standard",
-                    "path": ".gitignore",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-settings",
-                    "type": "settings_json",
-                    "preset": "settings_json:default",
-                    "path": ".claude/settings.json",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-settings-local",
-                    "type": "settings_local_json",
-                    "preset": "settings_local_json:default",
-                    "path": ".claude/settings.local.json",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-commands",
-                    "type": "commands",
-                    "preset": "commands:default",
-                    "path": ".claude/commands/",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-agents",
-                    "type": "agents",
-                    "preset": "agents:default",
-                    "path": ".claude/agents/",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-hooks",
-                    "type": "hooks",
-                    "preset": "hooks:default",
-                    "path": ".claude/hooks/",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-output-styles",
-                    "type": "output_styles",
-                    "preset": "output_styles:default",
-                    "path": ".claude/output-styles/",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-statusline",
-                    "type": "statusline",
-                    "preset": "statusline:default",
-                    "path": ".claude/statusline.sh",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "full-mcp",
-                    "type": "mcp",
-                    "preset": "mcp:default",
-                    "path": ".claude/mcp/",
-                    "enabled": True,
-                    "variables": {},
-                },
-            ],
-            "custom": {"template_dir": "", "presets_dir": ""},
-        }
-
-    def _create_backend_preset_config(self) -> dict:
-        """Create backend-focused preset configuration.
-
-        Returns:
-            Backend preset configuration dict
-        """
-        return {
-            "claudefig": {
-                "version": "2.0",
-                "schema_version": "2.0",
-                "description": "Backend development focused setup with API and database helpers",
-            },
-            "init": {"overwrite_existing": False},
-            "files": [
-                {
-                    "id": "backend-claude-md",
-                    "type": "claude_md",
-                    "preset": "claude_md:backend",
-                    "path": "CLAUDE.md",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "backend-gitignore",
-                    "type": "gitignore",
-                    "preset": "gitignore:standard",
-                    "path": ".gitignore",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "backend-settings",
-                    "type": "settings_json",
-                    "preset": "settings_json:default",
-                    "path": ".claude/settings.json",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "backend-commands",
-                    "type": "commands",
-                    "preset": "commands:default",
-                    "path": ".claude/commands/",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "backend-agents",
-                    "type": "agents",
-                    "preset": "agents:default",
-                    "path": ".claude/agents/",
-                    "enabled": True,
-                    "variables": {},
-                },
-            ],
-            "custom": {"template_dir": "", "presets_dir": ""},
-        }
-
-    def _create_frontend_preset_config(self) -> dict:
-        """Create frontend-focused preset configuration.
-
-        Returns:
-            Frontend preset configuration dict
-        """
-        return {
-            "claudefig": {
-                "version": "2.0",
-                "schema_version": "2.0",
-                "description": "Frontend development focused setup with UI/UX helpers",
-            },
-            "init": {"overwrite_existing": False},
-            "files": [
-                {
-                    "id": "frontend-claude-md",
-                    "type": "claude_md",
-                    "preset": "claude_md:frontend",
-                    "path": "CLAUDE.md",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "frontend-gitignore",
-                    "type": "gitignore",
-                    "preset": "gitignore:standard",
-                    "path": ".gitignore",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "frontend-settings",
-                    "type": "settings_json",
-                    "preset": "settings_json:default",
-                    "path": ".claude/settings.json",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "frontend-commands",
-                    "type": "commands",
-                    "preset": "commands:default",
-                    "path": ".claude/commands/",
-                    "enabled": True,
-                    "variables": {},
-                },
-                {
-                    "id": "frontend-output-styles",
-                    "type": "output_styles",
-                    "preset": "output_styles:default",
-                    "path": ".claude/output-styles/",
-                    "enabled": True,
-                    "variables": {},
-                },
-            ],
+            "files": files,
             "custom": {"template_dir": "", "presets_dir": ""},
         }
 
@@ -367,7 +165,7 @@ class ConfigTemplateManager:
         Returns:
             List of dicts with: name, path, description, file_count, (optional) validation
         """
-        presets = []
+        presets: list[dict[str, Any]] = []
         if not self.global_presets_dir.exists():
             return presets
 
