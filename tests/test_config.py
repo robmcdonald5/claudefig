@@ -1,5 +1,6 @@
 """Tests for Config class - focusing on error handling and edge cases."""
 
+import platform
 from unittest.mock import patch
 
 import pytest
@@ -121,6 +122,10 @@ class TestConfigCorruption:
 class TestConfigSaveErrors:
     """Tests for error handling during config save operations."""
 
+    @pytest.mark.skipif(
+        platform.system() == "Windows",
+        reason="File permission tests unreliable on Windows - chmod doesn't prevent writes",
+    )
     def test_save_permission_denied(self, tmp_path):
         """Test saving config when write permission is denied."""
         from claudefig.exceptions import FileWriteError
