@@ -38,8 +38,8 @@ class TestSystemUtilityMixin:
 
         return TestWidget()
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_windows(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -63,8 +63,8 @@ class TestSystemUtilityMixin:
         assert mixin_instance.notifications[0]["severity"] == "information"
         assert "Opened file" in mixin_instance.notifications[0]["message"]
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_macos(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -85,8 +85,8 @@ class TestSystemUtilityMixin:
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_linux(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -138,8 +138,8 @@ class TestSystemUtilityMixin:
         assert mixin_instance.notifications[0]["severity"] == "error"
         assert "not a file" in mixin_instance.notifications[0]["message"]
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_subprocess_error(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -159,8 +159,8 @@ class TestSystemUtilityMixin:
         assert mixin_instance.notifications[0]["severity"] == "error"
         assert "Failed to open file" in mixin_instance.notifications[0]["message"]
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_in_explorer_windows(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -184,8 +184,8 @@ class TestSystemUtilityMixin:
         assert mixin_instance.notifications[0]["severity"] == "information"
         assert "Opened folder" in mixin_instance.notifications[0]["message"]
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_in_explorer_macos(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -206,8 +206,8 @@ class TestSystemUtilityMixin:
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_in_explorer_linux(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -230,8 +230,8 @@ class TestSystemUtilityMixin:
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_creates_missing_directory(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -253,8 +253,8 @@ class TestSystemUtilityMixin:
         assert test_dir.is_dir()
         mock_subprocess.assert_called_once()
 
-    @patch("claudefig.tui.base.mixins.subprocess.run")
-    @patch("claudefig.tui.base.mixins.platform.system")
+    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_error_handling(
         self, mock_platform, mock_subprocess, mixin_instance, tmp_path
     ):
@@ -311,7 +311,13 @@ class TestBackButtonMixin:
 
         # Mock the app.pop_screen method
         instance = TestScreen()
-        instance.app.pop_screen = lambda: setattr(instance, "popped", True)
+
+        # Create a mock that properly sets the flag and returns a Mock (AwaitComplete-like)
+        def mock_pop():
+            instance.popped = True
+            return Mock()  # Return mock AwaitComplete
+
+        instance.app.pop_screen = Mock(side_effect=mock_pop)
         return instance
 
     def test_compose_back_button_default_label(self, mixin_instance):
@@ -368,45 +374,56 @@ class TestFileInstanceMixin:
     @pytest.fixture
     def mixin_instance(self):
         """Create a mock instance that uses FileInstanceMixin."""
+        from claudefig.models import FileInstance, FileType
 
         class TestScreen(FileInstanceMixin):
             """Test screen with FileInstanceMixin."""
 
-            def __init__(self, config, instance_manager):
-                self.config = config
-                self.instance_manager = instance_manager
+            def __init__(self, config_data, config_repo, instances_dict):
+                self.config_data = config_data
+                self.config_repo = config_repo
+                self.instances_dict = instances_dict
 
         # Create mocks
-        mock_config = Mock()
-        mock_instance_manager = Mock()
-        mock_instance_manager.save_instances.return_value = [{"id": "test"}]
+        mock_config_data = {"files": []}
+        mock_config_repo = Mock()
+        mock_instances_dict = {
+            "test-1": FileInstance(
+                id="test-1",
+                type=FileType.CLAUDE_MD,
+                preset="claude_md:default",
+                path="CLAUDE.md",
+                enabled=True,
+            )
+        }
 
-        return TestScreen(mock_config, mock_instance_manager)
+        return TestScreen(mock_config_data, mock_config_repo, mock_instances_dict)
 
     def test_sync_instances_to_config(self, mixin_instance):
         """Test sync_instances_to_config performs 3-step sync."""
         # Execute
         mixin_instance.sync_instances_to_config()
 
-        # Verify step 2: Sync manager → config
-        mixin_instance.instance_manager.save_instances.assert_called_once()
-        mixin_instance.config.set_file_instances.assert_called_once_with(
-            [{"id": "test"}]
-        )
+        # Verify step 2: Sync instances → config_data
+        assert "files" in mixin_instance.config_data
+        assert len(mixin_instance.config_data["files"]) == 1
+        assert mixin_instance.config_data["files"][0]["id"] == "test-1"
 
-        # Verify step 3: Sync config → disk
-        mixin_instance.config.save.assert_called_once()
+        # Verify step 3: Sync config_data → disk via repository
+        mixin_instance.config_repo.save.assert_called_once_with(
+            mixin_instance.config_data
+        )
 
     def test_sync_instances_to_config_saves(self, mixin_instance):
         """Test that sync_instances_to_config actually saves to disk."""
         # Setup - track save calls
         save_called = False
 
-        def mock_save():
+        def mock_save(data):
             nonlocal save_called
             save_called = True
 
-        mixin_instance.config.save = mock_save
+        mixin_instance.config_repo.save = mock_save
 
         # Execute
         mixin_instance.sync_instances_to_config()

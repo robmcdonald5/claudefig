@@ -187,7 +187,7 @@ class Preset:
         Returns:
             Dictionary representation of the preset (filters out None values for TOML compatibility)
         """
-        result = {
+        result: dict[str, Any] = {
             "id": self.id,
             "type": self.type.value,
             "name": self.name,
@@ -315,7 +315,7 @@ class FileInstance:
             'default'
         """
         # Priority 1: Check component_name in variables
-        component_name = self.variables.get("component_name", "")
+        component_name = str(self.variables.get("component_name", ""))
         if component_name:
             return component_name
 

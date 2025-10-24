@@ -6,11 +6,12 @@ from typing import Optional
 
 from rich.console import Console
 
-from claudefig.config import Config
-from claudefig.exceptions import InitializationRollbackError
-from claudefig.file_instance_manager import FileInstanceManager
-from claudefig.models import FileType
+from claudefig.exceptions import FileOperationError, InitializationRollbackError
+from claudefig.models import FileInstance, FileType
 from claudefig.preset_manager import PresetManager
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.repositories.preset_repository import TomlPresetRepository
+from claudefig.services import config_service, file_instance_service
 from claudefig.template_manager import FileTemplateManager
 from claudefig.utils import ensure_directory, is_git_repository
 
@@ -20,19 +21,31 @@ console = Console()
 class Initializer:
     """Handles repository initialization."""
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config_path: Optional[Path] = None):
         """Initialize the Initializer.
 
         Args:
-            config: Configuration instance. If None, loads default config.
+            config_path: Path to config file. If None, finds or uses default.
         """
-        self.config = config or Config()
-        custom_dir = self.config.get("custom.template_dir")
+        # Initialize repositories
+        if config_path is None:
+            found_path = config_service.find_config_path()
+            config_path = found_path or (Path.cwd() / ".claudefig.toml")
+
+        self.config_path = config_path
+        self.config_repo = TomlConfigRepository(config_path)
+        self.config_data = config_service.load_config(self.config_repo)
+
+        # Initialize services/managers
+        custom_dir = config_service.get_value(self.config_data, "custom.template_dir")
         self.template_manager = FileTemplateManager(
             Path(custom_dir) if custom_dir else None
         )
         self.preset_manager = PresetManager()
-        self.instance_manager: Optional[FileInstanceManager] = None
+        self.preset_repo = TomlPresetRepository()
+
+        # Instance tracking
+        self.instances_dict: dict[str, FileInstance] = {}
 
         # Track created files/directories for rollback
         self._created_files: list[Path] = []
@@ -122,8 +135,7 @@ class Initializer:
         try:
             repo_path = repo_path.resolve()
         except (OSError, RuntimeError) as e:
-            console.print(f"[red]Error:[/red] Cannot resolve path: {e}")
-            return False
+            raise FileOperationError(f"resolve path {repo_path}", str(e)) from e
 
         # Check if it's a git repository
         if not is_git_repository(repo_path) and not skip_prompts:
@@ -140,11 +152,8 @@ class Initializer:
         failed_files = []
 
         try:
-            # Initialize FileInstanceManager
-            self.instance_manager = FileInstanceManager(self.preset_manager, repo_path)
-
             # Load file instances from config
-            instances_data = self.config.get_file_instances()
+            instances_data = config_service.get_file_instances(self.config_data)
 
             if not instances_data:
                 # No file instances configured - create default ones
@@ -152,9 +161,17 @@ class Initializer:
                     "[yellow]No file instances configured, using defaults[/yellow]"
                 )
                 instances_data = self._create_default_instances()
-                self.config.set_file_instances(instances_data)
+                config_service.set_file_instances(self.config_data, instances_data)
 
-            self.instance_manager.load_instances(instances_data)
+            # Load instances into dictionary
+            self.instances_dict, load_errors = (
+                file_instance_service.load_instances_from_config(instances_data)
+            )
+
+            # Show load errors if any
+            if load_errors:
+                for error in load_errors:
+                    console.print(f"[yellow]Warning:[/yellow] {error}")
 
             # Create .claude directory
             claude_dir = repo_path / ".claude"
@@ -167,7 +184,9 @@ class Initializer:
             success = True
             files_created = 0
 
-            enabled_instances = self.instance_manager.list_instances(enabled_only=True)
+            enabled_instances = file_instance_service.list_instances(
+                self.instances_dict, enabled_only=True
+            )
 
             if not enabled_instances:
                 console.print("[yellow]No enabled file instances to generate[/yellow]")
@@ -190,7 +209,10 @@ class Initializer:
             # Create config file if it doesn't exist
             config_path = repo_path / ".claudefig.toml"
             if not config_path.exists():
-                Config.create_default(config_path)
+                # Create default config
+                default_config = config_service.DEFAULT_CONFIG.copy()
+                config_repo = TomlConfigRepository(config_path)
+                config_service.save_config(default_config, config_repo)
                 self._track_file(config_path)
                 console.print(f"\n[green]+[/green] Created config: {config_path}")
             else:
@@ -290,10 +312,8 @@ class Initializer:
 
         # Check if file/directory already exists
         if dest_path.exists() and not force and not instance.type.append_mode:
-            console.print(
-                f"[yellow]![/yellow] Already exists (use --force to overwrite): {dest_path}"
-            )
-            return False
+            console.print(f"[blue]i[/blue] Already exists (skipped): {dest_path}")
+            return True  # Treat existing files as success (skip)
 
         try:
             if instance.type.is_directory:
@@ -359,10 +379,8 @@ class Initializer:
 
         # Check if file already exists
         if dest_path.exists() and not force:
-            console.print(
-                f"[yellow]![/yellow] Already exists (use --force to overwrite): {dest_path}"
-            )
-            return False
+            console.print(f"[blue]i[/blue] Already exists (skipped): {dest_path}")
+            return True  # Treat existing files as success (skip)
 
         try:
             # Read template content
@@ -399,7 +417,9 @@ class Initializer:
             True if successful
         """
         # Get template content
-        template_name = self.config.get("claudefig.template_source", "default")
+        template_name = config_service.get_value(
+            self.config_data, "claudefig.template_source", "default"
+        )
 
         try:
             # Try to read template file
@@ -462,7 +482,9 @@ class Initializer:
         Returns:
             True if successful
         """
-        template_name = self.config.get("claudefig.template_source", "default")
+        template_name = config_service.get_value(
+            self.config_data, "claudefig.template_source", "default"
+        )
 
         try:
             # Read gitignore entries template
@@ -517,7 +539,9 @@ class Initializer:
         Returns:
             True if successful
         """
-        template_name = self.config.get("claudefig.template_source", "default")
+        template_name = config_service.get_value(
+            self.config_data, "claudefig.template_source", "default"
+        )
 
         # Map file types to template paths
         template_dir_map = {

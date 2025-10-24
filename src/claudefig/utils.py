@@ -1,31 +1,24 @@
-"""Utility functions for claudefig."""
+"""Utility functions for claudefig.
 
-from pathlib import Path
+DEPRECATED: This module is deprecated. Import from claudefig.utils instead.
 
+For backwards compatibility, this module re-exports functions from the new
+utils package structure:
+- claudefig.utils.paths
+- claudefig.utils.platform
+"""
 
-def ensure_directory(path: Path) -> None:
-    """Ensure directory exists, create if it doesn't.
+import warnings
 
-    Args:
-        path: Directory path to ensure exists.
-    """
-    path.mkdir(parents=True, exist_ok=True)
+# Import from new structure for backwards compatibility
+from claudefig.utils.paths import ensure_directory, is_git_repository  # noqa: F401
 
+# Warn users to update their imports
+warnings.warn(
+    "claudefig.utils is deprecated. Import from claudefig.utils.paths or "
+    "claudefig.utils.platform instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-def is_git_repository(path: Path) -> bool:
-    """Check if path is inside a git repository.
-
-    Args:
-        path: Path to check
-
-    Returns:
-        True if path is in a git repository, False otherwise.
-    """
-    current = path.resolve()
-
-    while current != current.parent:
-        if (current / ".git").exists():
-            return True
-        current = current.parent
-
-    return False
+__all__ = ["ensure_directory", "is_git_repository"]

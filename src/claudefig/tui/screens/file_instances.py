@@ -1,6 +1,7 @@
 """File instances screen for managing multi-instance file types."""
 
 from pathlib import Path
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -8,14 +9,19 @@ from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import Button, Label, Select, TabbedContent, TabPane
 
-from claudefig.config import Config
 from claudefig.error_messages import ErrorMessages
-from claudefig.file_instance_manager import FileInstanceManager
-from claudefig.models import FileType
-from claudefig.preset_manager import PresetManager
+from claudefig.exceptions import (
+    ConfigFileNotFoundError,
+    FileOperationError,
+    InstanceNotFoundError,
+    InstanceValidationError,
+)
+from claudefig.models import FileInstance, FileType
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.repositories.preset_repository import TomlPresetRepository
+from claudefig.services import config_service, file_instance_service
 from claudefig.tui.base import (
     BackButtonMixin,
-    FileInstanceMixin,
     ScrollNavigationMixin,
     SystemUtilityMixin,
 )
@@ -26,7 +32,6 @@ from claudefig.user_config import get_components_dir
 class FileInstancesScreen(
     Screen,
     BackButtonMixin,
-    FileInstanceMixin,
     ScrollNavigationMixin,
     SystemUtilityMixin,
 ):
@@ -37,26 +42,46 @@ class FileInstancesScreen(
         ("backspace", "pop_screen", "Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
     def __init__(
         self,
-        config: Config,
-        instance_manager: FileInstanceManager,
-        preset_manager: PresetManager,
+        config_data: dict[str, Any],
+        config_repo: TomlConfigRepository,
+        instances_dict: dict[str, FileInstance],
         **kwargs,
     ) -> None:
         """Initialize file instances screen.
 
         Args:
-            config: Configuration object
-            instance_manager: FileInstanceManager for CRUD operations
-            preset_manager: PresetManager for preset info
+            config_data: Configuration dictionary
+            config_repo: Configuration repository for saving
+            instances_dict: Dictionary of file instances (id -> FileInstance)
         """
         super().__init__(**kwargs)
-        self.config = config
-        self.instance_manager = instance_manager
-        self.preset_manager = preset_manager
+        self.config_data = config_data
+        self.config_repo = config_repo
+        self.instances_dict = instances_dict
+        self.preset_repo = TomlPresetRepository()
+
+    def sync_instances_to_config(self) -> None:
+        """Sync instances dict to config and save to disk.
+
+        This implements the state synchronization pattern:
+        1. Modify instances_dict (done by caller)
+        2. Sync instances → config (done here)
+        3. Sync config → disk (done here)
+        """
+        # Save instances to config format
+        instances_data = file_instance_service.save_instances_to_config(
+            self.instances_dict
+        )
+        config_service.set_file_instances(self.config_data, instances_data)
+
+        # Save config to disk
+        config_service.save_config(self.config_data, self.config_repo)
 
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
@@ -67,14 +92,13 @@ class FileInstancesScreen(
 
         Prevents up/down arrows from opening component Select dropdowns.
         Only Enter opens dropdowns, backspace/esc closes them.
-        Adds left/right navigation for horizontal button groups.
 
         Args:
             event: The key event
         """
         focused = self.focused
 
-        # If a component Select is focused and prevent up/down from opening the dropdown
+        # If a component Select is focused, prevent up/down from opening the dropdown
         if (
             isinstance(focused, Select)
             and focused.id
@@ -90,82 +114,6 @@ class FileInstancesScreen(
             else:
                 self.action_focus_next()
             event.stop()
-
-        # Handle left/right navigation for horizontal groups
-        if (
-            event.key in ("left", "right")
-            and focused
-            and self._handle_horizontal_navigation(event.key, focused)
-        ):
-            event.prevent_default()
-            event.stop()
-
-    def _handle_horizontal_navigation(self, key: str, focused) -> bool:
-        """Handle left/right navigation within horizontal groups.
-
-        Supports navigation in:
-        1. Tab actions (Select dropdown <-> Open Folder button)
-        2. Instance actions (Edit <-> Remove <-> Toggle buttons per instance)
-
-        Args:
-            key: Either "left" or "right"
-            focused: The currently focused widget
-
-        Returns:
-            True if navigation was handled, False otherwise
-        """
-        from textual.containers import Horizontal
-
-        # Find the horizontal parent container
-        horizontal_parent = None
-        current = focused.parent
-
-        # Walk up the tree to find a Horizontal container
-        while current:
-            # Check if it's a Horizontal navigation group we care about
-            if (
-                isinstance(current, Horizontal)
-                and hasattr(current, "classes")
-                and (
-                    "tab-actions" in current.classes
-                    or "instance-actions" in current.classes
-                )
-            ):
-                horizontal_parent = current
-                break
-            current = current.parent
-
-        if not horizontal_parent:
-            return False
-
-        # Get all focusable widgets in this horizontal container
-        focusable_widgets = [
-            widget
-            for widget in horizontal_parent.query("Select, Button")
-            if widget.can_focus and widget.display and not widget.disabled
-        ]
-
-        if len(focusable_widgets) <= 1:
-            return False
-
-        try:
-            current_index = focusable_widgets.index(focused)
-        except ValueError:
-            return False
-
-        # Navigate left or right
-        if key == "left":
-            new_index = current_index - 1
-            if new_index >= 0:
-                focusable_widgets[new_index].focus()
-                return True
-        elif key == "right":
-            new_index = current_index + 1
-            if new_index < len(focusable_widgets):
-                focusable_widgets[new_index].focus()
-                return True
-
-        return False
 
     def compose(self) -> ComposeResult:
         """Compose the file instances screen."""
@@ -195,18 +143,50 @@ class FileInstancesScreen(
                 for file_type in multi_instance_types:
                     with TabPane(file_type.display_name, id=f"tab-{file_type.value}"):
                         # Get instances for this file type
-                        instances = [
-                            inst
-                            for inst in self.instance_manager.list_instances()
-                            if inst.type == file_type
-                        ]
+                        instances = file_instance_service.get_instances_by_type(
+                            self.instances_dict, file_type
+                        )
 
                         # Component selector
                         with Horizontal(classes="tab-actions"):
                             # Get available components for this file type
-                            components = self.instance_manager.list_components(
-                                file_type
+                            from claudefig.user_config import get_components_dir
+
+                            components_dir = get_components_dir()
+                            # Map file type to component directory
+                            type_dirs = {
+                                FileType.CLAUDE_MD: "claude_md",
+                                FileType.GITIGNORE: "gitignore",
+                                FileType.COMMANDS: "commands",
+                                FileType.AGENTS: "agents",
+                                FileType.HOOKS: "hooks",
+                                FileType.OUTPUT_STYLES: "output_styles",
+                                FileType.MCP: "mcp",
+                                FileType.SETTINGS_JSON: "settings_json",
+                            }
+
+                            type_dir = components_dir / type_dirs.get(
+                                file_type, file_type.value
                             )
+                            components = []
+
+                            if type_dir.exists():
+                                # For folder-based components (CLAUDE_MD, GITIGNORE)
+                                if file_type in (
+                                    FileType.CLAUDE_MD,
+                                    FileType.GITIGNORE,
+                                ):
+                                    components = [
+                                        (item.name, item)
+                                        for item in type_dir.iterdir()
+                                        if item.is_dir()
+                                    ]
+                                else:
+                                    # For JSON-based components
+                                    components = [
+                                        (item.stem, item)
+                                        for item in type_dir.glob("*.json")
+                                    ]
 
                             if components:
                                 # Build options: (display_name, component_name)
@@ -323,7 +303,7 @@ class FileInstancesScreen(
         """
         try:
             # Check if this component has already been added
-            existing_instances = self.instance_manager.list_instances()
+            existing_instances = list(self.instances_dict.values())
 
             for existing in existing_instances:
                 # Skip if different type
@@ -355,7 +335,60 @@ class FileInstancesScreen(
                             return
 
             # Load component from library
-            instance = self.instance_manager.load_component(file_type, component_name)
+            import json
+
+            from claudefig.user_config import get_components_dir
+
+            components_dir = get_components_dir()
+            type_dirs = {
+                FileType.CLAUDE_MD: "claude_md",
+                FileType.GITIGNORE: "gitignore",
+                FileType.COMMANDS: "commands",
+                FileType.AGENTS: "agents",
+                FileType.HOOKS: "hooks",
+                FileType.OUTPUT_STYLES: "output_styles",
+                FileType.MCP: "mcp",
+                FileType.SETTINGS_JSON: "settings_json",
+            }
+
+            type_dir = components_dir / type_dirs.get(file_type, file_type.value)
+            instance = None
+
+            # For folder-based components
+            if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                component_folder = type_dir / component_name
+                if component_folder.exists() and component_folder.is_dir():
+                    metadata_file = component_folder / "component.json"
+                    if metadata_file.exists():
+                        component_data = json.loads(
+                            metadata_file.read_text(encoding="utf-8")
+                        )
+                        instance = FileInstance(
+                            id=f"{file_type.value}-{component_name}",
+                            type=file_type,
+                            preset=f"component:{component_name}",
+                            path=component_data.get("path", file_type.default_path),
+                            enabled=True,
+                            variables={
+                                "component_folder": str(component_folder),
+                                "component_name": component_name,
+                            },
+                        )
+            else:
+                # For JSON-based components
+                component_file = type_dir / f"{component_name}.json"
+                if component_file.exists():
+                    component_data = json.loads(
+                        component_file.read_text(encoding="utf-8")
+                    )
+                    instance = FileInstance(
+                        id=f"{file_type.value}-{component_name}",
+                        type=file_type,
+                        preset=f"component:{component_name}",
+                        path=component_data.get("path", file_type.default_path),
+                        enabled=True,
+                        variables={"component_name": component_name},
+                    )
 
             if not instance:
                 self.notify(f"Component '{component_name}' not found", severity="error")
@@ -372,12 +405,17 @@ class FileInstancesScreen(
                 if ":" in instance.preset
                 else instance.preset
             )
-            instance.id = self.instance_manager.generate_instance_id(
-                file_type, preset_name, instance.path
+            instance.id = file_instance_service.generate_instance_id(
+                file_type, preset_name, instance.path, self.instances_dict
             )
 
-            # Add instance
-            result = self.instance_manager.add_instance(instance)
+            # Add instance with validation
+            result = file_instance_service.add_instance(
+                self.instances_dict,
+                instance,
+                self.preset_repo,
+                self.config_repo.config_path.parent,
+            )
 
             if result.valid:
                 # Sync to config and save
@@ -396,7 +434,14 @@ class FileInstancesScreen(
                 )
                 self.notify(error_msg, severity="error")
 
+        except InstanceValidationError as e:
+            self.notify(str(e), severity="error")
+        except ConfigFileNotFoundError as e:
+            self.notify(str(e), severity="error")
+        except FileOperationError as e:
+            self.notify(str(e), severity="error")
         except Exception as e:
+            # Catch any other unexpected errors
             self.notify(
                 ErrorMessages.operation_failed("adding component", str(e)),
                 severity="error",
@@ -409,7 +454,7 @@ class FileInstancesScreen(
             instance_id: ID of the instance to edit
         """
         # Get the instance
-        instance = self.instance_manager.get_instance(instance_id)
+        instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         if not instance:
             self.notify(
                 ErrorMessages.not_found("file instance", instance_id), severity="error"
@@ -441,7 +486,12 @@ class FileInstancesScreen(
                     instance.variables = instance.variables or {}
                     instance.variables["component_name"] = component_name
                     instance.variables["component_folder"] = component_folder
-                    self.instance_manager.update_instance(instance)
+                    file_instance_service.update_instance(
+                        self.instances_dict,
+                        instance,
+                        self.preset_repo,
+                        self.config_repo.config_path.parent,
+                    )
                     self.sync_instances_to_config()
                 else:
                     self.notify(
@@ -507,7 +557,7 @@ class FileInstancesScreen(
         from tkinter import filedialog
 
         # Get the instance
-        instance = self.instance_manager.get_instance(instance_id)
+        instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         if not instance:
             self.notify(
                 ErrorMessages.not_found("file instance", instance_id), severity="error"
@@ -522,11 +572,7 @@ class FileInstancesScreen(
 
             # Get the project directory as the initial directory
             # The project directory is the parent of the config file
-            if self.config.config_path:
-                project_dir = self.config.config_path.parent.resolve()
-            else:
-                # Fallback to current working directory if no config path
-                project_dir = Path.cwd()
+            project_dir = self.config_repo.config_path.parent.resolve()
 
             # Determine the filename based on file type
             default_filename = Path(instance.path).name
@@ -556,18 +602,23 @@ class FileInstancesScreen(
 
             if selected_path:
                 # Convert to path relative to project directory
-                selected_path = Path(selected_path)
+                selected_path_obj = Path(selected_path)
                 try:
                     # Try to make it relative to project dir
-                    relative_path = selected_path.relative_to(project_dir)
+                    relative_path = selected_path_obj.relative_to(project_dir)
                     new_path = str(relative_path)
                 except ValueError:
                     # If path is outside project, use absolute path
-                    new_path = str(selected_path)
+                    new_path = str(selected_path_obj)
 
                 # Update the instance path
                 instance.path = new_path
-                self.instance_manager.update_instance(instance)
+                file_instance_service.update_instance(
+                    self.instances_dict,
+                    instance,
+                    self.preset_repo,
+                    self.config_repo.config_path.parent,
+                )
 
                 # Sync to config and save
                 self.sync_instances_to_config()
@@ -582,7 +633,14 @@ class FileInstancesScreen(
                         item.file_path = new_path
                         break
 
+        except InstanceNotFoundError as e:
+            self.notify(str(e), severity="error")
+        except ConfigFileNotFoundError as e:
+            self.notify(str(e), severity="error")
+        except FileOperationError as e:
+            self.notify(str(e), severity="error")
         except Exception as e:
+            # Catch any other unexpected errors (e.g., tkinter issues)
             self.notify(
                 ErrorMessages.operation_failed("selecting path", str(e)),
                 severity="error",
@@ -595,15 +653,15 @@ class FileInstancesScreen(
             instance_id: ID of the instance to remove
         """
         # Get the instance for display name
-        instance = self.instance_manager.get_instance(instance_id)
+        instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         if not instance:
             self.notify(
                 ErrorMessages.not_found("file instance", instance_id), severity="error"
             )
             return
 
-        # Remove from manager
-        if self.instance_manager.remove_instance(instance_id):
+        # Remove from dict
+        if file_instance_service.remove_instance(self.instances_dict, instance_id):
             # Sync to config and save
             self.sync_instances_to_config()
             self.notify(
@@ -624,7 +682,7 @@ class FileInstancesScreen(
         Args:
             instance_id: ID of the instance to toggle
         """
-        instance = self.instance_manager.get_instance(instance_id)
+        instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         if not instance:
             self.notify(
                 ErrorMessages.not_found("file instance", instance_id), severity="error"
@@ -633,7 +691,12 @@ class FileInstancesScreen(
 
         # Toggle enabled status
         instance.enabled = not instance.enabled
-        self.instance_manager.update_instance(instance)
+        file_instance_service.update_instance(
+            self.instances_dict,
+            instance,
+            self.preset_repo,
+            self.config_repo.config_path.parent,
+        )
 
         # Sync to config and save
         self.sync_instances_to_config()

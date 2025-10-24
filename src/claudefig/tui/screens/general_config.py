@@ -1,16 +1,18 @@
 """General config editor screen."""
 
-from pathlib import Path
-from typing import Union
+from typing import Any, Union
 
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
-from textual.reactive import reactive
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
-from claudefig.config import Config
+from claudefig.exceptions import ConfigFileNotFoundError, FileWriteError
+from claudefig.models import FileInstance
+from claudefig.repositories.config_repository import TomlConfigRepository
+from claudefig.services import config_service
+from claudefig.services.validation_service import validate_not_empty
 from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
 
 
@@ -22,18 +24,28 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         ("backspace", "go_back", "Back"),
         ("up", "focus_previous", "Focus Previous"),
         ("down", "focus_next", "Focus Next"),
+        ("left", "focus_left", "Focus Left"),
+        ("right", "focus_right", "Focus Right"),
     ]
 
-    config: reactive[Config] = reactive(lambda: Config())
-
-    def __init__(self, config: Config, **kwargs) -> None:
+    def __init__(
+        self,
+        config_data: dict[str, Any],
+        config_repo: TomlConfigRepository,
+        instances_dict: dict[str, FileInstance],
+        **kwargs,
+    ) -> None:
         """Initialize the general config screen.
 
         Args:
-            config: Config instance to edit
+            config_data: Configuration dictionary
+            config_repo: Configuration repository for saving
+            instances_dict: Dictionary of file instances (id -> FileInstance)
         """
         super().__init__(**kwargs)
-        self.config = config
+        self.config_data = config_data
+        self.config_repo = config_repo
+        self.instances_dict = instances_dict
 
     def compose(self) -> ComposeResult:
         """Compose the general config editor."""
@@ -100,8 +112,8 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
                 else:
                     lines.append(f"{full_key}: {value}")
 
-        if self.config and self.config.data:
-            format_dict(self.config.data)
+        if self.config_data:
+            format_dict(self.config_data)
             return "\n".join(lines)
         else:
             return "No configuration loaded"
@@ -139,12 +151,15 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         key = key_input.value.strip()
         value_str = value_input.value.strip()
 
-        if not key:
-            self.app.notify("Please enter a key", severity="warning")
+        # Validate inputs using centralized validation
+        key_validation = validate_not_empty(key, "Key")
+        if key_validation.has_errors:
+            self.app.notify(key_validation.errors[0], severity="warning")
             return
 
-        if not value_str:
-            self.app.notify("Please enter a value", severity="warning")
+        value_validation = validate_not_empty(value_str, "Value")
+        if value_validation.has_errors:
+            self.app.notify(value_validation.errors[0], severity="warning")
             return
 
         try:
@@ -152,15 +167,10 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             parsed_value = self._parse_value(value_str)
 
             # Set in config
-            self.config.set(key, parsed_value)
+            config_service.set_value(self.config_data, key, parsed_value)
 
             # Save to file
-            if self.config.config_path:
-                self.config.save(self.config.config_path)
-            else:
-                # Save to current directory
-                config_path = Path.cwd() / ".claudefig.toml"
-                self.config.save(config_path)
+            config_service.save_config(self.config_data, self.config_repo)
 
             self.app.notify(
                 f"Set {key} = {parsed_value}",
@@ -175,17 +185,20 @@ class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             key_input.value = ""
             value_input.value = ""
 
+        except ConfigFileNotFoundError as e:
+            self.app.notify(str(e), severity="error")
+        except FileWriteError as e:
+            self.app.notify(str(e), severity="error")
         except Exception as e:
+            # Catch other unexpected errors (e.g., parsing errors)
             self.app.notify(f"Error setting config: {e}", severity="error")
 
     @on(Button.Pressed, "#btn-refresh")
     def handle_refresh(self) -> None:
         """Handle Refresh Display button press."""
         # Reload config from disk
-        if self.config.config_path and self.config.config_path.exists():
-            self.config = Config(config_path=self.config.config_path)
-        else:
-            self.config = Config()
+        if self.config_repo.config_path.exists():
+            self.config_data = config_service.load_config(self.config_repo)
 
         # Refresh display
         config_display = self.query_one("#config-display", Static)

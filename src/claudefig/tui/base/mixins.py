@@ -1,5 +1,7 @@
 """Mixins for common TUI screen functionality.
 
+Note: Platform and subprocess imports removed - now using claudefig.utils.platform
+
 UI UPDATE PATTERNS - WHEN TO USE WHAT:
 ======================================
 
@@ -55,8 +57,6 @@ See FileInstancesScreen._remove_instance() for recompose examples.
 """
 
 import contextlib
-import platform
-import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -66,10 +66,11 @@ from textual.events import DescendantFocus
 from textual.widgets import Button
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from textual.app import App
 
-    from claudefig.config import Config
-    from claudefig.file_instance_manager import FileInstanceManager
+    from claudefig.repositories import AbstractConfigRepository
 
 
 class BackButtonMixin:
@@ -128,65 +129,79 @@ class FileInstanceMixin:
     """Mixin for screens that manage file instances.
 
     Provides:
-    - sync_instances_to_config(): Sync instance manager state to config and save
+    - sync_instances_to_config(): Sync instances dict to config and save
 
     Requires the screen to have:
-    - self.config: Config instance
-    - self.instance_manager: FileInstanceManager instance
+    - self.config_data: dict[str, Any] - Configuration data dictionary
+    - self.config_repo: AbstractConfigRepository - Repository for saving
+    - self.instances_dict: dict[str, FileInstance] - File instances by ID
 
     Usage:
         class MyScreen(Screen, FileInstanceMixin):
-            def __init__(self, config, instance_manager, **kwargs):
+            def __init__(self, config_data, config_repo, instances_dict, **kwargs):
                 super().__init__(**kwargs)
-                self.config = config
-                self.instance_manager = instance_manager
+                self.config_data = config_data
+                self.config_repo = config_repo
+                self.instances_dict = instances_dict
 
             def some_handler(self):
-                # Modify instance manager
-                self.instance_manager.add_instance(instance)
+                # Modify instances_dict
+                self.instances_dict[instance_id] = instance
                 # Sync to config and save
                 self.sync_instances_to_config()
     """
 
     if TYPE_CHECKING:
-        config: "Config"
-        instance_manager: "FileInstanceManager"
+        from claudefig.models import FileInstance
+
+        config_data: dict[str, Any]
+        config_repo: "AbstractConfigRepository"
+        instances_dict: dict[str, "FileInstance"]
 
     def sync_instances_to_config(self) -> None:
-        """Sync instance manager state to config and save to disk.
+        """Sync instances dict to config data and save to disk.
 
         This method implements the critical 3-step state synchronization pattern
-        documented in ARCHITECTURE.md:
+        for the new architecture:
 
-        1. Modify instance_manager (already done by caller)
-        2. Sync manager → config (done here)
-        3. Sync config → disk (done here)
+        1. Modify instances_dict (already done by caller)
+        2. Sync instances_dict → config_data (done here)
+        3. Sync config_data → disk via repository (done here)
 
-        Call this method after ANY modification to instance_manager:
-        - add_instance()
-        - update_instance()
-        - remove_instance()
-        - enable_instance()
-        - disable_instance()
+        Call this method after ANY modification to instances_dict:
+        - Adding an instance: instances_dict[id] = instance
+        - Updating an instance: instances_dict[id] = updated_instance
+        - Removing an instance: del instances_dict[id]
+        - Enabling/disabling: instances_dict[id].enabled = True/False
 
         Example:
             # Add an instance
-            self.instance_manager.add_instance(new_instance)
+            self.instances_dict[new_instance.id] = new_instance
             self.sync_instances_to_config()  # ← Call this!
 
             # Update an instance
+            instance = self.instances_dict[instance_id]
             instance.enabled = False
-            self.instance_manager.update_instance(instance)
+            self.instances_dict[instance_id] = instance
+            self.sync_instances_to_config()  # ← Call this!
+
+            # Remove an instance
+            del self.instances_dict[instance_id]
             self.sync_instances_to_config()  # ← Call this!
 
         Raises:
-            AttributeError: If screen doesn't have config or instance_manager
+            AttributeError: If screen doesn't have required attributes
         """
-        # Step 2: Sync manager → config
-        self.config.set_file_instances(self.instance_manager.save_instances())
+        from claudefig.services import file_instance_service
 
-        # Step 3: Sync config → disk
-        self.config.save()
+        # Step 2: Sync instances_dict → config_data
+        instances_list = file_instance_service.save_instances_to_config(
+            self.instances_dict
+        )
+        self.config_data["files"] = instances_list
+
+        # Step 3: Sync config_data → disk via repository
+        self.config_repo.save(self.config_data)
 
 
 class ScrollNavigationMixin:
@@ -194,20 +209,25 @@ class ScrollNavigationMixin:
 
     Provides:
     - Smart up/down arrow navigation that doesn't wrap at boundaries
+    - Smart left/right arrow navigation within horizontal groups
     - Automatic scrolling to reveal title when at top
     - Automatic scrolling to reveal content when at bottom
     - Horizontal group navigation support (skips siblings in horizontal containers)
+    - Focus memory for horizontal groups (remembers last focused button)
     - Auto-scroll focused widgets into view
 
     Requires:
     - Screen must use a VerticalScroll container with an id attribute
     - Screen must have up/down arrow bindings that call action_focus_previous/action_focus_next
+    - Optional: left/right arrow bindings that call action_focus_left/action_focus_right
 
     Usage:
         class MyScreen(Screen, ScrollNavigationMixin):
             BINDINGS = [
                 ("up", "focus_previous", "Focus Previous"),
                 ("down", "focus_next", "Focus Next"),
+                ("left", "focus_left", "Focus Left"),
+                ("right", "focus_right", "Focus Right"),
             ]
 
             def compose(self) -> ComposeResult:
@@ -217,17 +237,21 @@ class ScrollNavigationMixin:
     """
 
     # These attributes/methods are expected to be provided by the Screen class
-    # that this mixin is used with. We declare them here for type checking only.
+    # that this mixin is used with.
     if TYPE_CHECKING:
         from typing import Any
 
         focused: Any  # Provided by Screen
         focus_chain: Any  # Provided by Screen
 
-        def query(self, selector: str) -> Any: ...  # Provided by DOMNode
-        def query_one(
-            self, selector: Any, expect_type: Any = None
-        ) -> Any: ...  # Provided by DOMNode
+    def _ensure_focus_memory_initialized(self):
+        """Ensure the focus memory dict exists (lazy initialization).
+
+        This is needed because the mixin's __init__ may not be called
+        depending on the inheritance chain of the using class.
+        """
+        if not hasattr(self, "_horizontal_group_focus_memory"):
+            self._horizontal_group_focus_memory = {}
 
     def _get_horizontal_nav_parent(self, widget):
         """Get the horizontal navigation parent for a widget, if any.
@@ -250,12 +274,37 @@ class ScrollNavigationMixin:
                 and (
                     "tab-actions" in current.classes
                     or "instance-actions" in current.classes
+                    or "dialog-actions" in current.classes
                 )
             ):
                 return current
             current = current.parent
 
         return None
+
+    def _update_horizontal_focus_memory(self, widget):
+        """Update focus memory for a widget's horizontal group.
+
+        Args:
+            widget: The widget that was focused
+        """
+        self._ensure_focus_memory_initialized()
+        horizontal_parent = self._get_horizontal_nav_parent(widget)
+        if horizontal_parent:
+            # Use id() to get unique identifier for the parent container
+            self._horizontal_group_focus_memory[id(horizontal_parent)] = widget
+
+    def _get_remembered_focus_in_group(self, horizontal_parent):
+        """Get the last focused widget in a horizontal group.
+
+        Args:
+            horizontal_parent: The horizontal container
+
+        Returns:
+            The last focused widget in this group, or None if no memory
+        """
+        self._ensure_focus_memory_initialized()
+        return self._horizontal_group_focus_memory.get(id(horizontal_parent))
 
     def action_focus_previous(self) -> None:
         """Override up arrow navigation to prevent wrapping.
@@ -289,7 +338,7 @@ class ScrollNavigationMixin:
             # Scroll to the top to reveal title labels
             try:
                 # Get the title label and scroll it into view (at the top)
-                title_label = self.query("Label.screen-title").first()
+                title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
                     title_label.scroll_visible(top=True, animate=False)
             except Exception:
@@ -318,34 +367,46 @@ class ScrollNavigationMixin:
         if target_index < 0:
             # Already at top, scroll to reveal title
             try:
-                title_label = self.query("Label.screen-title").first()
+                title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
                     title_label.scroll_visible(top=True, animate=False)
             except Exception:
                 pass
             return
 
-        # If the target widget is in a horizontal group, find the FIRST widget in that group
+        # If the target widget is in a horizontal group, use focus memory if available
         target_widget = focus_chain[target_index]
         target_horizontal_parent = self._get_horizontal_nav_parent(target_widget)
 
         if target_horizontal_parent:
-            # Walk backwards to find the first widget in this horizontal group
-            first_in_group_index = target_index
-            while first_in_group_index > 0:
-                prev_widget = focus_chain[first_in_group_index - 1]
-                prev_horizontal_parent = self._get_horizontal_nav_parent(prev_widget)
+            # Check if we have a remembered focus in this group
+            remembered_widget = self._get_remembered_focus_in_group(
+                target_horizontal_parent
+            )
 
-                # Stop if previous widget is not in the same horizontal group
-                if prev_horizontal_parent != target_horizontal_parent:
-                    break
+            if remembered_widget and remembered_widget in focus_chain:
+                # Use the remembered widget
+                target_widget = remembered_widget
+            else:
+                # No memory, find the first widget in this horizontal group
+                first_in_group_index = target_index
+                while first_in_group_index > 0:
+                    prev_widget = focus_chain[first_in_group_index - 1]
+                    prev_horizontal_parent = self._get_horizontal_nav_parent(
+                        prev_widget
+                    )
 
-                first_in_group_index -= 1
+                    # Stop if previous widget is not in the same horizontal group
+                    if prev_horizontal_parent != target_horizontal_parent:
+                        break
 
-            target_index = first_in_group_index
+                    first_in_group_index -= 1
 
-        # Focus the target element
-        focus_chain[target_index].focus()
+                target_widget = focus_chain[first_in_group_index]
+
+        # Focus the target element and update memory
+        target_widget.focus()
+        self._update_horizontal_focus_memory(target_widget)
 
     def action_focus_next(self) -> None:
         """Override down arrow navigation to prevent wrapping.
@@ -409,12 +470,24 @@ class ScrollNavigationMixin:
                 focused.scroll_visible(top=False, animate=False)
             return
 
-        # If the target widget is in a horizontal group, we're already on the first one
-        # (because focus_chain is in DOM order, left-to-right, top-to-bottom)
-        # So no adjustment needed for down navigation
+        # If the target widget is in a horizontal group, use focus memory if available
+        target_widget = focus_chain[target_index]
+        target_horizontal_parent = self._get_horizontal_nav_parent(target_widget)
 
-        # Focus the target element
-        focus_chain[target_index].focus()
+        if target_horizontal_parent:
+            # Check if we have a remembered focus in this group
+            remembered_widget = self._get_remembered_focus_in_group(
+                target_horizontal_parent
+            )
+
+            if remembered_widget and remembered_widget in focus_chain:
+                # Use the remembered widget
+                target_widget = remembered_widget
+            # Otherwise just use the first widget in the group (target_widget is already set)
+
+        # Focus the target element and update memory
+        target_widget.focus()
+        self._update_horizontal_focus_memory(target_widget)
 
     def on_descendant_focus(self, event: DescendantFocus) -> None:
         """Ensure focused widgets are scrolled into view.
@@ -422,14 +495,103 @@ class ScrollNavigationMixin:
         Args:
             event: The focus event containing the focused widget
         """
+        # Update focus memory if this widget is in a horizontal group
+        self._update_horizontal_focus_memory(event.widget)
+
         # Scroll the VerticalScroll container to keep focused widget visible
         # This ensures proper scrolling within the container
         try:
             # Find the first VerticalScroll container in this screen
-            scroll_container = self.query_one(VerticalScroll)
+            scroll_container = self.query_one(VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_to_widget(event.widget, animate=False)
         except Exception:
             pass
+
+    def action_focus_left(self) -> None:
+        """Navigate left within a horizontal group.
+
+        Handles focus movement when pressing left arrow:
+        - Only works if current widget is in a horizontal navigation group
+        - Moves focus to the previous focusable widget in the group
+        - Does not wrap - stays on first element if already there
+        - Does not navigate if not in a horizontal group
+        """
+        focused = self.focused
+        if not focused:
+            return
+
+        # Check if we're in a horizontal group
+        horizontal_parent = self._get_horizontal_nav_parent(focused)
+        if not horizontal_parent:
+            # Not in a horizontal group, do nothing
+            return
+
+        # Get all focusable widgets in this horizontal container
+
+        focusable_widgets = [
+            widget
+            for widget in horizontal_parent.query("Select, Button")
+            if widget.can_focus and widget.display and not widget.disabled
+        ]
+
+        if len(focusable_widgets) <= 1:
+            # Only one or zero widgets, nothing to navigate to
+            return
+
+        try:
+            current_index = focusable_widgets.index(focused)
+        except ValueError:
+            # Current widget not in list
+            return
+
+        # Navigate left (previous widget)
+        new_index = current_index - 1
+        if new_index >= 0:
+            focusable_widgets[new_index].focus()
+            self._update_horizontal_focus_memory(focusable_widgets[new_index])
+
+    def action_focus_right(self) -> None:
+        """Navigate right within a horizontal group.
+
+        Handles focus movement when pressing right arrow:
+        - Only works if current widget is in a horizontal navigation group
+        - Moves focus to the next focusable widget in the group
+        - Does not wrap - stays on last element if already there
+        - Does not navigate if not in a horizontal group
+        """
+        focused = self.focused
+        if not focused:
+            return
+
+        # Check if we're in a horizontal group
+        horizontal_parent = self._get_horizontal_nav_parent(focused)
+        if not horizontal_parent:
+            # Not in a horizontal group, do nothing
+            return
+
+        # Get all focusable widgets in this horizontal container
+
+        focusable_widgets = [
+            widget
+            for widget in horizontal_parent.query("Select, Button")
+            if widget.can_focus and widget.display and not widget.disabled
+        ]
+
+        if len(focusable_widgets) <= 1:
+            # Only one or zero widgets, nothing to navigate to
+            return
+
+        try:
+            current_index = focusable_widgets.index(focused)
+        except ValueError:
+            # Current widget not in list
+            return
+
+        # Navigate right (next widget)
+        new_index = current_index + 1
+        if new_index < len(focusable_widgets):
+            focusable_widgets[new_index].focus()
+            self._update_horizontal_focus_memory(focusable_widgets[new_index])
 
 
 class SystemUtilityMixin:
@@ -450,22 +612,9 @@ class SystemUtilityMixin:
     """
 
     if TYPE_CHECKING:
-        from typing import Literal
-
         from textual.app import App
 
-        SeverityLevel = Literal["information", "warning", "error"]
         app: "App[object]"
-
-        def notify(
-            self,
-            message: str,
-            *,
-            severity: SeverityLevel = "information",
-            timeout: float = 2.0,
-        ) -> None:
-            """Provided by Screen/Widget."""
-            ...
 
     def open_file_in_editor(self, file_path: Union[Path, str]) -> bool:
         """Open a file in the system's default editor.
@@ -483,39 +632,31 @@ class SystemUtilityMixin:
             - Uses appropriate system command
             - Shows notification to user
         """
-        file_path = Path(file_path)
-
-        if not file_path.exists():
-            self.notify(
-                f"File does not exist: {file_path}",
-                severity="error",
-            )
-            return False
-
-        if not file_path.is_file():
-            self.notify(
-                f"Path is not a file: {file_path}",
-                severity="error",
-            )
-            return False
+        from claudefig.utils.platform import open_file_in_editor as platform_open_file
 
         try:
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["start", "", str(file_path)], shell=True, check=False)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", str(file_path)], check=False)
-            else:  # Linux
-                subprocess.run(["xdg-open", str(file_path)], check=False)
-
-            self.notify(
+            platform_open_file(file_path)
+            self.notify(  # type: ignore[attr-defined]
                 "Opened file in editor",
                 severity="information",
             )
             return True
 
-        except Exception as e:
-            self.notify(
+        except FileNotFoundError as e:
+            self.notify(  # type: ignore[attr-defined]
+                str(e),
+                severity="error",
+            )
+            return False
+        except ValueError as e:
+            self.notify(  # type: ignore[attr-defined]
+                str(e),
+                severity="error",
+            )
+            return False
+        except (RuntimeError, Exception) as e:
+            # Catch subprocess and other unexpected errors
+            self.notify(  # type: ignore[attr-defined]
                 f"Failed to open file: {e}",
                 severity="error",
             )
@@ -537,35 +678,27 @@ class SystemUtilityMixin:
             - Uses appropriate system command
             - Shows notification to user
         """
-        folder_path = Path(folder_path)
-
-        # Ensure directory exists
-        try:
-            folder_path.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            self.notify(
-                f"Failed to create folder: {e}",
-                severity="error",
-            )
-            return False
+        from claudefig.utils.platform import (
+            open_folder_in_explorer as platform_open_folder,
+        )
 
         try:
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["explorer", str(folder_path)], check=False)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", str(folder_path)], check=False)
-            else:  # Linux
-                subprocess.run(["xdg-open", str(folder_path)], check=False)
-
-            self.notify(
+            platform_open_folder(folder_path, create_if_missing=True)
+            self.notify(  # type: ignore[attr-defined]
                 f"Opened folder: {folder_path}",
                 severity="information",
             )
             return True
 
-        except Exception as e:
-            self.notify(
+        except FileNotFoundError as e:
+            self.notify(  # type: ignore[attr-defined]
+                str(e),
+                severity="error",
+            )
+            return False
+        except (OSError, RuntimeError, Exception) as e:
+            # Catch subprocess and other unexpected errors
+            self.notify(  # type: ignore[attr-defined]
                 f"Failed to open folder: {e}",
                 severity="error",
             )

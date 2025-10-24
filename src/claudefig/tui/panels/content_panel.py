@@ -1,10 +1,10 @@
 """Content panel for orchestrating dynamic panel display."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from textual.containers import Container
 
-from claudefig.config import Config
+from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.tui.panels.config_panel import ConfigPanel
 from claudefig.tui.panels.initialize_panel import InitializePanel
 from claudefig.tui.panels.presets_panel import PresetsPanel
@@ -14,12 +14,16 @@ class ContentPanel(Container):
     """Dynamic content panel that displays based on selection."""
 
     # Type hints for attributes accessed by child widgets
-    config: Config
+    config_data: dict[str, Any]
+    config_repo: TomlConfigRepository
 
-    def __init__(self, config: Config, **kwargs) -> None:
+    def __init__(
+        self, config_data: dict[str, Any], config_repo: TomlConfigRepository, **kwargs
+    ) -> None:
         """Initialize the content panel."""
         super().__init__(**kwargs)
-        self.config = config
+        self.config_data = config_data
+        self.config_repo = config_repo
         self.current_section: Optional[str] = None
 
     def show_section(self, section: str) -> None:
@@ -37,12 +41,19 @@ class ContentPanel(Container):
         # Mount appropriate panel
         if section == "init":
             self.mount(
-                InitializePanel(self.config, self._switch_to_presets, id="init-panel")
+                InitializePanel(
+                    self.config_data,
+                    self.config_repo,
+                    self._switch_to_presets,
+                    id="init-panel",
+                )
             )
         elif section == "presets":
             self.mount(PresetsPanel(id="presets-panel"))
         elif section == "config":
-            self.mount(ConfigPanel(self.config, id="config-panel"))
+            self.mount(
+                ConfigPanel(self.config_data, self.config_repo, id="config-panel")
+            )
 
     def _switch_to_presets(self) -> None:
         """Switch to presets section."""

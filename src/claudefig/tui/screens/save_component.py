@@ -3,6 +3,11 @@
 from textual.app import ComposeResult
 from textual.widgets import Button, Input, Label
 
+from claudefig.services.validation_service import (
+    merge_validation_results,
+    validate_identifier,
+    validate_not_empty,
+)
 from claudefig.tui.base import BaseModalScreen
 
 
@@ -38,16 +43,14 @@ class SaveComponentScreen(BaseModalScreen):
             name_input = self.query_one("#input-component-name", Input)
             component_name = name_input.value.strip()
 
-            if not component_name:
-                self.notify("Component name is required", severity="error")
-                return
+            # Validate component name using centralized validation
+            validation_result = merge_validation_results(
+                validate_not_empty(component_name, "Component name"),
+                validate_identifier(component_name, "Component name"),
+            )
 
-            # Validate component name (alphanumeric, dashes, underscores)
-            if not all(c.isalnum() or c in ("-", "_") for c in component_name):
-                self.notify(
-                    "Component name can only contain letters, numbers, dashes, and underscores",
-                    severity="error",
-                )
+            if validation_result.has_errors:
+                self.notify(validation_result.errors[0], severity="error")
                 return
 
             self.dismiss(result={"action": "save", "name": component_name})

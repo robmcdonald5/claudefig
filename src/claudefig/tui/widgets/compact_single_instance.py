@@ -113,6 +113,13 @@ class CompactSingleInstanceControl(Horizontal):
         elif options:
             current_value = options[0][1]
 
+        # Validate that current_value is in the options list
+        # If not, default to the first option
+        if options:
+            option_values = [opt[1] for opt in options]
+            if current_value not in option_values:
+                current_value = options[0][1]
+
         # Select dropdown for preset selection
         yield Select(
             options=options,
