@@ -340,7 +340,7 @@ class ScrollNavigationMixin:
                 # Get the title label and scroll it into view (at the top)
                 title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
-                    title_label.scroll_visible(top=True, animate=False)
+                    title_label.scroll_visible(top=True, animate=True)
             except Exception:
                 pass
             return
@@ -369,7 +369,7 @@ class ScrollNavigationMixin:
             try:
                 title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
-                    title_label.scroll_visible(top=True, animate=False)
+                    title_label.scroll_visible(top=True, animate=True)
             except Exception:
                 pass
             return
@@ -442,7 +442,7 @@ class ScrollNavigationMixin:
             # Scroll to ensure the last element (and any content below) is visible
             # Scroll the current focused widget to bottom to reveal content below
             with contextlib.suppress(Exception):
-                focused.scroll_visible(top=False, animate=False)
+                focused.scroll_visible(top=False, animate=True)
             return
 
         # Find the target index, skipping siblings in horizontal groups
@@ -467,7 +467,7 @@ class ScrollNavigationMixin:
         if target_index > max_index:
             # Already at bottom, scroll to reveal content below
             with contextlib.suppress(Exception):
-                focused.scroll_visible(top=False, animate=False)
+                focused.scroll_visible(top=False, animate=True)
             return
 
         # If the target widget is in a horizontal group, use focus memory if available
@@ -503,7 +503,7 @@ class ScrollNavigationMixin:
         try:
             # Find the first VerticalScroll container in this screen
             scroll_container = self.query_one(VerticalScroll)  # type: ignore[attr-defined]
-            scroll_container.scroll_to_widget(event.widget, animate=False)
+            scroll_container.scroll_to_widget(event.widget, animate=True)
         except Exception:
             pass
 

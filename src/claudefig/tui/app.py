@@ -5,7 +5,8 @@ from typing import Any, Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.events import Key
 from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Static
 
@@ -63,14 +64,17 @@ class MainScreen(App):
         with Horizontal(id="main-container"):
             # Left panel - Menu
             with Vertical(id="menu-panel"):
-                yield Static("claudefig", id="title")
-                yield Static(f"v{__version__}", id="version")
+                # Wrap menu content in VerticalScroll to handle overflow when terminal is small
+                # can_focus=False prevents the scroll container from being in the focus chain
+                with VerticalScroll(can_focus=False):
+                    yield Static("claudefig", id="title")
+                    yield Static(f"v{__version__}", id="version")
 
-                with Container(id="menu-buttons"):
-                    yield Button("Initialize Project", id="init")
-                    yield Button("Presets", id="presets")
-                    yield Button("Config", id="config")
-                    yield Button("Exit", id="exit")
+                    with Container(id="menu-buttons"):
+                        yield Button("Initialize Project", id="init")
+                        yield Button("Presets", id="presets")
+                        yield Button("Config", id="config")
+                        yield Button("Exit", id="exit")
 
             # Right panel - Content
             yield ContentPanel(self.config_data, self.config_repo, id="content-panel")
@@ -85,6 +89,81 @@ class MainScreen(App):
         ensure_user_config(verbose=True)
 
         self.query_one("#init", Button).focus()
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation.
+
+        Explicitly handles up/down navigation when in the menu panel to prevent
+        the VerticalScroll container from intercepting arrow keys and scrolling
+        instead of navigating through buttons. Includes scroll-to-reveal logic
+        for top/bottom boundaries.
+
+        Args:
+            event: The key event
+        """
+        focused = self.focused
+        if not focused:
+            return
+
+        # Check if we're in the menu panel
+        menu_panel = self.query_one("#menu-panel")
+        if self._is_descendant_of(focused, menu_panel):
+            # Get all menu buttons to check if we're at top/bottom
+            menu_buttons_container = self.query_one("#menu-buttons")
+            menu_buttons = [w for w in menu_buttons_container.query("Button") if w.focusable]
+
+            if not menu_buttons:
+                return
+
+            # In menu panel - handle navigation with scroll-to-reveal logic
+            if event.key == "up":
+                try:
+                    current_index = menu_buttons.index(focused)
+
+                    # At the top - scroll to reveal title
+                    if current_index == 0:
+                        scroll_container = menu_panel.query_one(VerticalScroll)
+                        title = self.query_one("#title")
+                        title.scroll_visible(top=True, animate=True)
+                        event.prevent_default()
+                        event.stop()
+                        return
+
+                    # Otherwise navigate up normally
+                    self.action_navigate_up()
+                    event.prevent_default()
+                    event.stop()
+                    return
+                except (ValueError, Exception):
+                    # Fallback to normal navigation
+                    self.action_navigate_up()
+                    event.prevent_default()
+                    event.stop()
+                    return
+
+            elif event.key == "down":
+                try:
+                    current_index = menu_buttons.index(focused)
+                    max_index = len(menu_buttons) - 1
+
+                    # At the bottom - scroll to reveal any content below
+                    if current_index == max_index:
+                        focused.scroll_visible(top=False, animate=True)
+                        event.prevent_default()
+                        event.stop()
+                        return
+
+                    # Otherwise navigate down normally
+                    self.action_navigate_down()
+                    event.prevent_default()
+                    event.stop()
+                    return
+                except (ValueError, Exception):
+                    # Fallback to normal navigation
+                    self.action_navigate_down()
+                    event.prevent_default()
+                    event.stop()
+                    return
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press events."""
