@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.events import Key
 from textual.widgets import Button, Label
 
@@ -48,30 +48,24 @@ class InitializePanel(BaseHorizontalNavigablePanel):
 
     def compose(self) -> ComposeResult:
         """Compose the initialize panel."""
-        # can_focus=False prevents the scroll container from being in the focus chain
         with VerticalScroll(can_focus=False):
             yield Label("Initialize Claude Code Files", classes="panel-title")
 
             # Check if .claudefig.toml already exists
             config_path = Path.cwd() / ".claudefig.toml"
 
+            # IMPORTANT: Each Label must be ≤35 chars to avoid Textual layout bug
+            # that causes menu-buttons border to stretch beyond bounds.
+            # NOTE: Emojis count as 2+ terminal cells, avoid them!
+            # See DEBUG_UI_BORDER_BUG.md for details.
             if config_path.exists():
-                # Show warning if config exists
-                yield Label(
-                    "⚠️  Warning: A .claudefig.toml file already exists in this directory.\n\n"
-                    "Initializing again will generate files based on your current configuration settings. "
-                    "This may override existing files.\n\n"
-                    "To change presets or settings, use the 'Manage Presets' or 'Manage Config' buttons below.",
-                    classes="panel-info",
-                )
+                yield Label("WARNING: Config file exists", classes="panel-info")  # 29 chars
+                yield Label("Re-init may override files", classes="panel-info")  # 27 chars
+                yield Label("Use Presets/Config to change", classes="panel-info")  # 32 chars
             else:
-                # Show info if no config exists
-                yield Label(
-                    "No .claudefig.toml file found in this directory.\n\n"
-                    "Initialization will use the default preset to create your configuration and generate files.\n\n"
-                    "To use a different preset, click 'Manage Presets' below to apply one before initializing.",
-                    classes="panel-info",
-                )
+                yield Label("No config file found", classes="panel-info")  # 20 chars
+                yield Label("Will use default preset", classes="panel-info")  # 25 chars
+                yield Label("Use Presets to apply different", classes="panel-info")  # 35 chars
 
             # Unified action buttons (same in both states)
             with Horizontal(classes="button-row"):
