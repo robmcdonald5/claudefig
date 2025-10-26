@@ -1,11 +1,12 @@
 """Presets panel for managing global preset templates."""
 
+import contextlib
 from pathlib import Path
 from typing import Any, Optional
 
 from textual import work
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets import Button, Label, Select
 from textual.widgets._select import NoSelection
@@ -19,7 +20,7 @@ from claudefig.exceptions import (
     TemplateNotFoundError,
 )
 from claudefig.services import config_service
-from claudefig.tui.base import SystemUtilityMixin
+from claudefig.tui.base import BaseNavigablePanel, SystemUtilityMixin
 from claudefig.tui.screens import (
     ApplyPresetScreen,
     CreatePresetScreen,
@@ -27,11 +28,18 @@ from claudefig.tui.screens import (
 )
 
 
-class PresetsPanel(Container, SystemUtilityMixin):
-    """Panel for managing global preset templates."""
+class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
+    """Panel for managing global preset templates with custom Select navigation.
 
-    # Class variable for state persistence across panel instances
+    Inherits standard navigation bindings from BaseNavigablePanel but uses
+    custom on_key() override to handle special navigation between Select
+    dropdown and button row.
+    """
+
+    # Class variables for state persistence across panel instances
     _last_selected_preset: Optional[str] = None
+    _last_focused_widget_type: str = "select"  # "select" or "button"
+    _last_focused_button_index: int = 0  # Which button (0-3) was last focused
 
     # Reactive attribute for tracking selected preset
     selected_preset: reactive[Optional[str]] = reactive(None)
@@ -41,7 +49,6 @@ class PresetsPanel(Container, SystemUtilityMixin):
         super().__init__(**kwargs)
         self.config_template_manager = ConfigTemplateManager()
         self._presets_data: dict[str, dict[str, Any]] = {}  # Cache preset data by name
-        self._last_focused_button_index = 0  # Track which button was last focused
 
     def compose(self) -> ComposeResult:
         """Compose the presets panel."""
@@ -104,12 +111,58 @@ class PresetsPanel(Container, SystemUtilityMixin):
     def on_mount(self) -> None:
         """Called when the widget is mounted.
 
-        Restore the previously selected preset state after all widgets are composed.
+        Restore the previously selected preset state and focus after all widgets are composed.
         """
         # Restore the selected preset reactive attribute
         # This must be done after mounting so the watch method can find the button
         if PresetsPanel._last_selected_preset in self._presets_data:
             self.selected_preset = PresetsPanel._last_selected_preset
+
+        # Restore focus to the last focused widget
+        self.restore_focus()
+
+    def restore_focus(self) -> None:
+        """Restore focus to the last focused widget (Select or button)."""
+        try:
+            if PresetsPanel._last_focused_widget_type == "select":
+                # Restore focus to Select dropdown
+                select = self.query_one("#preset-select", Select)
+                select.focus()
+            elif PresetsPanel._last_focused_widget_type == "button":
+                # Restore focus to the last focused button
+                button_row = self.query_one(".button-row")
+                buttons = list(button_row.query("Button"))
+                if buttons and 0 <= PresetsPanel._last_focused_button_index < len(
+                    buttons
+                ):
+                    buttons[PresetsPanel._last_focused_button_index].focus()
+                elif buttons:
+                    # Fallback to first button
+                    buttons[0].focus()
+        except Exception:
+            # Fallback to Select if restoration fails
+            with contextlib.suppress(Exception):
+                self.query_one("#preset-select", Select).focus()
+
+    def on_descendant_focus(self, event) -> None:
+        """Track which widget has focus for restoration later."""
+        focused = event.widget
+
+        # Track if Select is focused
+        if isinstance(focused, Select):
+            PresetsPanel._last_focused_widget_type = "select"
+
+        # Track if a button in the button row is focused
+        elif isinstance(focused, Button):
+            try:
+                button_row = self.query_one(".button-row")
+                if focused.parent == button_row:
+                    PresetsPanel._last_focused_widget_type = "button"
+                    buttons = list(button_row.query("Button"))
+                    with contextlib.suppress(ValueError):
+                        PresetsPanel._last_focused_button_index = buttons.index(focused)
+            except Exception:
+                pass
 
     def watch_selected_preset(
         self, _old_value: Optional[str], new_value: Optional[str]
@@ -301,8 +354,10 @@ class PresetsPanel(Container, SystemUtilityMixin):
                 try:
                     button_row = self.query_one(".button-row")
                     buttons = list(button_row.query("Button"))
-                    if buttons and 0 <= self._last_focused_button_index < len(buttons):
-                        buttons[self._last_focused_button_index].focus()
+                    if buttons and 0 <= PresetsPanel._last_focused_button_index < len(
+                        buttons
+                    ):
+                        buttons[PresetsPanel._last_focused_button_index].focus()
                     elif buttons:
                         buttons[0].focus()
                 except Exception:
@@ -325,9 +380,9 @@ class PresetsPanel(Container, SystemUtilityMixin):
                     # Remember which button we're leaving from
                     buttons = list(button_row.query("Button"))
                     try:
-                        self._last_focused_button_index = buttons.index(focused)
+                        PresetsPanel._last_focused_button_index = buttons.index(focused)
                     except ValueError:
-                        self._last_focused_button_index = 0
+                        PresetsPanel._last_focused_button_index = 0
                     # Move to Select dropdown
                     select = self.query_one("#preset-select", Select)
                     select.focus()

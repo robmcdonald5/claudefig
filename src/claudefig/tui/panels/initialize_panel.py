@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Button, Label
 
 from claudefig.config_template_manager import ConfigTemplateManager
@@ -15,16 +15,15 @@ from claudefig.exceptions import (
 )
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
+from claudefig.tui.base import BaseHorizontalNavigablePanel
 
 
-class InitializePanel(Container):
-    """Initialize project panel."""
+class InitializePanel(BaseHorizontalNavigablePanel):
+    """Initialize project panel with horizontal-only navigation.
 
-    # Disable up/down navigation - only left/right for horizontal button row
-    BINDINGS = [
-        ("up", "ignore_up", ""),
-        ("down", "ignore_down", ""),
-    ]
+    Inherits from BaseHorizontalNavigablePanel which provides horizontal-only
+    navigation for the button row. Vertical navigation is automatically disabled.
+    """
 
     def __init__(
         self,
@@ -77,14 +76,6 @@ class InitializePanel(Container):
                 yield Button("Initialize", id="btn-initialize")
                 yield Button("Manage Presets", id="btn-manage-presets")
                 yield Button("Manage Config", id="btn-manage-config")
-
-    def action_ignore_up(self) -> None:
-        """Ignore up navigation - no vertical elements on this page."""
-        pass
-
-    def action_ignore_down(self) -> None:
-        """Ignore down navigation - no vertical elements on this page."""
-        pass
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

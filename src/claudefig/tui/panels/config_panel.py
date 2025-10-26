@@ -4,12 +4,13 @@ import contextlib
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Grid
+from textual.containers import Grid
 from textual.widgets import Button, Label
 
 from claudefig.preset_manager import PresetManager
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
+from claudefig.tui.base import BaseNavigablePanel
 from claudefig.tui.screens import (
     CoreFilesScreen,
     FileInstancesScreen,
@@ -18,19 +19,15 @@ from claudefig.tui.screens import (
 )
 
 
-class ConfigPanel(Container):
-    """Main configuration menu panel."""
+class ConfigPanel(BaseNavigablePanel):
+    """Main configuration menu panel with custom 2D grid navigation.
+
+    Inherits standard navigation bindings from BaseNavigablePanel but overrides
+    all action_navigate_* methods to implement custom 2x2 grid navigation logic.
+    """
 
     # Class variable for state persistence across panel instances
     _last_focused_button: str = "btn-overview"
-
-    # Bindings for 2D grid navigation
-    BINDINGS = [
-        ("up", "navigate_up", "Navigate up"),
-        ("down", "navigate_down", "Navigate down"),
-        ("left", "navigate_left", "Navigate left"),
-        ("right", "navigate_right", "Navigate right"),
-    ]
 
     # 2D grid navigation map (button_id -> (row, col))
     GRID_POSITIONS = {
