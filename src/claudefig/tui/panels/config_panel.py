@@ -4,7 +4,8 @@ import contextlib
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Grid
+from textual.containers import Grid, VerticalScroll
+from textual.events import Key
 from textual.widgets import Button, Label
 
 from claudefig.preset_manager import PresetManager
@@ -56,63 +57,65 @@ class ConfigPanel(BaseNavigablePanel):
 
     def compose(self) -> ComposeResult:
         """Compose the config menu panel."""
-        # Check if config exists
-        if not self.config_repo.exists():
+        # can_focus=False prevents the scroll container from being in the focus chain
+        with VerticalScroll(can_focus=False):
+            # Check if config exists
+            if not self.config_repo.exists():
+                yield Label(
+                    "No .claudefig.toml found in current directory.\n\n"
+                    "Go to 'Presets' panel and use a preset to create a config.",
+                    classes="placeholder",
+                )
+                return
+
+            # Load file instances
+            instances_data = config_service.get_file_instances(self.config_data)
+            if instances_data:
+                from claudefig.services import file_instance_service
+
+                instances_dict, _ = file_instance_service.load_instances_from_config(
+                    instances_data
+                )
+                instances_list = list(instances_dict.values())
+            else:
+                instances_list = []
+
+            # Header
+            yield Label("Configuration Menu", classes="panel-title")
+
+            # Summary info
+            enabled_count = sum(1 for i in instances_list if i.enabled)
+            total_count = len(instances_list)
+            config_path_str = str(self.config_repo.get_path())
+            if len(config_path_str) > 60:
+                config_path_str = "..." + config_path_str[-57:]
             yield Label(
-                "No .claudefig.toml found in current directory.\n\n"
-                "Go to 'Presets' panel and use a preset to create a config.",
-                classes="placeholder",
+                f"{config_path_str} | {total_count} instances ({enabled_count} enabled)",
+                classes="panel-subtitle",
             )
-            return
 
-        # Load file instances
-        instances_data = config_service.get_file_instances(self.config_data)
-        if instances_data:
-            from claudefig.services import file_instance_service
-
-            instances_dict, _ = file_instance_service.load_instances_from_config(
-                instances_data
-            )
-            instances_list = list(instances_dict.values())
-        else:
-            instances_list = []
-
-        # Header
-        yield Label("Configuration Menu", classes="panel-title")
-
-        # Summary info
-        enabled_count = sum(1 for i in instances_list if i.enabled)
-        total_count = len(instances_list)
-        config_path_str = str(self.config_repo.get_path())
-        if len(config_path_str) > 60:
-            config_path_str = "..." + config_path_str[-57:]
-        yield Label(
-            f"{config_path_str} | {total_count} instances ({enabled_count} enabled)",
-            classes="panel-subtitle",
-        )
-
-        # Menu buttons in grid
-        with Grid(id="config-menu-grid"):
-            yield Button(
-                "Project Overview\nStats & quick actions",
-                id="btn-overview",
-                classes="config-menu-button",
-            )
-            yield Button(
-                "Initialization Settings\nFile generation behavior",
-                id="btn-settings",
-                classes="config-menu-button",
-            )
-            yield Button(
-                "Core Files\nSingle-instance files",
-                id="btn-core-files",
-                classes="config-menu-button",
-            )
-            yield Button(
-                "File Instances\nMulti-instance files",
-                id="btn-file-instances",
-                classes="config-menu-button",
-            )
+            # Menu buttons in grid
+            with Grid(id="config-menu-grid"):
+                yield Button(
+                    "Project Overview\nStats & quick actions",
+                    id="btn-overview",
+                    classes="config-menu-button",
+                )
+                yield Button(
+                    "Initialization Settings\nFile generation behavior",
+                    id="btn-settings",
+                    classes="config-menu-button",
+                )
+                yield Button(
+                    "Core Files\nSingle-instance files",
+                    id="btn-core-files",
+                    classes="config-menu-button",
+                )
+                yield Button(
+                    "File Instances\nMulti-instance files",
+                    id="btn-file-instances",
+                    classes="config-menu-button",
+                )
 
     def on_mount(self) -> None:
         """Restore focus to the last focused button."""
@@ -151,12 +154,21 @@ class ConfigPanel(BaseNavigablePanel):
         new_row = row + row_delta
         new_col = col + col_delta
 
-        # Vertical: Stop at edges (no wrapping)
+        # Vertical: Stop at edges (no wrapping) and scroll to reveal content
         if row_delta < 0 and row == 0:
-            # Already at top row - do nothing
+            # Already at top row - scroll to reveal title
+            try:
+                title = self.query_one("Label.panel-title")
+                title.scroll_visible(top=True, animate=True)
+            except Exception:
+                pass
             return
         if row_delta > 0 and row == 1:
-            # Already at bottom row (row 1) - do nothing
+            # Already at bottom row (row 1) - scroll to reveal content below
+            try:
+                focused.scroll_visible(top=False, animate=True)
+            except Exception:
+                pass
             return
 
         # Horizontal: Escape to main menu when navigating left from leftmost column
@@ -200,6 +212,36 @@ class ConfigPanel(BaseNavigablePanel):
     def action_navigate_right(self) -> None:
         """Navigate right in the grid."""
         self._navigate_grid(0, 1)
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation with scroll support.
+
+        Explicitly handles up/down navigation to prevent the VerticalScroll
+        container from intercepting arrow keys and to ensure our custom 2D
+        grid navigation runs properly.
+
+        Args:
+            event: The key event
+        """
+        focused = self.screen.focused
+        if not focused or not isinstance(focused, Button):
+            return
+
+        # Check if we're in the config grid
+        button_id = focused.id
+        if button_id not in self.GRID_POSITIONS:
+            return
+
+        # In config grid - explicitly call our navigation actions
+        # to prevent VerticalScroll from handling the keys
+        if event.key == "up":
+            self.action_navigate_up()
+            event.prevent_default()
+            event.stop()
+        elif event.key == "down":
+            self.action_navigate_down()
+            event.prevent_default()
+            event.stop()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses and navigate to screens."""

@@ -5,6 +5,7 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
+from textual.events import Key
 from textual.widgets import Button, Label
 
 from claudefig.config_template_manager import ConfigTemplateManager
@@ -47,7 +48,8 @@ class InitializePanel(BaseHorizontalNavigablePanel):
 
     def compose(self) -> ComposeResult:
         """Compose the initialize panel."""
-        with VerticalScroll():
+        # can_focus=False prevents the scroll container from being in the focus chain
+        with VerticalScroll(can_focus=False):
             yield Label("Initialize Claude Code Files", classes="panel-title")
 
             # Check if .claudefig.toml already exists
@@ -76,6 +78,58 @@ class InitializePanel(BaseHorizontalNavigablePanel):
                 yield Button("Initialize", id="btn-initialize")
                 yield Button("Manage Presets", id="btn-manage-presets")
                 yield Button("Manage Config", id="btn-manage-config")
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation with scroll support.
+
+        Explicitly handles up/down navigation to prevent the VerticalScroll
+        container from intercepting arrow keys and provides scroll-to-reveal
+        logic at boundaries.
+
+        Args:
+            event: The key event
+        """
+        focused = self.screen.focused
+        if not focused:
+            return
+
+        # Get all buttons in the button row
+        try:
+            button_row = self.query_one(".button-row")
+            buttons = [w for w in button_row.query("Button") if w.focusable]
+
+            if not buttons or focused not in buttons:
+                # Not in our button row, let normal handling continue
+                return
+
+            current_index = buttons.index(focused)
+
+            if event.key == "up":
+                # At the first button - scroll to reveal title at top
+                if current_index == 0 or current_index == -1:
+                    try:
+                        title = self.query_one("Label.panel-title")
+                        title.scroll_visible(top=True, animate=True)
+                        event.prevent_default()
+                        event.stop()
+                    except Exception:
+                        pass
+                return
+
+            elif event.key == "down":
+                # At the last button - scroll to reveal content below
+                if current_index == len(buttons) - 1:
+                    try:
+                        focused.scroll_visible(top=False, animate=True)
+                        event.prevent_default()
+                        event.stop()
+                    except Exception:
+                        pass
+                return
+
+        except Exception:
+            # Fallback - let normal handling continue
+            pass
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

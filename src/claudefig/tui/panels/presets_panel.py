@@ -6,7 +6,8 @@ from typing import Any, Optional
 
 from textual import work
 from textual.app import ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Horizontal, VerticalScroll
+from textual.events import Key
 from textual.reactive import reactive
 from textual.widgets import Button, Label, Select
 from textual.widgets._select import NoSelection
@@ -52,61 +53,63 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
 
     def compose(self) -> ComposeResult:
         """Compose the presets panel."""
-        yield Label("Global Preset Templates", classes="panel-title")
-        yield Label(
-            f"Location: {self.config_template_manager.global_presets_dir}",
-            classes="panel-subtitle",
-        )
-
-        # Load presets data
-        presets = self.config_template_manager.list_global_presets()
-
-        # Build Select options
-        if not presets:
-            yield Label("No presets found.", classes="placeholder")
-            # Empty select (disabled)
-            yield Select(
-                [(("No presets available", Select.BLANK))],
-                allow_blank=True,
-                id="preset-select",
-            )
-        else:
-            # Cache preset data for later use
-            self._presets_data = {p["name"]: p for p in presets}
-
-            # Build options: (display_text, value)
-            options = [
-                (f"{p['name']} - {p.get('description', 'No description')}", p["name"])
-                for p in presets
-            ]
-
-            # Determine initial value (will be fully restored in on_mount)
-            initial_value: str | NoSelection = Select.BLANK
-            if PresetsPanel._last_selected_preset in self._presets_data:
-                initial_value = PresetsPanel._last_selected_preset
-
-            yield Select(
-                options,
-                prompt="Choose a preset...",
-                allow_blank=True,
-                value=initial_value,
-                id="preset-select",
+        # can_focus=False prevents the scroll container from being in the focus chain
+        with VerticalScroll(can_focus=False):
+            yield Label("Global Preset Templates", classes="panel-title")
+            yield Label(
+                f"Location: {self.config_template_manager.global_presets_dir}",
+                classes="panel-subtitle",
             )
 
-        # All buttons in a single row
-        with Horizontal(classes="button-row"):
-            yield Button(
-                "Apply to Project",
-                id="btn-apply-preset",
-                disabled=True,  # Disabled until preset selected
-            )
-            yield Button(
-                "🗑 Delete Preset",
-                id="btn-delete-preset",
-                disabled=True,  # Disabled until preset selected
-            )
-            yield Button("📁 Open Presets Folder", id="btn-open-folder")
-            yield Button("+ Create New Preset", id="btn-create-preset")
+            # Load presets data
+            presets = self.config_template_manager.list_global_presets()
+
+            # Build Select options
+            if not presets:
+                yield Label("No presets found.", classes="placeholder")
+                # Empty select (disabled)
+                yield Select(
+                    [(("No presets available", Select.BLANK))],
+                    allow_blank=True,
+                    id="preset-select",
+                )
+            else:
+                # Cache preset data for later use
+                self._presets_data = {p["name"]: p for p in presets}
+
+                # Build options: (display_text, value)
+                options = [
+                    (f"{p['name']} - {p.get('description', 'No description')}", p["name"])
+                    for p in presets
+                ]
+
+                # Determine initial value (will be fully restored in on_mount)
+                initial_value: str | NoSelection = Select.BLANK
+                if PresetsPanel._last_selected_preset in self._presets_data:
+                    initial_value = PresetsPanel._last_selected_preset
+
+                yield Select(
+                    options,
+                    prompt="Choose a preset...",
+                    allow_blank=True,
+                    value=initial_value,
+                    id="preset-select",
+                )
+
+            # All buttons in a single row
+            with Horizontal(classes="button-row"):
+                yield Button(
+                    "Apply to Project",
+                    id="btn-apply-preset",
+                    disabled=True,  # Disabled until preset selected
+                )
+                yield Button(
+                    "🗑 Delete Preset",
+                    id="btn-delete-preset",
+                    disabled=True,  # Disabled until preset selected
+                )
+                yield Button("📁 Open Presets Folder", id="btn-open-folder")
+                yield Button("+ Create New Preset", id="btn-create-preset")
 
     def on_mount(self) -> None:
         """Called when the widget is mounted.
@@ -342,7 +345,7 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
             pass
 
     def on_key(self, event) -> None:
-        """Handle key events for custom navigation behavior."""
+        """Handle key events for custom navigation behavior with scroll support."""
         focused = self.screen.focused
 
         # Prevent Select from opening dropdown on arrow keys - use for navigation instead
@@ -364,7 +367,12 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                     pass
                 return
             elif event.key == "up":
-                # Prevent up arrow from opening dropdown
+                # At the Select dropdown (top of panel) - scroll to reveal title
+                try:
+                    title = self.query_one("Label.panel-title")
+                    title.scroll_visible(top=True, animate=True)
+                except Exception:
+                    pass
                 event.prevent_default()
                 event.stop()
                 return
@@ -390,12 +398,23 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
             except Exception:
                 pass
 
-        # When on any button in the button row, prevent down from wrapping to main menu
+        # When on any button in the button row, prevent down from wrapping
+        # and scroll to reveal content below when at the last button
         if event.key == "down" and isinstance(focused, Button):
             try:
                 button_row = self.query_one(".button-row")
                 if focused.parent == button_row:
-                    # We're at the bottom of the panel - prevent wrapping
+                    # At the bottom of the panel
+                    buttons = list(button_row.query("Button"))
+                    try:
+                        current_index = buttons.index(focused)
+                        # If on the last button, scroll to reveal content below
+                        if current_index == len(buttons) - 1:
+                            focused.scroll_visible(top=False, animate=True)
+                    except (ValueError, Exception):
+                        pass
+
+                    # Prevent wrapping to main menu
                     event.prevent_default()
                     event.stop()
                     return
