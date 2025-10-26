@@ -4,7 +4,6 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
-from textual.screen import Screen
 from textual.widgets import Button, Label
 
 from claudefig.models import FileInstance, FileType
@@ -12,21 +11,16 @@ from claudefig.preset_manager import PresetManager
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
-from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
+from claudefig.tui.base import BaseScreen
 from claudefig.tui.widgets.compact_single_instance import CompactSingleInstanceControl
 
 
-class CoreFilesScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
-    """Screen for managing single-instance core files."""
+class CoreFilesScreen(BaseScreen):
+    """Screen for managing single-instance core files.
 
-    BINDINGS = [
-        ("escape", "pop_screen", "Back"),
-        ("backspace", "pop_screen", "Back"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_left", "Focus Left"),
-        ("right", "focus_right", "Focus Right"),
-    ]
+    Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
+    support for smart vertical/horizontal navigation.
+    """
 
     def __init__(
         self,

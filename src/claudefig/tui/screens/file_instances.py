@@ -6,7 +6,6 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Key
-from textual.screen import Screen
 from textual.widgets import Button, Label, Select, TabbedContent, TabPane
 
 from claudefig.error_messages import ErrorMessages
@@ -20,31 +19,17 @@ from claudefig.models import FileInstance, FileType
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
-from claudefig.tui.base import (
-    BackButtonMixin,
-    ScrollNavigationMixin,
-    SystemUtilityMixin,
-)
+from claudefig.tui.base import BaseScreen, SystemUtilityMixin
 from claudefig.tui.widgets.file_instance_item import FileInstanceItem
 from claudefig.user_config import get_components_dir
 
 
-class FileInstancesScreen(
-    Screen,
-    BackButtonMixin,
-    ScrollNavigationMixin,
-    SystemUtilityMixin,
-):
-    """Screen for managing multi-instance file types with tabs."""
+class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
+    """Screen for managing multi-instance file types with tabs.
 
-    BINDINGS = [
-        ("escape", "pop_screen", "Back"),
-        ("backspace", "pop_screen", "Back"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_left", "Focus Left"),
-        ("right", "focus_right", "Focus Right"),
-    ]
+    Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
+    support for smart vertical/horizontal navigation.
+    """
 
     def __init__(
         self,

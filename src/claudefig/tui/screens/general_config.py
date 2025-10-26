@@ -5,7 +5,6 @@ from typing import Any, Union
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
-from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
 from claudefig.exceptions import ConfigFileNotFoundError, FileWriteError
@@ -13,20 +12,18 @@ from claudefig.models import FileInstance
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
 from claudefig.services.validation_service import validate_not_empty
-from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
+from claudefig.tui.base import BaseScreen
 
 
-class GeneralConfigScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
-    """Screen for editing general configuration settings."""
+class GeneralConfigScreen(BaseScreen):
+    """Screen for editing general configuration settings.
 
-    BINDINGS = [
-        ("escape", "go_back", "Back"),
-        ("backspace", "go_back", "Back"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_left", "Focus Left"),
-        ("right", "focus_right", "Focus Right"),
-    ]
+    Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
+    support for smart vertical/horizontal navigation.
+
+    Note: Previously had a bug where BINDINGS referenced non-existent action_go_back().
+    Now correctly inherits action_pop_screen() from BaseScreen.
+    """
 
     def __init__(
         self,
