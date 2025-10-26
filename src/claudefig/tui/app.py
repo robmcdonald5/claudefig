@@ -33,10 +33,10 @@ class MainScreen(App):
         ("ctrl+c", "quit", "Quit"),
         Binding("escape", "clear_selection", "Back", key_display="esc"),
         Binding("backspace", "clear_selection", "Back", show=False),
-        Binding("left", "navigate_left", "Nav Left", show=True),
-        Binding("right", "navigate_right", "Nav Right", show=True),
-        Binding("up", "navigate_up", "Nav Up", show=True),
-        Binding("down", "navigate_down", "Nav Down", show=True),
+        Binding("left", "navigate_left", "Navigate Left", show=True),
+        Binding("right", "navigate_right", "Navigate Right", show=True),
+        Binding("up", "navigate_up", "Navigate Up", show=True),
+        Binding("down", "navigate_down", "Navigate Down", show=True),
     ]
 
     active_button: reactive[Optional[str]] = reactive(None)
@@ -208,7 +208,7 @@ class MainScreen(App):
             if self.active_button:
                 content_panel = self.query_one("#content-panel", ContentPanel)
 
-                # ConfigPanel handles its own focus restoration
+                # ConfigPanel and PresetsPanel handle their own focus restoration
                 if self.active_button == "config":
                     try:
                         from claudefig.tui.panels.config_panel import ConfigPanel
@@ -221,6 +221,23 @@ class MainScreen(App):
                         # Fallback if config panel not found
                         focusables = [
                             w for w in content_panel.query("Button") if w.focusable
+                        ]
+                        if focusables:
+                            focusables[0].focus()
+                elif self.active_button == "presets":
+                    try:
+                        from claudefig.tui.panels.presets_panel import PresetsPanel
+
+                        presets_panel = content_panel.query_one(
+                            "#presets-panel", PresetsPanel
+                        )
+                        presets_panel.restore_focus()
+                    except Exception:
+                        # Fallback if presets panel not found
+                        focusables = [
+                            w
+                            for w in content_panel.query("Button, Select")
+                            if w.focusable
                         ]
                         if focusables:
                             focusables[0].focus()
