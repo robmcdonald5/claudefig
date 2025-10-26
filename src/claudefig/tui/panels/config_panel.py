@@ -154,19 +154,20 @@ class ConfigPanel(BaseNavigablePanel):
         new_row = row + row_delta
         new_col = col + col_delta
 
-        # Vertical: Stop at edges (no wrapping) and scroll to reveal content
+        # Vertical: Stop at edges (no wrapping) and scroll to boundaries
         if row_delta < 0 and row == 0:
-            # Already at top row - scroll to reveal title
+            # Already at top row - scroll container to home (absolute top)
             try:
-                title = self.query_one("Label.panel-title")
-                title.scroll_visible(top=True, animate=True)
+                scroll_container = self.query_one(VerticalScroll)
+                scroll_container.scroll_home(animate=True)
             except Exception:
                 pass
             return
         if row_delta > 0 and row == 1:
-            # Already at bottom row (row 1) - scroll to reveal content below
+            # Already at bottom row (row 1) - scroll container to end (absolute bottom)
             try:
-                focused.scroll_visible(top=False, animate=True)
+                scroll_container = self.query_one(VerticalScroll)
+                scroll_container.scroll_end(animate=True)
             except Exception:
                 pass
             return

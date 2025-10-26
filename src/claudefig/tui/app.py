@@ -66,7 +66,7 @@ class MainScreen(App):
             with Vertical(id="menu-panel"):
                 # Wrap menu content in VerticalScroll to handle overflow when terminal is small
                 # can_focus=False prevents the scroll container from being in the focus chain
-                with VerticalScroll(can_focus=False):
+                with VerticalScroll(can_focus=False, id="menu-scroll"):
                     yield Static("claudefig", id="title")
                     yield Static(f"v{__version__}", id="version")
 
@@ -120,11 +120,13 @@ class MainScreen(App):
                 try:
                     current_index = menu_buttons.index(focused)
 
-                    # At the top - scroll to reveal title
+                    # At the top - scroll container to home (absolute top)
                     if current_index == 0:
-                        scroll_container = menu_panel.query_one(VerticalScroll)
-                        title = self.query_one("#title")
-                        title.scroll_visible(top=True, animate=True)
+                        try:
+                            scroll_container = menu_panel.query_one(VerticalScroll)
+                            scroll_container.scroll_home(animate=True)
+                        except Exception:
+                            pass
                         event.prevent_default()
                         event.stop()
                         return
@@ -146,9 +148,13 @@ class MainScreen(App):
                     current_index = menu_buttons.index(focused)
                     max_index = len(menu_buttons) - 1
 
-                    # At the bottom - scroll to reveal any content below
+                    # At the bottom - scroll container to end (absolute bottom)
                     if current_index == max_index:
-                        focused.scroll_visible(top=False, animate=True)
+                        try:
+                            scroll_container = menu_panel.query_one(VerticalScroll)
+                            scroll_container.scroll_end(animate=True)
+                        except Exception:
+                            pass
                         event.prevent_default()
                         event.stop()
                         return

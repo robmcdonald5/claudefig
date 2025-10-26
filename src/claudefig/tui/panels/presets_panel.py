@@ -367,10 +367,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                     pass
                 return
             elif event.key == "up":
-                # At the Select dropdown (top of panel) - scroll to reveal title
+                # At the Select dropdown (top of panel) - scroll container to home
                 try:
-                    title = self.query_one("Label.panel-title")
-                    title.scroll_visible(top=True, animate=True)
+                    scroll_container = self.query_one(VerticalScroll)
+                    scroll_container.scroll_home(animate=True)
                 except Exception:
                     pass
                 event.prevent_default()
@@ -408,9 +408,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                     buttons = list(button_row.query("Button"))
                     try:
                         current_index = buttons.index(focused)
-                        # If on the last button, scroll to reveal content below
+                        # If on the last button, scroll container to end
                         if current_index == len(buttons) - 1:
-                            focused.scroll_visible(top=False, animate=True)
+                            scroll_container = self.query_one(VerticalScroll)
+                            scroll_container.scroll_end(animate=True)
                     except (ValueError, Exception):
                         pass
 

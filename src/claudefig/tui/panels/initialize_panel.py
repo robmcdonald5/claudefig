@@ -105,11 +105,11 @@ class InitializePanel(BaseHorizontalNavigablePanel):
             current_index = buttons.index(focused)
 
             if event.key == "up":
-                # At the first button - scroll to reveal title at top
+                # At the first button - scroll container to home (absolute top)
                 if current_index == 0 or current_index == -1:
                     try:
-                        title = self.query_one("Label.panel-title")
-                        title.scroll_visible(top=True, animate=True)
+                        scroll_container = self.query_one(VerticalScroll)
+                        scroll_container.scroll_home(animate=True)
                         event.prevent_default()
                         event.stop()
                     except Exception:
@@ -117,10 +117,11 @@ class InitializePanel(BaseHorizontalNavigablePanel):
                 return
 
             elif event.key == "down":
-                # At the last button - scroll to reveal content below
+                # At the last button - scroll container to end (absolute bottom)
                 if current_index == len(buttons) - 1:
                     try:
-                        focused.scroll_visible(top=False, animate=True)
+                        scroll_container = self.query_one(VerticalScroll)
+                        scroll_container.scroll_end(animate=True)
                         event.prevent_default()
                         event.stop()
                     except Exception:
