@@ -199,8 +199,26 @@ class OverviewScreen(BaseScreen):
             current = current.parent
 
     def on_key(self, event) -> None:
-        """Handle key presses - close other dropdowns when one is toggled with Enter."""
-        if event.key == "enter":
+        """Handle key presses for navigation and dropdown interaction.
+
+        Handles:
+        - Up/down navigation with proper scrolling
+        - Enter key to toggle dropdowns and close others
+        """
+        # Handle up/down navigation explicitly to ensure proper scrolling
+        # when OverlayDropdown widgets are present
+        if event.key == "up":
+            self.action_focus_previous()
+            event.prevent_default()
+            event.stop()
+            return
+        elif event.key == "down":
+            self.action_focus_next()
+            event.prevent_default()
+            event.stop()
+            return
+        elif event.key == "enter":
+            # Close other dropdowns when one is toggled with Enter
             focused = self.app.focused
             current: DOMNode | None = focused
             while current:

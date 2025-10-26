@@ -4,6 +4,7 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.events import Key
 from textual.widgets import Button, Label, Static, Switch
 
 from claudefig.models import FileInstance
@@ -88,6 +89,26 @@ class ProjectSettingsScreen(BaseScreen):
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
         self.app.pop_screen()
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation.
+
+        Explicitly calls navigation actions to ensure proper scrolling behavior
+        when Switch widgets are present.
+
+        Args:
+            event: The key event
+        """
+        # Explicitly handle up/down navigation to ensure ScrollNavigationMixin
+        # methods are called directly for proper scroll behavior
+        if event.key == "up":
+            self.action_focus_previous()
+            event.prevent_default()
+            event.stop()
+        elif event.key == "down":
+            self.action_focus_next()
+            event.prevent_default()
+            event.stop()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
