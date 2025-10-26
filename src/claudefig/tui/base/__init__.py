@@ -7,9 +7,17 @@ from .mixins import (
     SystemUtilityMixin,
 )
 from .modal_screen import BaseModalScreen
+from .navigation import (
+    BaseHorizontalNavigablePanel,
+    BaseNavigablePanel,
+    BaseScreen,
+)
 
 __all__ = [
+    "BaseHorizontalNavigablePanel",
     "BaseModalScreen",
+    "BaseNavigablePanel",
+    "BaseScreen",
     "BackButtonMixin",
     "FileInstanceMixin",
     "ScrollNavigationMixin",
