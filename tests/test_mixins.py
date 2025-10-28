@@ -702,7 +702,7 @@ class TestScrollNavigationMixin:
         # Execute
         mixin_instance.on_descendant_focus(mock_event)
 
-        # Verify - should scroll the widget into view
+        # Verify - should scroll the widget into view with animation
         mock_scroll_container.scroll_to_widget.assert_called_once_with(
-            mock_widget, animate=False
+            mock_widget, animate=True
         )
