@@ -166,8 +166,7 @@ tui/
 │   └── content_panel.py      # Dynamic panel orchestrator
 ├── screens/                  # Full-screen views
 │   ├── overview.py           # Project health and statistics
-│   ├── core_files.py         # Single-instance file management
-│   ├── file_instances.py     # Multi-instance file management
+│   ├── file_instances.py     # All file instance management (single and multi)
 │   ├── project_settings.py   # Initialization settings
 │   ├── file_instance_edit.py # Add/edit file instance modal
 │   ├── apply_preset.py       # Preset application modal
@@ -459,11 +458,9 @@ State synchronization follows the three-layer pattern (see State Synchronization
 | `tui/panels/presets_panel.py` | Preset browser | ~290 | PresetsPanel |
 | `tui/panels/initialize_panel.py` | Project initialization | ~233 | InitializePanel |
 | `tui/screens/overview.py` | Project overview | ~250 | OverviewScreen |
-| `tui/screens/core_files.py` | Single-instance files | ~156 | CoreFilesScreen |
-| `tui/screens/file_instances.py` | Multi-instance files | ~241 | FileInstancesScreen |
+| `tui/screens/file_instances.py` | All file instances | ~800 | FileInstancesScreen |
 | `tui/screens/project_settings.py` | Init settings | ~97 | ProjectSettingsScreen |
-| `tui/widgets/compact_single_instance.py` | Inline file control | ~216 | CompactSingleInstanceControl |
-| `tui/widgets/file_instance_item.py` | File instance card | ~52 | FileInstanceItem |
+| `tui/widgets/file_instance_item.py` | File instance card | ~120 | FileInstanceItem |
 | `tui/widgets/overlay_dropdown.py` | Collapsible section | ~213 | OverlayDropdown |
 
 ### Data Flow
@@ -645,36 +642,30 @@ This ensures changes are never lost and the UI always reflects the current state
 
 #### Real-World Examples
 
-**TUI - Core Files Screen (with FileInstanceMixin):**
+**TUI - File Instances Screen (unified for all file types):**
 
-The `CoreFilesScreen` inherits from both `Screen` and `FileInstanceMixin`:
+The `FileInstancesScreen` manages both multi-instance and single-instance file types in a single tabbed interface:
 
 ```python
-class CoreFilesScreen(Screen, BackButtonMixin, FileInstanceMixin):
-    def __init__(self, config, instance_manager, preset_manager, **kwargs):
+class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
+    def __init__(self, config_data, config_repo, instances_dict, **kwargs):
         super().__init__(**kwargs)
-        self.config = config
-        self.instance_manager = instance_manager
-        self.preset_manager = preset_manager
+        self.config_data = config_data
+        self.config_repo = config_repo
+        self.instances_dict = instances_dict
 
     def on_compact_single_instance_control_toggle_changed(self, event):
-        # ... create or find instance ...
-        if enabled and not instance:
+        # Handle single-instance types (settings.json, statusline, etc.)
+        if enabled and not instances:
             new_instance = FileInstance(...)
-            self.instance_manager.add_instance(new_instance)
-
-            # ✅ Sync using mixin helper
+            file_instance_service.add_instance(self.instances_dict, new_instance, ...)
             self.sync_instances_to_config()
-```
 
-**TUI - File Instances Screen (with FileInstanceMixin):**
-
-```python
-class FileInstancesScreen(Screen, BackButtonMixin, FileInstanceMixin):
     def _toggle_instance(self, instance_id: str):
-        instance = self.instance_manager.get_instance(instance_id)
+        # Handle multi-instance types (CLAUDE.md, commands, etc.)
+        instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         instance.enabled = not instance.enabled
-        self.instance_manager.update_instance(instance)
+        file_instance_service.update_instance(self.instances_dict, instance, ...)
 
         # ✅ Sync using mixin helper
         self.sync_instances_to_config()
@@ -758,19 +749,22 @@ def after_data_change(self):
 The TUI uses **composition over inheritance** for widgets:
 
 **Approach:**
-- Small, focused widgets (`FileInstanceItem`, `CompactSingleInstanceControl`)
+- Small, focused widgets (`FileInstanceItem`, `OverlayDropdown`)
 - Screens compose widgets together
-- Widgets communicate via Textual messages (events)
+- Widgets use reactive attributes and button events for communication
 
 **Example:**
 ```python
-# CompactSingleInstanceControl posts messages
-self.post_message(self.ToggleChanged(file_type, enabled))
+# FileInstanceItem uses reactive attributes for smooth updates
+class FileInstanceItem(Container):
+    is_enabled = reactive(True, init=False)
+    file_path = reactive("", init=False)
 
-# Parent screen handles messages
-def on_compact_single_instance_control_toggle_changed(self, event):
-    # Handle toggle logic
-    pass
+# Parent screen handles button presses
+def on_button_pressed(self, event: Button.Pressed):
+    if event.button.id.startswith("toggle-"):
+        instance_id = event.button.id.replace("toggle-", "")
+        self._toggle_instance(instance_id)
 ```
 
 **Benefits:**
@@ -854,7 +848,7 @@ User Action → Screen Handler → Manager Update → Config Sync → Disk Save
 - `widgets/` - Reusable components (used by screens)
 
 **Naming Conventions:**
-- Screens: `*Screen` (e.g., `OverviewScreen`, `CoreFilesScreen`)
+- Screens: `*Screen` (e.g., `OverviewScreen`, `FileInstancesScreen`)
 - Panels: `*Panel` (e.g., `ConfigPanel`, `PresetsPanel`)
 - Widgets: Descriptive noun (e.g., `FileInstanceItem`, `OverlayDropdown`)
 - Mixins: `*Mixin` (e.g., `BackButtonMixin`, `FileInstanceMixin`)

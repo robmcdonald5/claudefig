@@ -13,7 +13,6 @@ from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
 from claudefig.tui.base import BaseNavigablePanel
 from claudefig.tui.screens import (
-    CoreFilesScreen,
     FileInstancesScreen,
     OverviewScreen,
     ProjectSettingsScreen,
@@ -34,8 +33,7 @@ class ConfigPanel(BaseNavigablePanel):
     GRID_POSITIONS = {
         "btn-overview": (0, 0),
         "btn-settings": (0, 1),
-        "btn-core-files": (1, 0),
-        "btn-file-instances": (1, 1),
+        "btn-file-instances": (1, 0),
     }
 
     # Reverse map (row, col) -> button_id
@@ -107,12 +105,7 @@ class ConfigPanel(BaseNavigablePanel):
                     classes="config-menu-button",
                 )
                 yield Button(
-                    "Core Files\nSingle-instance files",
-                    id="btn-core-files",
-                    classes="config-menu-button",
-                )
-                yield Button(
-                    "File Instances\nMulti-instance files",
+                    "File Instances\nManage all file configurations",
                     id="btn-file-instances",
                     classes="config-menu-button",
                 )
@@ -182,9 +175,11 @@ class ConfigPanel(BaseNavigablePanel):
             except Exception:
                 pass  # Config button not found
 
-        # Horizontal: Stay at right edge when navigating right from rightmost column
-        if col_delta > 0 and col == 1:
-            # Already at rightmost column - do nothing
+        # Horizontal: Stay at right edge when navigating right from rightmost position
+        # Row 0 has buttons at col 0 and 1 (rightmost is col 1)
+        # Row 1 has button only at col 0 (rightmost is col 0)
+        if col_delta > 0 and ((row == 0 and col == 1) or (row == 1 and col == 0)):
+            # Already at rightmost position for this row - do nothing
             return
 
         # Focus the new button within the grid
@@ -273,15 +268,6 @@ class ConfigPanel(BaseNavigablePanel):
             # ProjectSettingsScreen has been migrated - uses new architecture
             self.app.push_screen(
                 ProjectSettingsScreen(
-                    config_data=self.config_data,
-                    config_repo=self.config_repo,
-                    instances_dict=instances_dict,
-                )
-            )
-        elif button_id == "btn-core-files":
-            # CoreFilesScreen has been migrated - uses new architecture
-            self.app.push_screen(
-                CoreFilesScreen(
                     config_data=self.config_data,
                     config_repo=self.config_repo,
                     instances_dict=instances_dict,

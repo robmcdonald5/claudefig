@@ -690,32 +690,6 @@ Input.hidden {
     margin-top: 2;
 }
 
-/* Compact single-instance control */
-CompactSingleInstanceControl {
-    width: 100%;
-    height: 3;  /* Fixed compact height */
-    align: left middle;
-    margin-bottom: 0;  /* No bottom margin - more compact */
-    padding: 0 1;
-    border: none;
-    background: transparent;
-}
-
-.compact-switch {
-    margin-right: 1;
-    width: auto;
-}
-
-.compact-instance-name {
-    width: 30;  /* Fixed width for consistent layout */
-    color: $text;
-}
-
-.compact-preset-select {
-    width: 1fr;  /* Takes remaining space */
-    margin-left: 1;
-}
-
 /* Multi-instance section with tabs */
 #multi-instance-section {
     width: 100%;
@@ -745,11 +719,6 @@ CompactSingleInstanceControl {
     color: $text-muted;
     text-align: center;
     margin: 2;
-}
-
-.compact-instance-item {
-    margin-bottom: 1;
-    padding: 1;
 }
 
 .add-instance-btn {
