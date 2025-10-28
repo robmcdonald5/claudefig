@@ -9,17 +9,17 @@ class TestResourceNotFoundErrors:
     def test_not_found_basic(self):
         """Test not_found with basic resource type."""
         result = ErrorMessages.not_found("preset", "my-preset")
-        assert "Preset not found: my-preset" == result
+        assert result == "Preset not found: my-preset"
 
     def test_not_found_capitalizes_type(self):
         """Test that resource type is capitalized."""
         result = ErrorMessages.not_found("file instance", "test-1")
-        assert "File instance not found: test-1" == result
+        assert result == "File instance not found: test-1"
 
     def test_config_file_not_found(self):
         """Test config_file_not_found message."""
         result = ErrorMessages.config_file_not_found("/path/to/project")
-        assert "No .claudefig.toml found in /path/to/project" == result
+        assert result == "No .claudefig.toml found in /path/to/project"
 
 
 class TestValidationErrors:
@@ -28,17 +28,17 @@ class TestValidationErrors:
     def test_validation_failed_without_details(self):
         """Test validation_failed without details."""
         result = ErrorMessages.validation_failed()
-        assert "Validation failed" == result
+        assert result == "Validation failed"
 
     def test_validation_failed_with_details(self):
         """Test validation_failed with details."""
         result = ErrorMessages.validation_failed("Path cannot be empty")
-        assert "Validation failed: Path cannot be empty" == result
+        assert result == "Validation failed: Path cannot be empty"
 
     def test_invalid_type_without_options(self):
         """Test invalid_type without valid options."""
         result = ErrorMessages.invalid_type("file type", "invalid")
-        assert "Invalid file type: invalid" == result
+        assert result == "Invalid file type: invalid"
 
     def test_invalid_type_with_options(self):
         """Test invalid_type with valid options list."""
@@ -51,12 +51,12 @@ class TestValidationErrors:
     def test_empty_value(self):
         """Test empty_value error message."""
         result = ErrorMessages.empty_value("preset name")
-        assert "Preset name cannot be empty" == result
+        assert result == "Preset name cannot be empty"
 
     def test_empty_value_capitalizes(self):
         """Test that empty_value capitalizes field name."""
         result = ErrorMessages.empty_value("path")
-        assert "Path cannot be empty" == result
+        assert result == "Path cannot be empty"
 
 
 class TestOperationErrors:
@@ -65,22 +65,22 @@ class TestOperationErrors:
     def test_operation_failed_without_details(self):
         """Test operation_failed without details."""
         result = ErrorMessages.operation_failed("syncing files")
-        assert "Error during syncing files" == result
+        assert result == "Error during syncing files"
 
     def test_operation_failed_with_details(self):
         """Test operation_failed with details."""
         result = ErrorMessages.operation_failed("syncing files", "Permission denied")
-        assert "Error during syncing files: Permission denied" == result
+        assert result == "Error during syncing files: Permission denied"
 
     def test_file_exists(self):
         """Test file_exists error message."""
         result = ErrorMessages.file_exists("/path/to/project")
-        assert ".claudefig.toml already exists in /path/to/project" == result
+        assert result == ".claudefig.toml already exists in /path/to/project"
 
     def test_failed_to_perform(self):
         """Test failed_to_perform error message."""
         result = ErrorMessages.failed_to_perform("remove", "file instance", "test-1")
-        assert "Failed to remove file instance: test-1" == result
+        assert result == "Failed to remove file instance: test-1"
 
 
 class TestSuccessMessages:
@@ -89,32 +89,32 @@ class TestSuccessMessages:
     def test_success_with_all_params(self):
         """Test success message with all parameters."""
         result = ErrorMessages.success("added", "file instance", "test-1")
-        assert "Added file instance : test-1" == result
+        assert result == "Added file instance : test-1"
 
     def test_success_with_action_and_type_only(self):
         """Test success message with action and resource type."""
         result = ErrorMessages.success("removed", "preset")
-        assert "Removed preset" == result
+        assert result == "Removed preset"
 
     def test_success_with_action_only(self):
         """Test success message with action only."""
         result = ErrorMessages.success("completed")
-        assert "Completed" == result
+        assert result == "Completed"
 
     def test_no_changes_made(self):
         """Test no_changes_made message."""
         result = ErrorMessages.no_changes_made()
-        assert "No changes specified" == result
+        assert result == "No changes specified"
 
     def test_partial_failure(self):
         """Test partial_failure message."""
         result = ErrorMessages.partial_failure(10, 3)
-        assert "3 of 10 operations failed" == result
+        assert result == "3 of 10 operations failed"
 
     def test_no_resources(self):
         """Test no_resources message."""
         result = ErrorMessages.no_resources("presets")
-        assert "No presets configured" == result
+        assert result == "No presets configured"
 
 
 class TestHelpMessages:

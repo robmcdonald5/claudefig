@@ -7,7 +7,6 @@ from typing import Any, Optional
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
-from textual.events import Key
 from textual.reactive import reactive
 from textual.widgets import Button, Label, Select
 from textual.widgets._select import NoSelection
@@ -79,7 +78,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
 
                 # Build options: (display_text, value)
                 options = [
-                    (f"{p['name']} - {p.get('description', 'No description')}", p["name"])
+                    (
+                        f"{p['name']} - {p.get('description', 'No description')}",
+                        p["name"],
+                    )
                     for p in presets
                 ]
 

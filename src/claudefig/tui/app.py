@@ -63,18 +63,20 @@ class MainScreen(App):
 
         with Horizontal(id="main-container"):
             # Left panel - Menu
-            with Vertical(id="menu-panel"):
-                # Wrap menu content in VerticalScroll to handle overflow when terminal is small
-                # can_focus=False prevents the scroll container from being in the focus chain
-                with VerticalScroll(can_focus=False, id="menu-scroll"):
-                    yield Static("claudefig", id="title")
-                    yield Static(f"v{__version__}", id="version")
+            # Wrap menu content in VerticalScroll to handle overflow when terminal is small
+            # can_focus=False prevents the scroll container from being in the focus chain
+            with (
+                Vertical(id="menu-panel"),
+                VerticalScroll(can_focus=False, id="menu-scroll"),
+            ):
+                yield Static("claudefig", id="title")
+                yield Static(f"v{__version__}", id="version")
 
-                    with Container(id="menu-buttons"):
-                        yield Button("Initialize Project", id="init")
-                        yield Button("Presets", id="presets")
-                        yield Button("Config", id="config")
-                        yield Button("Exit", id="exit")
+                with Container(id="menu-buttons"):
+                    yield Button("Initialize Project", id="init")
+                    yield Button("Presets", id="presets")
+                    yield Button("Config", id="config")
+                    yield Button("Exit", id="exit")
 
             # Right panel - Content
             yield ContentPanel(self.config_data, self.config_repo, id="content-panel")
@@ -110,7 +112,9 @@ class MainScreen(App):
         if self._is_descendant_of(focused, menu_panel):
             # Get all menu buttons to check if we're at top/bottom
             menu_buttons_container = self.query_one("#menu-buttons")
-            menu_buttons = [w for w in menu_buttons_container.query("Button") if w.focusable]
+            menu_buttons = [
+                w for w in menu_buttons_container.query("Button") if w.focusable
+            ]
 
             if not menu_buttons:
                 return

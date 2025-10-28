@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.events import Key
 from textual.widgets import Button, Label
 
@@ -59,13 +59,21 @@ class InitializePanel(BaseHorizontalNavigablePanel):
             # NOTE: Emojis count as 2+ terminal cells, avoid them!
             # See DEBUG_UI_BORDER_BUG.md for details.
             if config_path.exists():
-                yield Label("WARNING: Config file exists", classes="panel-info")  # 29 chars
-                yield Label("Re-init may override files", classes="panel-info")  # 27 chars
-                yield Label("Use Presets/Config to change", classes="panel-info")  # 32 chars
+                yield Label(
+                    "WARNING: Config file exists", classes="panel-info"
+                )  # 29 chars
+                yield Label(
+                    "Re-init may override files", classes="panel-info"
+                )  # 27 chars
+                yield Label(
+                    "Use Presets/Config to change", classes="panel-info"
+                )  # 32 chars
             else:
                 yield Label("No config file found", classes="panel-info")  # 20 chars
                 yield Label("Will use default preset", classes="panel-info")  # 25 chars
-                yield Label("Use Presets to apply different", classes="panel-info")  # 35 chars
+                yield Label(
+                    "Use Presets to apply different", classes="panel-info"
+                )  # 35 chars
 
             # Unified action buttons (same in both states)
             with Horizontal(classes="button-row"):

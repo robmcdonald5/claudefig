@@ -139,7 +139,7 @@ class TestFileInstanceItemButtons:
     async def test_buttons_have_correct_ids(self, sample_instance):
         """Test that buttons have correct IDs based on instance_id."""
         app = FileInstanceItemTestApp(sample_instance)
-        async with app.run_test() as pilot:
+        async with app.run_test() as _pilot:
             item = app.query_one(FileInstanceItem)
 
             # Check button IDs
@@ -156,7 +156,7 @@ class TestFileInstanceItemButtons:
         """Test that CLAUDE.md instances have Path button."""
         sample_instance.type = FileType.CLAUDE_MD
         app = FileInstanceItemTestApp(sample_instance)
-        async with app.run_test() as pilot:
+        async with app.run_test() as _pilot:
             item = app.query_one(FileInstanceItem)
 
             # Should have Path button
@@ -174,7 +174,7 @@ class TestFileInstanceItemButtons:
             enabled=True,
         )
         app = FileInstanceItemTestApp(instance)
-        async with app.run_test() as pilot:
+        async with app.run_test() as _pilot:
             item = app.query_one(FileInstanceItem)
 
             # Should have Path button
@@ -192,7 +192,7 @@ class TestFileInstanceItemButtons:
             enabled=True,
         )
         app = FileInstanceItemTestApp(instance)
-        async with app.run_test() as pilot:
+        async with app.run_test() as _pilot:
             item = app.query_one(FileInstanceItem)
 
             # Should not have Path button
