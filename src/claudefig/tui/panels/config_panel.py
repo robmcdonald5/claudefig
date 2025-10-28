@@ -4,40 +4,36 @@ import contextlib
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Grid
+from textual.containers import Grid, VerticalScroll
+from textual.events import Key
 from textual.widgets import Button, Label
 
 from claudefig.preset_manager import PresetManager
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
+from claudefig.tui.base import BaseNavigablePanel
 from claudefig.tui.screens import (
-    CoreFilesScreen,
     FileInstancesScreen,
     OverviewScreen,
     ProjectSettingsScreen,
 )
 
 
-class ConfigPanel(Container):
-    """Main configuration menu panel."""
+class ConfigPanel(BaseNavigablePanel):
+    """Main configuration menu panel with custom 2D grid navigation.
+
+    Inherits standard navigation bindings from BaseNavigablePanel but overrides
+    all action_navigate_* methods to implement custom 2x2 grid navigation logic.
+    """
 
     # Class variable for state persistence across panel instances
     _last_focused_button: str = "btn-overview"
-
-    # Bindings for 2D grid navigation
-    BINDINGS = [
-        ("up", "navigate_up", "Navigate up"),
-        ("down", "navigate_down", "Navigate down"),
-        ("left", "navigate_left", "Navigate left"),
-        ("right", "navigate_right", "Navigate right"),
-    ]
 
     # 2D grid navigation map (button_id -> (row, col))
     GRID_POSITIONS = {
         "btn-overview": (0, 0),
         "btn-settings": (0, 1),
-        "btn-core-files": (1, 0),
-        "btn-file-instances": (1, 1),
+        "btn-file-instances": (1, 0),
     }
 
     # Reverse map (row, col) -> button_id
@@ -59,63 +55,60 @@ class ConfigPanel(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the config menu panel."""
-        # Check if config exists
-        if not self.config_repo.exists():
+        # can_focus=False prevents the scroll container from being in the focus chain
+        with VerticalScroll(can_focus=False):
+            # Check if config exists
+            if not self.config_repo.exists():
+                yield Label(
+                    "No .claudefig.toml found in current directory.\n\n"
+                    "Go to 'Presets' panel and use a preset to create a config.",
+                    classes="placeholder",
+                )
+                return
+
+            # Load file instances
+            instances_data = config_service.get_file_instances(self.config_data)
+            if instances_data:
+                from claudefig.services import file_instance_service
+
+                instances_dict, _ = file_instance_service.load_instances_from_config(
+                    instances_data
+                )
+                instances_list = list(instances_dict.values())
+            else:
+                instances_list = []
+
+            # Header
+            yield Label("Configuration Menu", classes="panel-title")
+
+            # Summary info
+            enabled_count = sum(1 for i in instances_list if i.enabled)
+            total_count = len(instances_list)
+            config_path_str = str(self.config_repo.get_path())
+            if len(config_path_str) > 60:
+                config_path_str = "..." + config_path_str[-57:]
             yield Label(
-                "No .claudefig.toml found in current directory.\n\n"
-                "Go to 'Presets' panel and use a preset to create a config.",
-                classes="placeholder",
+                f"{config_path_str} | {total_count} instances ({enabled_count} enabled)",
+                classes="panel-subtitle",
             )
-            return
 
-        # Load file instances
-        instances_data = config_service.get_file_instances(self.config_data)
-        if instances_data:
-            from claudefig.services import file_instance_service
-
-            instances_dict, _ = file_instance_service.load_instances_from_config(
-                instances_data
-            )
-            instances_list = list(instances_dict.values())
-        else:
-            instances_list = []
-
-        # Header
-        yield Label("Configuration Menu", classes="panel-title")
-
-        # Summary info
-        enabled_count = sum(1 for i in instances_list if i.enabled)
-        total_count = len(instances_list)
-        config_path_str = str(self.config_repo.get_path())
-        if len(config_path_str) > 60:
-            config_path_str = "..." + config_path_str[-57:]
-        yield Label(
-            f"{config_path_str} | {total_count} instances ({enabled_count} enabled)",
-            classes="panel-subtitle",
-        )
-
-        # Menu buttons in grid
-        with Grid(id="config-menu-grid"):
-            yield Button(
-                "Project Overview\nStats & quick actions",
-                id="btn-overview",
-                classes="config-menu-button",
-            )
-            yield Button(
-                "Initialization Settings\nFile generation behavior",
-                id="btn-settings",
-                classes="config-menu-button",
-            )
-            yield Button(
-                "Core Files\nSingle-instance files",
-                id="btn-core-files",
-                classes="config-menu-button",
-            )
-            yield Button(
-                "File Instances\nMulti-instance files",
-                id="btn-file-instances",
-                classes="config-menu-button",
-            )
+            # Menu buttons in grid
+            with Grid(id="config-menu-grid"):
+                yield Button(
+                    "Project Overview\nStats & quick actions",
+                    id="btn-overview",
+                    classes="config-menu-button",
+                )
+                yield Button(
+                    "Initialization Settings\nFile generation behavior",
+                    id="btn-settings",
+                    classes="config-menu-button",
+                )
+                yield Button(
+                    "File Instances\nManage all file configurations",
+                    id="btn-file-instances",
+                    classes="config-menu-button",
+                )
 
     def on_mount(self) -> None:
         """Restore focus to the last focused button."""
@@ -154,12 +147,22 @@ class ConfigPanel(Container):
         new_row = row + row_delta
         new_col = col + col_delta
 
-        # Vertical: Stop at edges (no wrapping)
+        # Vertical: Stop at edges (no wrapping) and scroll to boundaries
         if row_delta < 0 and row == 0:
-            # Already at top row - do nothing
+            # Already at top row - scroll container to home (absolute top)
+            try:
+                scroll_container = self.query_one(VerticalScroll)
+                scroll_container.scroll_home(animate=True)
+            except Exception:
+                pass
             return
         if row_delta > 0 and row == 1:
-            # Already at bottom row (row 1) - do nothing
+            # Already at bottom row (row 1) - scroll container to end (absolute bottom)
+            try:
+                scroll_container = self.query_one(VerticalScroll)
+                scroll_container.scroll_end(animate=True)
+            except Exception:
+                pass
             return
 
         # Horizontal: Escape to main menu when navigating left from leftmost column
@@ -172,9 +175,11 @@ class ConfigPanel(Container):
             except Exception:
                 pass  # Config button not found
 
-        # Horizontal: Stay at right edge when navigating right from rightmost column
-        if col_delta > 0 and col == 1:
-            # Already at rightmost column - do nothing
+        # Horizontal: Stay at right edge when navigating right from rightmost position
+        # Row 0 has buttons at col 0 and 1 (rightmost is col 1)
+        # Row 1 has button only at col 0 (rightmost is col 0)
+        if col_delta > 0 and ((row == 0 and col == 1) or (row == 1 and col == 0)):
+            # Already at rightmost position for this row - do nothing
             return
 
         # Focus the new button within the grid
@@ -203,6 +208,36 @@ class ConfigPanel(Container):
     def action_navigate_right(self) -> None:
         """Navigate right in the grid."""
         self._navigate_grid(0, 1)
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation with scroll support.
+
+        Explicitly handles up/down navigation to prevent the VerticalScroll
+        container from intercepting arrow keys and to ensure our custom 2D
+        grid navigation runs properly.
+
+        Args:
+            event: The key event
+        """
+        focused = self.screen.focused
+        if not focused or not isinstance(focused, Button):
+            return
+
+        # Check if we're in the config grid
+        button_id = focused.id
+        if button_id not in self.GRID_POSITIONS:
+            return
+
+        # In config grid - explicitly call our navigation actions
+        # to prevent VerticalScroll from handling the keys
+        if event.key == "up":
+            self.action_navigate_up()
+            event.prevent_default()
+            event.stop()
+        elif event.key == "down":
+            self.action_navigate_down()
+            event.prevent_default()
+            event.stop()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses and navigate to screens."""
@@ -233,15 +268,6 @@ class ConfigPanel(Container):
             # ProjectSettingsScreen has been migrated - uses new architecture
             self.app.push_screen(
                 ProjectSettingsScreen(
-                    config_data=self.config_data,
-                    config_repo=self.config_repo,
-                    instances_dict=instances_dict,
-                )
-            )
-        elif button_id == "btn-core-files":
-            # CoreFilesScreen has been migrated - uses new architecture
-            self.app.push_screen(
-                CoreFilesScreen(
                     config_data=self.config_data,
                     config_repo=self.config_repo,
                     instances_dict=instances_dict,

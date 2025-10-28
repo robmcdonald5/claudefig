@@ -649,3 +649,183 @@ class TestSaveInstancesToConfig:
         result = file_instance_service.save_instances_to_config(instances)
 
         assert result == []
+
+
+class TestValidateInstanceComponentPresets:
+    """Test validate_instance() with component-based presets."""
+
+    def test_component_preset_skips_repository_validation(self, tmp_path):
+        """Test that component: prefix skips preset repository validation."""
+        # Create instance with component-based preset
+        instance = FileInstance(
+            id="test-1",
+            type=FileType.SETTINGS_JSON,
+            preset="component:default",
+            path=".claude/settings.json",
+            enabled=True,
+        )
+
+        # Use empty preset repository (component presets shouldn't need it)
+        preset_repo = FakePresetRepository([])
+        instances = {}
+
+        # Should pass validation even though preset isn't in repository
+        result = file_instance_service.validate_instance(
+            instance, instances, preset_repo, tmp_path, is_update=False
+        )
+
+        assert result.valid
+        assert len(result.errors) == 0
+
+    def test_regular_preset_requires_repository_validation(self, tmp_path):
+        """Test that regular presets still require repository validation."""
+        # Create instance with regular preset
+        instance = FileInstance(
+            id="test-1",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:missing",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+
+        # Use empty preset repository
+        preset_repo = FakePresetRepository([])
+        instances = {}
+
+        # Should fail validation because preset isn't in repository
+        result = file_instance_service.validate_instance(
+            instance, instances, preset_repo, tmp_path, is_update=False
+        )
+
+        assert not result.valid
+        assert any("not found" in error.lower() for error in result.errors)
+
+    def test_add_instance_with_component_preset(self, tmp_path):
+        """Test adding instance with component-based preset."""
+        instances = {}
+
+        # Use empty preset repository (component doesn't need it)
+        preset_repo = FakePresetRepository([])
+
+        new_instance = FileInstance(
+            id="settings-json-default",
+            type=FileType.SETTINGS_JSON,
+            preset="component:default",
+            path=".claude/settings.json",
+            enabled=True,
+            variables={
+                "component_folder": "C:/Users/Test/.claudefig/components/settings_json/default",
+                "component_name": "default",
+            },
+        )
+
+        result = file_instance_service.add_instance(
+            instances, new_instance, preset_repo, tmp_path
+        )
+
+        assert result.valid
+        assert "settings-json-default" in instances
+        assert instances["settings-json-default"] == new_instance
+
+    def test_update_instance_with_component_preset(self, tmp_path):
+        """Test updating instance with component-based preset."""
+        # Create existing instance
+        existing = FileInstance(
+            id="statusline-default",
+            type=FileType.STATUSLINE,
+            preset="component:default",
+            path=".claude/statusline.sh",
+            enabled=True,
+            variables={"component_name": "default"},
+        )
+        instances = {"statusline-default": existing}
+
+        # Use empty preset repository
+        preset_repo = FakePresetRepository([])
+
+        # Update the instance (change variables, keep enabled=True)
+        updated = FileInstance(
+            id="statusline-default",
+            type=FileType.STATUSLINE,
+            preset="component:default",
+            path=".claude/statusline.sh",
+            enabled=True,
+            variables={"component_name": "default", "updated": True},  # Changed
+        )
+
+        result = file_instance_service.update_instance(
+            instances, updated, preset_repo, tmp_path
+        )
+
+        assert result.valid
+        assert instances["statusline-default"].variables["updated"] is True
+
+    def test_component_preset_with_custom_name(self, tmp_path):
+        """Test component preset with custom component name."""
+        instance = FileInstance(
+            id="test-custom",
+            type=FileType.CLAUDE_MD,
+            preset="component:my-custom-component",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+
+        preset_repo = FakePresetRepository([])
+        instances = {}
+
+        result = file_instance_service.validate_instance(
+            instance, instances, preset_repo, tmp_path, is_update=False
+        )
+
+        assert result.valid
+        assert len(result.errors) == 0
+
+    def test_mixed_preset_types_in_instances(self, tmp_path):
+        """Test validation works with mix of component and regular presets."""
+        # Setup: one component preset, one regular preset
+        regular_preset = Preset(
+            id="claude_md:default",
+            name="default",
+            type=FileType.CLAUDE_MD,
+            description="Default",
+            source=PresetSource.BUILT_IN,
+        )
+        preset_repo = FakePresetRepository([regular_preset])
+
+        # Existing instance with component preset
+        existing_component = FileInstance(
+            id="settings-1",
+            type=FileType.SETTINGS_JSON,
+            preset="component:default",
+            path=".claude/settings.json",
+            enabled=True,
+        )
+
+        # Existing instance with regular preset
+        existing_regular = FileInstance(
+            id="claude-1",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+            enabled=True,
+        )
+
+        instances = {
+            "settings-1": existing_component,
+            "claude-1": existing_regular,
+        }
+
+        # New instance with component preset should validate
+        new_component = FileInstance(
+            id="statusline-1",
+            type=FileType.STATUSLINE,
+            preset="component:custom",
+            path=".claude/statusline.sh",
+            enabled=True,
+        )
+
+        result = file_instance_service.validate_instance(
+            new_component, instances, preset_repo, tmp_path, is_update=False
+        )
+
+        assert result.valid

@@ -4,26 +4,21 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.screen import Screen
+from textual.events import Key
 from textual.widgets import Button, Label, Static, Switch
 
 from claudefig.models import FileInstance
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
-from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
+from claudefig.tui.base import BaseScreen
 
 
-class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
-    """Screen for editing initialization settings."""
+class ProjectSettingsScreen(BaseScreen):
+    """Screen for editing initialization settings.
 
-    BINDINGS = [
-        ("escape", "pop_screen", "Back"),
-        ("backspace", "pop_screen", "Back"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_left", "Focus Left"),
-        ("right", "focus_right", "Focus Right"),
-    ]
+    Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
+    support for smart vertical/horizontal navigation.
+    """
 
     def __init__(
         self,
@@ -94,6 +89,26 @@ class ProjectSettingsScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
         self.app.pop_screen()
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation.
+
+        Explicitly calls navigation actions to ensure proper scrolling behavior
+        when Switch widgets are present.
+
+        Args:
+            event: The key event
+        """
+        # Explicitly handle up/down navigation to ensure ScrollNavigationMixin
+        # methods are called directly for proper scroll behavior
+        if event.key == "up":
+            self.action_focus_previous()
+            event.prevent_default()
+            event.stop()
+        elif event.key == "down":
+            self.action_focus_next()
+            event.prevent_default()
+            event.stop()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""

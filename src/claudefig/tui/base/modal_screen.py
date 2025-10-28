@@ -1,6 +1,7 @@
 """Base class for modal dialog screens."""
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Label
@@ -46,12 +47,12 @@ class BaseModalScreen(Screen, ScrollNavigationMixin):
     """
 
     BINDINGS = [
-        ("escape", "dismiss", "Cancel"),
-        ("backspace", "dismiss", "Cancel"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_horizontal_previous", "Focus Left"),
-        ("right", "focus_horizontal_next", "Focus Right"),
+        Binding("escape", "dismiss", "Cancel", show=True),
+        Binding("backspace", "dismiss", "Cancel", show=False),
+        Binding("up", "focus_previous", "Navigate Up", show=True),
+        Binding("down", "focus_next", "Navigate Down", show=True),
+        Binding("left", "focus_horizontal_previous", "Navigate Left", show=True),
+        Binding("right", "focus_horizontal_next", "Navigate Right", show=True),
     ]
 
     def compose(self) -> ComposeResult:

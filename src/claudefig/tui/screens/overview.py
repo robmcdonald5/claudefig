@@ -3,29 +3,34 @@
 from typing import Any
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.dom import DOMNode
-from textual.screen import Screen
 from textual.widgets import Button, Label, Static
 
 from claudefig.models import FileInstance, FileType
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
-from claudefig.tui.base import BackButtonMixin, ScrollNavigationMixin
+from claudefig.tui.base import BaseScreen
 from claudefig.tui.widgets import OverlayDropdown
 
 
-class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
-    """Screen displaying project overview with stats and quick actions."""
+class OverviewScreen(BaseScreen):
+    """Screen displaying project overview with stats and quick actions.
 
+    Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
+    support. Overrides escape/backspace to collapse expanded dropdowns before going back.
+    """
+
+    # Override escape/backspace to use collapse_or_back instead of pop_screen
     BINDINGS = [
-        ("escape", "collapse_or_back", "Collapse/Back"),
-        ("backspace", "collapse_or_back", "Collapse/Back"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_left", "Focus Left"),
-        ("right", "focus_right", "Focus Right"),
+        Binding("escape", "collapse_or_back", "Collapse/Back", show=True),
+        Binding("backspace", "collapse_or_back", "Collapse/Back", show=False),
+        Binding("up", "focus_previous", "Navigate Up", show=True),
+        Binding("down", "focus_next", "Navigate Down", show=True),
+        Binding("left", "focus_left", "Navigate Left", show=True),
+        Binding("right", "focus_right", "Navigate Right", show=True),
     ]
 
     def __init__(
@@ -194,8 +199,26 @@ class OverviewScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
             current = current.parent
 
     def on_key(self, event) -> None:
-        """Handle key presses - close other dropdowns when one is toggled with Enter."""
-        if event.key == "enter":
+        """Handle key presses for navigation and dropdown interaction.
+
+        Handles:
+        - Up/down navigation with proper scrolling
+        - Enter key to toggle dropdowns and close others
+        """
+        # Handle up/down navigation explicitly to ensure proper scrolling
+        # when OverlayDropdown widgets are present
+        if event.key == "up":
+            self.action_focus_previous()
+            event.prevent_default()
+            event.stop()
+            return
+        elif event.key == "down":
+            self.action_focus_next()
+            event.prevent_default()
+            event.stop()
+            return
+        elif event.key == "enter":
+            # Close other dropdowns when one is toggled with Enter
             focused = self.app.focused
             current: DOMNode | None = focused
             while current:
