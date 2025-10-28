@@ -5,7 +5,8 @@ from typing import Any, Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.events import Key
 from textual.reactive import reactive
 from textual.widgets import Button, Footer, Header, Static
 
@@ -33,10 +34,10 @@ class MainScreen(App):
         ("ctrl+c", "quit", "Quit"),
         Binding("escape", "clear_selection", "Back", key_display="esc"),
         Binding("backspace", "clear_selection", "Back", show=False),
-        Binding("left", "navigate_left", "Nav Left", show=True),
-        Binding("right", "navigate_right", "Nav Right", show=True),
-        Binding("up", "navigate_up", "Nav Up", show=True),
-        Binding("down", "navigate_down", "Nav Down", show=True),
+        Binding("left", "navigate_left", "Navigate Left", show=True),
+        Binding("right", "navigate_right", "Navigate Right", show=True),
+        Binding("up", "navigate_up", "Navigate Up", show=True),
+        Binding("down", "navigate_down", "Navigate Down", show=True),
     ]
 
     active_button: reactive[Optional[str]] = reactive(None)
@@ -62,7 +63,12 @@ class MainScreen(App):
 
         with Horizontal(id="main-container"):
             # Left panel - Menu
-            with Vertical(id="menu-panel"):
+            # Wrap menu content in VerticalScroll to handle overflow when terminal is small
+            # can_focus=False prevents the scroll container from being in the focus chain
+            with (
+                Vertical(id="menu-panel"),
+                VerticalScroll(can_focus=False, id="menu-scroll"),
+            ):
                 yield Static("claudefig", id="title")
                 yield Static(f"v{__version__}", id="version")
 
@@ -85,6 +91,89 @@ class MainScreen(App):
         ensure_user_config(verbose=True)
 
         self.query_one("#init", Button).focus()
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation.
+
+        Explicitly handles up/down navigation when in the menu panel to prevent
+        the VerticalScroll container from intercepting arrow keys and scrolling
+        instead of navigating through buttons. Includes scroll-to-reveal logic
+        for top/bottom boundaries.
+
+        Args:
+            event: The key event
+        """
+        focused = self.focused
+        if not focused:
+            return
+
+        # Check if we're in the menu panel
+        menu_panel = self.query_one("#menu-panel")
+        if self._is_descendant_of(focused, menu_panel):
+            # Get all menu buttons to check if we're at top/bottom
+            menu_buttons_container = self.query_one("#menu-buttons")
+            menu_buttons = [
+                w for w in menu_buttons_container.query("Button") if w.focusable
+            ]
+
+            if not menu_buttons:
+                return
+
+            # In menu panel - handle navigation with scroll-to-reveal logic
+            if event.key == "up":
+                try:
+                    current_index = menu_buttons.index(focused)
+
+                    # At the top - scroll container to home (absolute top)
+                    if current_index == 0:
+                        try:
+                            scroll_container = menu_panel.query_one(VerticalScroll)
+                            scroll_container.scroll_home(animate=True)
+                        except Exception:
+                            pass
+                        event.prevent_default()
+                        event.stop()
+                        return
+
+                    # Otherwise navigate up normally
+                    self.action_navigate_up()
+                    event.prevent_default()
+                    event.stop()
+                    return
+                except (ValueError, Exception):
+                    # Fallback to normal navigation
+                    self.action_navigate_up()
+                    event.prevent_default()
+                    event.stop()
+                    return
+
+            elif event.key == "down":
+                try:
+                    current_index = menu_buttons.index(focused)
+                    max_index = len(menu_buttons) - 1
+
+                    # At the bottom - scroll container to end (absolute bottom)
+                    if current_index == max_index:
+                        try:
+                            scroll_container = menu_panel.query_one(VerticalScroll)
+                            scroll_container.scroll_end(animate=True)
+                        except Exception:
+                            pass
+                        event.prevent_default()
+                        event.stop()
+                        return
+
+                    # Otherwise navigate down normally
+                    self.action_navigate_down()
+                    event.prevent_default()
+                    event.stop()
+                    return
+                except (ValueError, Exception):
+                    # Fallback to normal navigation
+                    self.action_navigate_down()
+                    event.prevent_default()
+                    event.stop()
+                    return
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press events."""
@@ -208,7 +297,7 @@ class MainScreen(App):
             if self.active_button:
                 content_panel = self.query_one("#content-panel", ContentPanel)
 
-                # ConfigPanel handles its own focus restoration
+                # ConfigPanel and PresetsPanel handle their own focus restoration
                 if self.active_button == "config":
                     try:
                         from claudefig.tui.panels.config_panel import ConfigPanel
@@ -221,6 +310,23 @@ class MainScreen(App):
                         # Fallback if config panel not found
                         focusables = [
                             w for w in content_panel.query("Button") if w.focusable
+                        ]
+                        if focusables:
+                            focusables[0].focus()
+                elif self.active_button == "presets":
+                    try:
+                        from claudefig.tui.panels.presets_panel import PresetsPanel
+
+                        presets_panel = content_panel.query_one(
+                            "#presets-panel", PresetsPanel
+                        )
+                        presets_panel.restore_focus()
+                    except Exception:
+                        # Fallback if presets panel not found
+                        focusables = [
+                            w
+                            for w in content_panel.query("Button, Select")
+                            if w.focusable
                         ]
                         if focusables:
                             focusables[0].focus()

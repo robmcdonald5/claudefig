@@ -47,11 +47,8 @@ class TestFileTypeEnum:
     def test_display_name_property(self):
         """Test display_name property returns human-readable names."""
         assert FileType.CLAUDE_MD.display_name == "CLAUDE.md"
-        assert FileType.SETTINGS_JSON.display_name == "Settings (settings.json)"
-        assert (
-            FileType.SETTINGS_LOCAL_JSON.display_name
-            == "Local Settings (settings.local.json)"
-        )
+        assert FileType.SETTINGS_JSON.display_name == "settings.json"
+        assert FileType.SETTINGS_LOCAL_JSON.display_name == "settings.local.json"
         assert FileType.GITIGNORE.display_name == ".gitignore"
         assert FileType.COMMANDS.display_name == "Slash Commands"
         assert FileType.AGENTS.display_name == "Sub-Agents"

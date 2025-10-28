@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
+from textual.events import Key
 from textual.widgets import Button, Label
 
 from claudefig.config_template_manager import ConfigTemplateManager
@@ -15,16 +16,15 @@ from claudefig.exceptions import (
 )
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
+from claudefig.tui.base import BaseHorizontalNavigablePanel
 
 
-class InitializePanel(Container):
-    """Initialize project panel."""
+class InitializePanel(BaseHorizontalNavigablePanel):
+    """Initialize project panel with horizontal-only navigation.
 
-    # Disable up/down navigation - only left/right for horizontal button row
-    BINDINGS = [
-        ("up", "ignore_up", ""),
-        ("down", "ignore_down", ""),
-    ]
+    Inherits from BaseHorizontalNavigablePanel which provides horizontal-only
+    navigation for the button row. Vertical navigation is automatically disabled.
+    """
 
     def __init__(
         self,
@@ -48,29 +48,32 @@ class InitializePanel(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the initialize panel."""
-        with VerticalScroll():
+        with VerticalScroll(can_focus=False):
             yield Label("Initialize Claude Code Files", classes="panel-title")
 
             # Check if .claudefig.toml already exists
             config_path = Path.cwd() / ".claudefig.toml"
 
+            # IMPORTANT: Each Label must be ≤35 chars to avoid Textual layout bug
+            # that causes menu-buttons border to stretch beyond bounds.
+            # NOTE: Emojis count as 2+ terminal cells, avoid them!
+            # See DEBUG_UI_BORDER_BUG.md for details.
             if config_path.exists():
-                # Show warning if config exists
                 yield Label(
-                    "⚠️  Warning: A .claudefig.toml file already exists in this directory.\n\n"
-                    "Initializing again will generate files based on your current configuration settings. "
-                    "This may override existing files.\n\n"
-                    "To change presets or settings, use the 'Manage Presets' or 'Manage Config' buttons below.",
-                    classes="panel-info",
-                )
+                    "WARNING: Config file exists", classes="panel-info"
+                )  # 29 chars
+                yield Label(
+                    "Re-init may override files", classes="panel-info"
+                )  # 27 chars
+                yield Label(
+                    "Use Presets/Config to change", classes="panel-info"
+                )  # 32 chars
             else:
-                # Show info if no config exists
+                yield Label("No config file found", classes="panel-info")  # 20 chars
+                yield Label("Will use default preset", classes="panel-info")  # 25 chars
                 yield Label(
-                    "No .claudefig.toml file found in this directory.\n\n"
-                    "Initialization will use the default preset to create your configuration and generate files.\n\n"
-                    "To use a different preset, click 'Manage Presets' below to apply one before initializing.",
-                    classes="panel-info",
-                )
+                    "Use Presets to apply different", classes="panel-info"
+                )  # 35 chars
 
             # Unified action buttons (same in both states)
             with Horizontal(classes="button-row"):
@@ -78,13 +81,58 @@ class InitializePanel(Container):
                 yield Button("Manage Presets", id="btn-manage-presets")
                 yield Button("Manage Config", id="btn-manage-config")
 
-    def action_ignore_up(self) -> None:
-        """Ignore up navigation - no vertical elements on this page."""
-        pass
+    def on_key(self, event: Key) -> None:
+        """Handle key events for navigation with scroll support.
 
-    def action_ignore_down(self) -> None:
-        """Ignore down navigation - no vertical elements on this page."""
-        pass
+        Explicitly handles up/down navigation to prevent the VerticalScroll
+        container from intercepting arrow keys and provides scroll-to-reveal
+        logic at boundaries.
+
+        Args:
+            event: The key event
+        """
+        focused = self.screen.focused
+        if not focused:
+            return
+
+        # Get all buttons in the button row
+        try:
+            button_row = self.query_one(".button-row")
+            buttons = [w for w in button_row.query("Button") if w.focusable]
+
+            if not buttons or focused not in buttons:
+                # Not in our button row, let normal handling continue
+                return
+
+            current_index = buttons.index(focused)
+
+            if event.key == "up":
+                # At the first button - scroll container to home (absolute top)
+                if current_index == 0 or current_index == -1:
+                    try:
+                        scroll_container = self.query_one(VerticalScroll)
+                        scroll_container.scroll_home(animate=True)
+                        event.prevent_default()
+                        event.stop()
+                    except Exception:
+                        pass
+                return
+
+            elif event.key == "down":
+                # At the last button - scroll container to end (absolute bottom)
+                if current_index == len(buttons) - 1:
+                    try:
+                        scroll_container = self.query_one(VerticalScroll)
+                        scroll_container.scroll_end(animate=True)
+                        event.prevent_default()
+                        event.stop()
+                    except Exception:
+                        pass
+                return
+
+        except Exception:
+            # Fallback - let normal handling continue
+            pass
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

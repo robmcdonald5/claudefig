@@ -1,7 +1,6 @@
 """Modal screens for claudefig TUI."""
 
 from .apply_preset import ApplyPresetScreen
-from .core_files import CoreFilesScreen
 from .create_preset import CreatePresetScreen
 from .delete_preset import DeletePresetScreen
 from .file_instances import FileInstancesScreen
@@ -17,7 +16,6 @@ __all__ = [
     "PresetDetailsScreen",
     "OverviewScreen",
     "ProjectSettingsScreen",
-    "CoreFilesScreen",
     "FileInstancesScreen",
     "SaveComponentScreen",
 ]

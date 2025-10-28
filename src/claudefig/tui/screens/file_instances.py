@@ -6,7 +6,6 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Key
-from textual.screen import Screen
 from textual.widgets import Button, Label, Select, TabbedContent, TabPane
 
 from claudefig.error_messages import ErrorMessages
@@ -20,31 +19,17 @@ from claudefig.models import FileInstance, FileType
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
-from claudefig.tui.base import (
-    BackButtonMixin,
-    ScrollNavigationMixin,
-    SystemUtilityMixin,
-)
+from claudefig.tui.base import BaseScreen, SystemUtilityMixin
 from claudefig.tui.widgets.file_instance_item import FileInstanceItem
 from claudefig.user_config import get_components_dir
 
 
-class FileInstancesScreen(
-    Screen,
-    BackButtonMixin,
-    ScrollNavigationMixin,
-    SystemUtilityMixin,
-):
-    """Screen for managing multi-instance file types with tabs."""
+class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
+    """Screen for managing multi-instance file types with tabs.
 
-    BINDINGS = [
-        ("escape", "pop_screen", "Back"),
-        ("backspace", "pop_screen", "Back"),
-        ("up", "focus_previous", "Focus Previous"),
-        ("down", "focus_next", "Focus Next"),
-        ("left", "focus_left", "Focus Left"),
-        ("right", "focus_right", "Focus Right"),
-    ]
+    Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
+    support for smart vertical/horizontal navigation.
+    """
 
     def __init__(
         self,
@@ -123,12 +108,13 @@ class FileInstancesScreen(
             yield Label("FILE INSTANCES", classes="screen-title")
 
             yield Label(
-                "Multi-instance files that can have multiple configurations per project.",
+                "Manage file instances and core configuration files.",
                 classes="screen-description",
             )
 
-            # Get multi-instance file types
-            multi_instance_types = [
+            # Get all file types (both multi-instance and single-instance)
+            all_file_types = [
+                # Multi-instance types
                 FileType.CLAUDE_MD,
                 FileType.GITIGNORE,
                 FileType.COMMANDS,
@@ -136,24 +122,32 @@ class FileInstancesScreen(
                 FileType.HOOKS,
                 FileType.OUTPUT_STYLES,
                 FileType.MCP,
+                # Single-instance types
+                FileType.SETTINGS_JSON,
+                FileType.SETTINGS_LOCAL_JSON,
+                FileType.STATUSLINE,
             ]
 
             # Create tabbed content
             with TabbedContent(id="file-instances-tabs"):
-                for file_type in multi_instance_types:
+                for file_type in all_file_types:
                     with TabPane(file_type.display_name, id=f"tab-{file_type.value}"):
                         # Get instances for this file type
                         instances = file_instance_service.get_instances_by_type(
                             self.instances_dict, file_type
                         )
 
-                        # Component selector
+                        is_single_instance = not file_type.supports_multiple
+
+                        # Component/Template selector
                         with Horizontal(classes="tab-actions"):
                             # Get available components for this file type
                             from claudefig.user_config import get_components_dir
 
+                            components = []
                             components_dir = get_components_dir()
-                            # Map file type to component directory
+
+                            # Map file type to component directory (unified for all types)
                             type_dirs = {
                                 FileType.CLAUDE_MD: "claude_md",
                                 FileType.GITIGNORE: "gitignore",
@@ -163,18 +157,22 @@ class FileInstancesScreen(
                                 FileType.OUTPUT_STYLES: "output_styles",
                                 FileType.MCP: "mcp",
                                 FileType.SETTINGS_JSON: "settings_json",
+                                FileType.SETTINGS_LOCAL_JSON: "settings_local_json",
+                                FileType.STATUSLINE: "statusline",
                             }
 
                             type_dir = components_dir / type_dirs.get(
                                 file_type, file_type.value
                             )
-                            components = []
 
                             if type_dir.exists():
-                                # For folder-based components (CLAUDE_MD, GITIGNORE)
+                                # For folder-based components (files that need unique names)
                                 if file_type in (
                                     FileType.CLAUDE_MD,
                                     FileType.GITIGNORE,
+                                    FileType.SETTINGS_JSON,
+                                    FileType.SETTINGS_LOCAL_JSON,
+                                    FileType.STATUSLINE,
                                 ):
                                     components = [
                                         (item.name, item)
@@ -182,33 +180,33 @@ class FileInstancesScreen(
                                         if item.is_dir()
                                     ]
                                 else:
-                                    # For JSON-based components
+                                    # For JSON-based components (commands, agents, hooks, etc.)
                                     components = [
                                         (item.stem, item)
                                         for item in type_dir.glob("*.json")
                                     ]
 
                             if components:
-                                # Build options: (display_name, component_name)
+                                # Build options: (display_name, component_name/template_name)
                                 component_options = [
                                     (f"+ Add {name}", name) for name, _ in components
                                 ]
 
                                 yield Select(
                                     options=component_options,
-                                    prompt="Select a component to add...",
+                                    prompt=f"Select a {'template' if is_single_instance else 'component'} to add...",
                                     id=f"select-add-{file_type.value}",
                                     allow_blank=True,
                                     classes="component-select",
                                 )
                             else:
-                                # No components available - show info message
+                                # No components/templates available - show info message
                                 yield Label(
-                                    f"No {file_type.display_name} components found.",
+                                    f"No {file_type.display_name} {'templates' if is_single_instance else 'components'} found.",
                                     classes="empty-message component-select",
                                 )
 
-                            # Always show button to open component directory
+                            # Always show button to open component/template directory
                             yield Button(
                                 "Open Folder",
                                 id=f"btn-open-components-{file_type.value}",
@@ -217,6 +215,8 @@ class FileInstancesScreen(
 
                         # Display instances
                         if instances:
+                            # All types use FileInstanceItem now
+                            # Single-instance types just have auto-replace logic when adding
                             with Vertical(classes="instance-list"):
                                 for instance in instances:
                                     yield FileInstanceItem(
@@ -295,51 +295,74 @@ class FileInstancesScreen(
             self._toggle_instance(instance_id)
 
     def _add_component_instance(self, file_type: FileType, component_name: str) -> None:
-        """Load a component and add it as a file instance.
+        """Load a component/template and add it as a file instance.
+
+        For single-instance types, auto-replaces any existing instance.
+        For multi-instance types, prevents duplicate components.
 
         Args:
             file_type: Type of file
-            component_name: Name of the component to load
+            component_name: Name of the component/template to load
         """
         try:
-            # Check if this component has already been added
-            existing_instances = list(self.instances_dict.values())
+            is_single_instance = not file_type.supports_multiple
 
-            for existing in existing_instances:
-                # Skip if different type
-                if existing.type != file_type:
-                    continue
+            if is_single_instance:
+                # For single-instance types: auto-replace existing instance
+                existing_instances = file_instance_service.get_instances_by_type(
+                    self.instances_dict, file_type
+                )
+                for existing in existing_instances:
+                    # Remove existing instance silently (auto-replace behavior)
+                    file_instance_service.remove_instance(
+                        self.instances_dict, existing.id
+                    )
+                    # Also remove the widget from the DOM
+                    try:
+                        for item in self.query(FileInstanceItem):
+                            if item.instance_id == existing.id:
+                                item.remove()
+                                break
+                    except Exception:
+                        pass
+            else:
+                # For multi-instance types: check if this component has already been added
+                existing_instances = list(self.instances_dict.values())
 
-                # For CLAUDE.md and .gitignore (folder-based), check folder name
-                if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
-                    component_folder = existing.variables.get("component_folder", "")
-                    if component_folder:
-                        # Extract the component folder name from the path
-                        folder_name = Path(component_folder).name
-                        if folder_name == component_name:
-                            self.notify(
-                                f"Component '{component_name}' has already been added",
-                                severity="warning",
-                            )
-                            return
-                else:
-                    # For other types, check component file name (stem without extension)
-                    component_file = existing.variables.get("component_file", "")
-                    if component_file:
-                        file_stem = Path(component_file).stem
-                        if file_stem == component_name:
-                            self.notify(
-                                f"Component '{component_name}' has already been added",
-                                severity="warning",
-                            )
-                            return
+                for existing in existing_instances:
+                    # Skip if different type
+                    if existing.type != file_type:
+                        continue
 
-            # Load component from library
-            import json
+                    # For CLAUDE.md and .gitignore (folder-based), check folder name
+                    if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+                        component_folder = existing.variables.get(
+                            "component_folder", ""
+                        )
+                        if component_folder:
+                            # Extract the component folder name from the path
+                            folder_name = Path(component_folder).name
+                            if folder_name == component_name:
+                                self.notify(
+                                    f"Component '{component_name}' has already been added",
+                                    severity="warning",
+                                )
+                                return
+                    else:
+                        # For other types, check component file name (stem without extension)
+                        component_file = existing.variables.get("component_file", "")
+                        if component_file:
+                            file_stem = Path(component_file).stem
+                            if file_stem == component_name:
+                                self.notify(
+                                    f"Component '{component_name}' has already been added",
+                                    severity="warning",
+                                )
+                                return
 
-            from claudefig.user_config import get_components_dir
-
+            instance = None
             components_dir = get_components_dir()
+
             type_dirs = {
                 FileType.CLAUDE_MD: "claude_md",
                 FileType.GITIGNORE: "gitignore",
@@ -349,33 +372,38 @@ class FileInstancesScreen(
                 FileType.OUTPUT_STYLES: "output_styles",
                 FileType.MCP: "mcp",
                 FileType.SETTINGS_JSON: "settings_json",
+                FileType.SETTINGS_LOCAL_JSON: "settings_local_json",
+                FileType.STATUSLINE: "statusline",
             }
 
             type_dir = components_dir / type_dirs.get(file_type, file_type.value)
-            instance = None
 
-            # For folder-based components
-            if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+            # For folder-based components (no component.json needed!)
+            if file_type in (
+                FileType.CLAUDE_MD,
+                FileType.GITIGNORE,
+                FileType.SETTINGS_JSON,
+                FileType.SETTINGS_LOCAL_JSON,
+                FileType.STATUSLINE,
+            ):
                 component_folder = type_dir / component_name
                 if component_folder.exists() and component_folder.is_dir():
-                    metadata_file = component_folder / "component.json"
-                    if metadata_file.exists():
-                        component_data = json.loads(
-                            metadata_file.read_text(encoding="utf-8")
-                        )
-                        instance = FileInstance(
-                            id=f"{file_type.value}-{component_name}",
-                            type=file_type,
-                            preset=f"component:{component_name}",
-                            path=component_data.get("path", file_type.default_path),
-                            enabled=True,
-                            variables={
-                                "component_folder": str(component_folder),
-                                "component_name": component_name,
-                            },
-                        )
+                    # Derive all metadata from folder structure - no component.json needed!
+                    instance = FileInstance(
+                        id=f"{file_type.value}-{component_name}",
+                        type=file_type,
+                        preset=f"component:{component_name}",
+                        path=file_type.default_path,  # Use default path from FileType
+                        enabled=True,
+                        variables={
+                            "component_folder": str(component_folder),
+                            "component_name": component_name,
+                        },
+                    )
             else:
                 # For JSON-based components
+                import json
+
                 component_file = type_dir / f"{component_name}.json"
                 if component_file.exists():
                     component_data = json.loads(
@@ -391,7 +419,10 @@ class FileInstancesScreen(
                     )
 
             if not instance:
-                self.notify(f"Component '{component_name}' not found", severity="error")
+                self.notify(
+                    f"{'Template' if is_single_instance else 'Component'} '{component_name}' not found",
+                    severity="error",
+                )
                 return
 
             # Store the component name in variables for later reference
@@ -420,13 +451,40 @@ class FileInstancesScreen(
             if result.valid:
                 # Sync to config and save
                 self.sync_instances_to_config()
+                action = "Set" if is_single_instance else "Added"
+                source = "template" if is_single_instance else "component"
                 self.notify(
-                    f"Added {instance.type.display_name} from component '{component_name}'",
+                    f"{action} {instance.type.display_name} from {source} '{component_name}'",
                     severity="information",
                 )
-                # Refresh screen to add the new widget
-                # Note: We still need refresh(recompose=True) here because we're adding a new widget
-                self.refresh(recompose=True)
+
+                # Try to dynamically add the widget without recomposing
+                try:
+                    # Get the current tab pane for this file type
+                    tab_id = f"tab-{file_type.value}"
+                    tab_pane = self.query_one(f"#{tab_id}", TabPane)
+
+                    # Try to find the instance-list container
+                    instance_lists = tab_pane.query(".instance-list")
+                    if instance_lists:
+                        # Container exists, mount the new widget to it
+                        container = instance_lists.first(Vertical)
+                        container.mount(FileInstanceItem(instance=instance))
+                    else:
+                        # No container exists (was showing empty message)
+                        # Remove the empty message labels and create container with widget
+                        empty_messages = tab_pane.query(".empty-message")
+                        for msg in empty_messages:
+                            msg.remove()
+
+                        # Create new container with the instance
+                        container = Vertical(classes="instance-list")
+                        tab_pane.mount(container)
+                        container.mount(FileInstanceItem(instance=instance))
+
+                except Exception:
+                    # If dynamic mounting fails, fallback to recompose
+                    self.refresh(recompose=True)
             else:
                 # Show validation errors
                 error_msg = (
@@ -464,7 +522,13 @@ class FileInstancesScreen(
         # Determine the file to open based on component type
         file_to_open = None
 
-        if instance.type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
+        if instance.type in (
+            FileType.CLAUDE_MD,
+            FileType.GITIGNORE,
+            FileType.SETTINGS_JSON,
+            FileType.SETTINGS_LOCAL_JSON,
+            FileType.STATUSLINE,
+        ):
             # For folder-based components, find the actual file in the folder
             component_folder = instance.variables.get("component_folder")
 
@@ -515,7 +579,7 @@ class FileInstancesScreen(
                 )
                 return
 
-            # Find the actual CLAUDE.md or .gitignore file in the folder
+            # Find the actual file in the folder (uses the filename from the path)
             actual_filename = Path(instance.path).name
             file_to_open = folder_path / actual_filename
 
@@ -667,9 +731,16 @@ class FileInstancesScreen(
             self.notify(
                 f"Removed {instance.type.display_name} instance", severity="information"
             )
-            # Refresh screen to remove the widget - this is necessary for removal
-            # Note: We still need refresh(recompose=True) here because we're removing a widget
-            self.refresh(recompose=True)
+
+            # Remove the widget directly from the DOM without recomposing
+            try:
+                for item in self.query(FileInstanceItem):
+                    if item.instance_id == instance_id:
+                        item.remove()
+                        break
+            except Exception:
+                # If dynamic removal fails, fallback to recompose
+                self.refresh(recompose=True)
         else:
             self.notify(
                 ErrorMessages.failed_to_perform("remove", "file instance", instance_id),
@@ -724,7 +795,22 @@ class FileInstancesScreen(
             file_type: File type to open component directory for
         """
         components_dir = get_components_dir()
-        type_dir = components_dir / file_type.value
+
+        # Map file type to component directory (unified for all types)
+        type_dirs = {
+            FileType.CLAUDE_MD: "claude_md",
+            FileType.GITIGNORE: "gitignore",
+            FileType.COMMANDS: "commands",
+            FileType.AGENTS: "agents",
+            FileType.HOOKS: "hooks",
+            FileType.OUTPUT_STYLES: "output_styles",
+            FileType.MCP: "mcp",
+            FileType.SETTINGS_JSON: "settings_json",
+            FileType.SETTINGS_LOCAL_JSON: "settings_local_json",
+            FileType.STATUSLINE: "statusline",
+        }
+
+        type_dir = components_dir / type_dirs.get(file_type, file_type.value)
 
         # Open folder using SystemUtilityMixin method
         self.open_folder_in_explorer(type_dir)

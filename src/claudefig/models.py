@@ -25,8 +25,8 @@ class FileType(Enum):
         """Get human-readable display name for the file type."""
         display_names = {
             self.CLAUDE_MD: "CLAUDE.md",
-            self.SETTINGS_JSON: "Settings (settings.json)",
-            self.SETTINGS_LOCAL_JSON: "Local Settings (settings.local.json)",
+            self.SETTINGS_JSON: "settings.json",
+            self.SETTINGS_LOCAL_JSON: "settings.local.json",
             self.GITIGNORE: ".gitignore",
             self.COMMANDS: "Slash Commands",
             self.AGENTS: "Sub-Agents",
