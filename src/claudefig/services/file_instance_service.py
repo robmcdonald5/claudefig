@@ -199,15 +199,17 @@ def validate_instance(
     if not is_update and instance.id in existing_instances:
         result.add_error(f"Instance with ID '{instance.id}' already exists")
 
-    # Check if preset exists
-    preset = preset_repo.get_preset(instance.preset)
-    if not preset:
-        result.add_error(f"Preset '{instance.preset}' not found")
-    elif preset.type != instance.type:
-        result.add_error(
-            f"Preset type mismatch: preset is for {preset.type.value}, "
-            f"but instance is for {instance.type.value}"
-        )
+    # Check if preset exists (skip validation for component-based instances)
+    # Component-based instances use "component:{name}" format and don't exist in preset repo
+    if not instance.preset.startswith("component:"):
+        preset = preset_repo.get_preset(instance.preset)
+        if not preset:
+            result.add_error(f"Preset '{instance.preset}' not found")
+        elif preset.type != instance.type:
+            result.add_error(
+                f"Preset type mismatch: preset is for {preset.type.value}, "
+                f"but instance is for {instance.type.value}"
+            )
 
     # Validate path
     path_result = validate_path(instance.path, instance.type, repo_path)
