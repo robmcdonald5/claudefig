@@ -62,10 +62,21 @@ class FileInstanceItem(Container):
         Now that compose() has been called and widgets exist, we can safely
         set reactive attributes which will trigger watch methods.
         """
-        # Set reactive attributes - this will trigger watch methods to update the UI
-        self.is_enabled = self._initial_enabled
-        self.file_path = self._initial_path
-        self.component_name = self._initial_component_name
+        # Use set_reactive to set ALL values without triggering watchers first
+        # This ensures all reactive attributes have correct values before any watcher runs
+        self.set_reactive(FileInstanceItem.component_name, self._initial_component_name)
+        self.set_reactive(FileInstanceItem.file_path, self._initial_path)
+        self.set_reactive(FileInstanceItem.is_enabled, self._initial_enabled)
+
+        # Now manually trigger watchers in the correct order
+        # All reactive attributes are set, so watchers can access correct values
+        self.watch_component_name(self._initial_component_name)
+        self.watch_file_path(self._initial_path)
+        self.watch_is_enabled(self._initial_enabled)
+
+        # Force a final update to ensure path label has correct text and CSS
+        # This guarantees the UI is in sync with reactive state
+        self._update_path_label()
 
     def watch_is_enabled(self, new_value: bool) -> None:
         """Called automatically when is_enabled changes.
