@@ -73,7 +73,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/claudefig", "src/templates", "src/claudefig_data"]
+packages = ["src/claudefig", "src/presets", "src/claudefig_data"]
 
 # Ruff formatter configuration (replaces Black)
 [tool.ruff.format]

@@ -804,7 +804,7 @@ class Initializer:
 
         try:
             # Get template source directory
-            template_root = files("templates").joinpath(template_name)
+            template_root = files("presets").joinpath(template_name)
             source_path = template_root.joinpath(source_dir)
 
             # Create destination directory

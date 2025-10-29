@@ -42,7 +42,7 @@ class FileTemplateManager:
         # Fall back to built-in templates
         try:
             # Use importlib.resources to access package data
-            template_files = files("templates") / template_name
+            template_files = files("presets") / template_name
             return Path(str(template_files))
         except (TypeError, FileNotFoundError) as e:
             raise FileNotFoundError(
@@ -59,7 +59,7 @@ class FileTemplateManager:
 
         # List built-in templates
         try:
-            template_root = files("templates")
+            template_root = files("presets")
             template_path = Path(str(template_root))
             if template_path.exists() and template_path.is_dir():
                 templates.extend(
