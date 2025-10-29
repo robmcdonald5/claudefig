@@ -35,17 +35,99 @@ class TestFileInstanceItemReactiveAttributes:
             enabled=True,
         )
 
-    # NOTE: These tests are commented out due to Textual lifecycle timing issues
-    # The reactive attribute system works correctly in the actual app
-    # @pytest.mark.asyncio
-    # async def test_watch_is_enabled_updates_status_label(self, sample_instance):
-    #     """Test that changing is_enabled updates status label."""
-    #     pass
+    @pytest.mark.asyncio
+    async def test_initial_enabled_state_displays_correctly(self, sample_instance):
+        """Test that enabled state shows correctly on initial mount."""
+        sample_instance.enabled = True
+        app = FileInstanceItemTestApp(sample_instance)
+        async with app.run_test() as pilot:
+            item = app.query_one(FileInstanceItem)
+            status_label = item.query_one("#status-label", Static)
 
-    # @pytest.mark.asyncio
-    # async def test_watch_is_enabled_toggles_css_classes(self, sample_instance):
-    #     """Test CSS class toggling on enable/disable."""
-    #     pass
+            # Wait for mount to complete
+            await pilot.pause()
+
+            # Status label should show "+ Enabled"
+            assert "+ Enabled" in str(status_label.render())
+            # Should have enabled CSS class
+            assert status_label.has_class("instance-enabled")
+            assert not status_label.has_class("instance-disabled")
+
+    @pytest.mark.asyncio
+    async def test_initial_disabled_state_displays_correctly(self):
+        """Test that disabled state shows correctly on initial mount."""
+        instance = FileInstance(
+            id="test-disabled",
+            type=FileType.CLAUDE_MD,
+            preset="component:default",
+            path="CLAUDE.md",
+            enabled=False,
+        )
+        app = FileInstanceItemTestApp(instance)
+        async with app.run_test() as pilot:
+            item = app.query_one(FileInstanceItem)
+            status_label = item.query_one("#status-label", Static)
+            path_label = item.query_one("#path-label", Static)
+
+            # Wait for mount to complete
+            await pilot.pause()
+
+            # Status label should show "- Disabled"
+            assert "- Disabled" in str(status_label.render())
+            # Should have disabled CSS class
+            assert status_label.has_class("instance-disabled")
+            assert not status_label.has_class("instance-enabled")
+            # Path label should have disabled CSS class (provides visual feedback)
+            assert path_label.has_class("instance-disabled")
+            # Verify the path is shown
+            assert "CLAUDE.md" in str(path_label.render())
+
+    @pytest.mark.asyncio
+    async def test_watch_is_enabled_updates_status_label(self, sample_instance):
+        """Test that changing is_enabled updates status label."""
+        app = FileInstanceItemTestApp(sample_instance)
+        async with app.run_test() as pilot:
+            item = app.query_one(FileInstanceItem)
+            status_label = item.query_one("#status-label", Static)
+
+            # Initial state - enabled
+            await pilot.pause()
+            assert "+ Enabled" in str(status_label.render())
+
+            # Disable
+            item.is_enabled = False
+            await pilot.pause()
+            assert "- Disabled" in str(status_label.render())
+
+            # Enable again
+            item.is_enabled = True
+            await pilot.pause()
+            assert "+ Enabled" in str(status_label.render())
+
+    @pytest.mark.asyncio
+    async def test_watch_is_enabled_toggles_css_classes(self, sample_instance):
+        """Test CSS class toggling on enable/disable."""
+        app = FileInstanceItemTestApp(sample_instance)
+        async with app.run_test() as pilot:
+            item = app.query_one(FileInstanceItem)
+            status_label = item.query_one("#status-label", Static)
+
+            # Initial state - enabled
+            await pilot.pause()
+            assert status_label.has_class("instance-enabled")
+            assert not status_label.has_class("instance-disabled")
+
+            # Disable
+            item.is_enabled = False
+            await pilot.pause()
+            assert status_label.has_class("instance-disabled")
+            assert not status_label.has_class("instance-enabled")
+
+            # Enable again
+            item.is_enabled = True
+            await pilot.pause()
+            assert status_label.has_class("instance-enabled")
+            assert not status_label.has_class("instance-disabled")
 
     @pytest.mark.asyncio
     async def test_watch_file_path_updates_path_label(self, sample_instance):
@@ -82,18 +164,6 @@ class TestFileInstanceItemReactiveAttributes:
 
             # Component label should update
             assert "Component: custom" in str(component_label.render())
-
-    # NOTE: This test commented out due to Textual lifecycle timing issues
-    # @pytest.mark.asyncio
-    # async def test_on_mount_sets_initial_values(self, sample_instance):
-    #     """Test that on_mount sets reactive attributes correctly."""
-    #     pass
-
-    # NOTE: This test commented out due to Textual lifecycle timing issues
-    # @pytest.mark.asyncio
-    # async def test_disabled_indicator_in_path_label(self, sample_instance):
-    #     """Test that disabled instances show [disabled] suffix."""
-    #     pass
 
     @pytest.mark.asyncio
     async def test_disabled_toggles_path_label_css_classes(self, sample_instance):
