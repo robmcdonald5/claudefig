@@ -1,11 +1,11 @@
-"""Tests for utility functions in claudefig.utils."""
+"""Tests for utility functions in claudefig.utils.paths."""
 
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from claudefig.utils import ensure_directory, is_git_repository
+from claudefig.utils.paths import ensure_directory, is_git_repository
 
 
 class TestEnsureDirectory:

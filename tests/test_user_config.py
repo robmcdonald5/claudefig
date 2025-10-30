@@ -8,7 +8,6 @@ from claudefig.user_config import (
     create_default_user_config,
     ensure_user_config,
     get_cache_dir,
-    get_template_dir,
     get_user_config_dir,
     get_user_config_file,
     initialize_user_directory,
@@ -26,12 +25,6 @@ class TestPathFunctions:
 
         assert config_dir == mock_user_home / ".claudefig"
         assert config_dir.parent == mock_user_home
-
-    def test_get_template_dir(self, mock_user_home):
-        """Test getting template directory."""
-        template_dir = get_template_dir()
-
-        assert template_dir == mock_user_home / ".claudefig" / "templates"
 
     def test_get_cache_dir(self, mock_user_home):
         """Test getting cache directory."""
@@ -67,7 +60,11 @@ class TestInitializationChecks:
         config_dir = get_user_config_dir()
         config_dir.mkdir()
         (config_dir / "presets").mkdir()
-        (config_dir / "components").mkdir()  # is_initialized() requires this too
+        (config_dir / "cache").mkdir()
+        (config_dir / "components").mkdir()
+
+        # Create required files
+        (config_dir / "config.toml").write_text("[config]\n", encoding="utf-8")
 
         assert is_initialized()
 
@@ -131,7 +128,6 @@ class TestDirectoryInitialization:
         # Check all directories were created
         assert config_dir.exists()
         assert (config_dir / "presets").exists()
-        assert (config_dir / "templates").exists()
         assert (config_dir / "cache").exists()
 
     def test_initialize_user_directory_creates_config_file(self, mock_user_home):

@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from platformdirs import user_config_dir
 from rich.console import Console
 
 console = Console()
@@ -13,19 +14,15 @@ console = Console()
 def get_user_config_dir() -> Path:
     """Get user-level config directory (cross-platform).
 
-    Returns:
-        Path to ~/.claudefig/ directory.
-    """
-    return Path.home() / ".claudefig"
-
-
-def get_template_dir() -> Path:
-    """Get user-level template directory.
+    Uses platform-appropriate config directory:
+    - Windows: C:\\Users\\{user}\\AppData\\Local\\claudefig\\
+    - macOS: ~/Library/Application Support/claudefig/
+    - Linux: ~/.config/claudefig/
 
     Returns:
-        Path to ~/.claudefig/templates/ directory.
+        Path to user config directory.
     """
-    return get_user_config_dir() / "templates"
+    return Path(user_config_dir("claudefig", appauthor=False))
 
 
 def get_cache_dir() -> Path:
@@ -56,17 +53,35 @@ def get_user_config_file() -> Path:
 
 
 def is_initialized() -> bool:
-    """Check if user-level claudefig directory is initialized.
+    """Check if user-level claudefig directory is properly initialized.
+
+    Validates existence of all critical directories and files.
 
     Returns:
-        True if ~/.claudefig/ exists and has basic structure, False otherwise.
+        True if all critical structure exists, False otherwise.
     """
     config_dir = get_user_config_dir()
-    return (
-        config_dir.exists()
-        and (config_dir / "presets").exists()
-        and (config_dir / "components").exists()
-    )
+
+    # Check main directory
+    if not config_dir.exists():
+        return False
+
+    # Check critical subdirectories
+    required_dirs = [
+        "presets",
+        "cache",
+        "components",
+    ]
+
+    for dir_name in required_dirs:
+        if not (config_dir / dir_name).exists():
+            return False
+
+    # Check critical files
+    if not (config_dir / "config.toml").exists():
+        return False
+
+    return True
 
 
 def ensure_user_config(verbose: bool = True) -> Path:
@@ -101,7 +116,6 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
         # Create directory structure
         config_dir.mkdir(parents=True, exist_ok=True)
         (config_dir / "presets").mkdir(parents=True, exist_ok=True)
-        (config_dir / "templates").mkdir(parents=True, exist_ok=True)
         (config_dir / "cache").mkdir(parents=True, exist_ok=True)
 
         # Create components directory with subdirectories for each file type
@@ -117,6 +131,9 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
             "hooks",
             "output_styles",
             "mcp",
+            "settings_json",
+            "settings_local_json",
+            "statusline",
         ]
         for component_type in component_types:
             (components_dir / component_type).mkdir(parents=True, exist_ok=True)
@@ -126,6 +143,9 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
 
         # Create default user config file
         create_default_user_config(config_dir / "config.toml", verbose=verbose)
+
+        # Populate presets directory with library presets
+        _ensure_presets_populated(config_dir / "presets", verbose=verbose)
 
         if verbose:
             console.print(
@@ -172,6 +192,37 @@ show_hints = true
     except Exception as e:
         console.print(f"[red]Error creating user config:[/red] {e}")
         raise
+
+
+def _ensure_presets_populated(presets_dir: Path, verbose: bool = True) -> None:
+    """Populate presets directory with library presets if empty.
+
+    Args:
+        presets_dir: Path to presets directory.
+        verbose: Whether to print progress messages.
+    """
+    try:
+        # Import here to avoid circular import
+        from claudefig.config_template_manager import ConfigTemplateManager
+
+        # Instantiating ConfigTemplateManager triggers _ensure_default_presets()
+        # which populates the presets directory with TOML files from library
+        ConfigTemplateManager(global_presets_dir=presets_dir)
+
+        if verbose:
+            # Count preset files created
+            preset_files = list(presets_dir.glob("*.toml"))
+            if preset_files:
+                console.print(
+                    f"[green]+[/green] Populated {len(preset_files)} preset(s) from library"
+                )
+
+    except Exception as e:
+        # Non-fatal - presets will be created on first use
+        if verbose:
+            console.print(
+                f"[yellow]Warning:[/yellow] Could not populate presets: {e}"
+            )
 
 
 def reset_user_config(force: bool = False) -> bool:

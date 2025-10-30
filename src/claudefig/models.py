@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class FileType(Enum):
@@ -94,7 +94,7 @@ class FileType(Enum):
         return self in customizable_types
 
     @property
-    def template_directory(self) -> Optional[str]:
+    def template_directory(self) -> str | None:
         """Get the template subdirectory name for single-instance file types.
 
         Returns the subdirectory name within ~/.claudefig/ where templates are stored,
@@ -111,7 +111,7 @@ class FileType(Enum):
         return template_dirs.get(self)
 
     @property
-    def template_file_extension(self) -> Optional[str]:
+    def template_file_extension(self) -> str | None:
         """Get the expected file extension for templates.
 
         Returns the file extension (with dot) that templates should have,
@@ -146,13 +146,13 @@ class Preset:
     name: str  # Display name (e.g., "Backend Focused")
     description: str  # Description of what this preset provides
     source: PresetSource  # Where this preset comes from
-    template_path: Optional[Path] = (
+    template_path: Path | None = (
         None  # Path to template file (for user/project presets)
     )
     variables: dict[str, Any] = field(
         default_factory=dict
     )  # Template variables with defaults
-    extends: Optional[str] = None  # ID of preset to extend/inherit from
+    extends: str | None = None  # ID of preset to extend/inherit from
     tags: list[str] = field(
         default_factory=list
     )  # Tags for discovery (e.g., ["backend", "python"])
@@ -367,3 +367,115 @@ class ValidationResult:
         if self.valid:
             return "ValidationResult(valid=True)"
         return f"ValidationResult(valid=False, errors={len(self.errors)}, warnings={len(self.warnings)})"
+
+
+# ============================================================================
+# Phase 1: New Models for Preset Refactor
+# ============================================================================
+
+
+@dataclass
+class PresetDefinition:
+    """Preset definition from .claudefig.toml file.
+
+    Represents a complete preset configuration including metadata
+    and component references.
+    """
+
+    name: str
+    version: str
+    description: str
+    components: list["ComponentReference"]
+
+    @classmethod
+    def from_toml(cls, path: Path) -> "PresetDefinition":
+        """Load preset definition from .claudefig.toml file.
+
+        Args:
+            path: Path to .claudefig.toml file
+
+        Returns:
+            PresetDefinition instance
+
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            ValueError: If TOML is invalid
+        """
+        if not path.exists():
+            raise FileNotFoundError(f"Preset definition not found: {path}")
+
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib  # type: ignore
+
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+
+        preset_data = data.get("preset", {})
+        components_data = data.get("components", [])
+
+        components = [ComponentReference.from_dict(c) for c in components_data]
+
+        return cls(
+            name=preset_data.get("name", ""),
+            version=preset_data.get("version", "1.0.0"),
+            description=preset_data.get("description", ""),
+            components=components,
+        )
+
+    def to_toml(self, path: Path) -> None:
+        """Save preset definition to .claudefig.toml file.
+
+        Args:
+            path: Path where to save the file
+        """
+        import tomli_w
+
+        data = {
+            "preset": {
+                "name": self.name,
+                "version": self.version,
+                "description": self.description,
+            },
+            "components": [c.to_dict() for c in self.components],
+        }
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(tomli_w.dumps(data), encoding="utf-8")
+
+
+@dataclass
+class ComponentReference:
+    """Reference to a component within a preset.
+
+    Defines which component to use and where to place it.
+    """
+
+    type: str  # FileType (claude_md, gitignore, etc.)
+    name: str  # Component name (default, standard, etc.)
+    path: str  # Target path in project
+    enabled: bool = True
+    variables: dict = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ComponentReference":
+        """Create from dict (from TOML)."""
+        return cls(
+            type=data.get("type", ""),
+            name=data.get("name", ""),
+            path=data.get("path", ""),
+            enabled=data.get("enabled", True),
+            variables=data.get("variables", {}),
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to dict (for TOML)."""
+        result = {
+            "type": self.type,
+            "name": self.name,
+            "path": self.path,
+            "enabled": self.enabled,
+        }
+        if self.variables:
+            result["variables"] = self.variables
+        return result

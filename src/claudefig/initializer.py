@@ -13,7 +13,7 @@ from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
 from claudefig.template_manager import FileTemplateManager
-from claudefig.utils import ensure_directory, is_git_repository
+from claudefig.utils.paths import ensure_directory, is_git_repository
 
 console = Console()
 
@@ -760,7 +760,7 @@ class Initializer:
         """
 
         # Source is claude/filename in template
-        source_path = f"claude/{filename}"
+        source_path = Path("claude") / filename
         # Destination is dest_dir/filename (not dest_dir/claude/filename)
         dest_path = dest_dir / filename
 

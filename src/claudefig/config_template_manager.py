@@ -18,68 +18,12 @@ else:
 
 import tomli_w
 
+from claudefig.models import PresetDefinition
 from claudefig.preset_validator import PresetValidator
+from claudefig.services.preset_definition_loader import PresetDefinitionLoader
 
 if TYPE_CHECKING:
     from claudefig.config import Config
-
-
-# Data-driven preset definitions
-# Each preset is defined by its description and list of file configurations
-PRESET_DEFINITIONS = {
-    "default": {
-        "description": "Default Claude Code configuration with recommended settings",
-        "files": [
-            ("claude_md", "claude_md:default", "CLAUDE.md"),
-            ("gitignore", "gitignore:standard", ".gitignore"),
-            ("settings_json", "settings_json:default", ".claude/settings.json"),
-            ("commands", "commands:default", ".claude/commands/"),
-        ],
-    },
-    "minimal": {
-        "description": "Minimal Claude Code setup - just CLAUDE.md",
-        "files": [
-            ("claude_md", "claude_md:minimal", "CLAUDE.md"),
-        ],
-    },
-    "full": {
-        "description": "Full Claude Code setup with all features enabled",
-        "files": [
-            ("claude_md", "claude_md:default", "CLAUDE.md"),
-            ("gitignore", "gitignore:standard", ".gitignore"),
-            ("settings_json", "settings_json:default", ".claude/settings.json"),
-            (
-                "settings_local_json",
-                "settings_local_json:default",
-                ".claude/settings.local.json",
-            ),
-            ("commands", "commands:default", ".claude/commands/"),
-            ("agents", "agents:default", ".claude/agents/"),
-            ("hooks", "hooks:default", ".claude/hooks/"),
-            ("output_styles", "output_styles:default", ".claude/output-styles/"),
-            ("statusline", "statusline:default", ".claude/statusline.sh"),
-            ("mcp", "mcp:default", ".claude/mcp/"),
-        ],
-    },
-    "backend": {
-        "description": "Backend-focused Claude Code setup",
-        "files": [
-            ("claude_md", "claude_md:backend", "CLAUDE.md"),
-            ("gitignore", "gitignore:python", ".gitignore"),
-            ("settings_json", "settings_json:default", ".claude/settings.json"),
-            ("commands", "commands:default", ".claude/commands/"),
-        ],
-    },
-    "frontend": {
-        "description": "Frontend-focused Claude Code setup",
-        "files": [
-            ("claude_md", "claude_md:frontend", "CLAUDE.md"),
-            ("gitignore", "gitignore:standard", ".gitignore"),
-            ("settings_json", "settings_json:default", ".claude/settings.json"),
-            ("commands", "commands:default", ".claude/commands/"),
-        ],
-    },
-}
 
 
 class ConfigTemplateManager:
@@ -101,52 +45,74 @@ class ConfigTemplateManager:
         )
         self.validator = PresetValidator(self.global_presets_dir)
 
+        # Initialize preset loader
+        self.preset_loader = PresetDefinitionLoader(
+            user_presets_path=self.global_presets_dir
+        )
+
         # Ensure directory exists and has default presets
         self._ensure_presets_directory()
-        self._ensure_default_preset()
+        self._ensure_default_presets()
 
     def _ensure_presets_directory(self) -> None:
         """Create ~/.claudefig/presets/ if it doesn't exist."""
         self.global_presets_dir.mkdir(parents=True, exist_ok=True)
 
-    def _ensure_default_preset(self) -> None:
-        """Create default.toml preset and variants if they don't exist."""
-        for preset_name in PRESET_DEFINITIONS:
+    def _ensure_default_presets(self) -> None:
+        """Create default preset configs in ~/.claudefig/presets/ if they don't exist.
+
+        Loads preset definitions from library and converts them to config files.
+        """
+        # Get list of available presets from library
+        available_presets = self.preset_loader.list_available_presets()
+
+        for preset_name in available_presets:
             preset_path = self.global_presets_dir / f"{preset_name}.toml"
             if not preset_path.exists():
-                config_data = self._build_from_definition(preset_name)
-                with open(preset_path, "wb") as f:
-                    tomli_w.dump(config_data, f)
+                try:
+                    # Load preset definition from library
+                    preset_def = self.preset_loader.load_preset(preset_name)
+                    # Convert to config format
+                    config_data = self._build_from_preset_definition(preset_def)
+                    # Save to user presets directory
+                    with open(preset_path, "wb") as f:
+                        tomli_w.dump(config_data, f)
+                except FileNotFoundError:
+                    # Preset not found in library, skip
+                    continue
+                except (OSError, ValueError, KeyError, AttributeError):
+                    # Error loading/converting preset, skip
+                    continue
 
-    def _build_from_definition(self, preset_name: str) -> dict:
-        """Build a preset configuration from its definition.
+    def _build_from_preset_definition(self, preset_def: PresetDefinition) -> dict:
+        """Build a config file from a PresetDefinition.
 
         Args:
-            preset_name: Name of preset to build (must exist in PRESET_DEFINITIONS)
+            preset_def: PresetDefinition loaded from .claudefig.toml
 
         Returns:
-            Complete preset configuration dict
-
-        Raises:
-            KeyError: If preset_name not found in PRESET_DEFINITIONS
+            Complete config structure dict suitable for saving as .toml
         """
-        if preset_name not in PRESET_DEFINITIONS:
-            raise KeyError(f"Unknown preset: {preset_name}")
-
-        definition = PRESET_DEFINITIONS[preset_name]
-
-        # Build files list from definition
+        # Build files list from component references
         files = []
-        for _i, (file_type, preset, path) in enumerate(definition["files"], 1):
-            file_id = f"{preset_name}-{file_type.replace('_', '-')}"
+        for i, component in enumerate(preset_def.components, 1):
+            if not component.enabled:
+                continue
+
+            # Generate file ID
+            file_id = f"{preset_def.name}-{component.type.replace('_', '-')}-{i}"
+
+            # Build preset reference in format "type:name"
+            preset_ref = f"{component.type}:{component.name}"
+
             files.append(
                 {
                     "id": file_id,
-                    "type": file_type,
-                    "preset": preset,
-                    "path": path,
-                    "enabled": True,
-                    "variables": {},
+                    "type": component.type,
+                    "preset": preset_ref,
+                    "path": component.path,
+                    "enabled": component.enabled,
+                    "variables": component.variables if component.variables else {},
                 }
             )
 
@@ -155,7 +121,7 @@ class ConfigTemplateManager:
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
-                "description": definition["description"],
+                "description": preset_def.description,
             },
             "init": {"overwrite_existing": False},
             "files": files,

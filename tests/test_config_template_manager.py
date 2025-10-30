@@ -41,11 +41,12 @@ class TestConfigTemplateManagerInit:
         ConfigTemplateManager(global_presets_dir=global_dir)
 
         # Check that preset files were created
+        # Only "default" preset exists in the library after simplification
         assert (global_dir / "default.toml").exists()
-        assert (global_dir / "minimal.toml").exists()
-        assert (global_dir / "full.toml").exists()
-        assert (global_dir / "backend.toml").exists()
-        assert (global_dir / "frontend.toml").exists()
+
+        # Verify at least one preset was created
+        preset_files = list(global_dir.glob("*.toml"))
+        assert len(preset_files) >= 1
 
 
 class TestListGlobalPresets:
@@ -218,7 +219,8 @@ class TestPresetConfigCreation:
     def test_create_default_preset_config(self):
         """Test creating default preset configuration."""
         manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("default")
+        preset_def = manager.preset_loader.load_preset("default")
+        config = manager._build_from_preset_definition(preset_def)
 
         assert "claudefig" in config
         assert config["claudefig"]["version"] == "2.0"
@@ -229,10 +231,12 @@ class TestPresetConfigCreation:
         assert any("claude-md" in fid for fid in file_ids)
         assert any("gitignore" in fid for fid in file_ids)
 
+    @pytest.mark.skip(reason="minimal preset removed during simplification")
     def test_create_minimal_preset_config(self):
         """Test creating minimal preset configuration."""
         manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("minimal")
+        preset_def = manager.preset_loader.load_preset("minimal")
+        config = manager._build_from_preset_definition(preset_def)
 
         assert "claudefig" in config
         assert "files" in config
@@ -240,10 +244,12 @@ class TestPresetConfigCreation:
         assert len(config["files"]) == 1
         assert config["files"][0]["type"] == "claude_md"
 
+    @pytest.mark.skip(reason="full preset removed during simplification")
     def test_create_full_preset_config(self):
         """Test creating full preset configuration."""
         manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("full")
+        preset_def = manager.preset_loader.load_preset("full")
+        config = manager._build_from_preset_definition(preset_def)
 
         assert "claudefig" in config
         assert "files" in config
@@ -259,19 +265,23 @@ class TestPresetConfigCreation:
         assert "statusline" in file_types
         assert "mcp" in file_types
 
+    @pytest.mark.skip(reason="backend preset removed during simplification")
     def test_create_backend_preset_config(self):
         """Test creating backend preset configuration."""
         manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("backend")
+        preset_def = manager.preset_loader.load_preset("backend")
+        config = manager._build_from_preset_definition(preset_def)
 
         assert "claudefig" in config
         assert "files" in config
         assert "backend" in config["claudefig"]["description"].lower()
 
+    @pytest.mark.skip(reason="frontend preset removed during simplification")
     def test_create_frontend_preset_config(self):
         """Test creating frontend preset configuration."""
         manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("frontend")
+        preset_def = manager.preset_loader.load_preset("frontend")
+        config = manager._build_from_preset_definition(preset_def)
 
         assert "claudefig" in config
         assert "files" in config
