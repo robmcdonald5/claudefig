@@ -6,16 +6,10 @@ This package provides utility functions organized by category:
 - validation: Input validation (see services/validation_service.py)
 """
 
-# Platform utilities
 # Path utilities
-from claudefig.utils.paths import (
-    ensure_directory,
-    find_file_upwards,
-    get_relative_path,
-    is_git_repository,
-    is_subdirectory,
-    safe_path_join,
-)
+from claudefig.utils.paths import ensure_directory, is_git_repository
+
+# Platform utilities
 from claudefig.utils.platform import (
     get_editor_command,
     get_platform,
@@ -40,8 +34,4 @@ __all__ = [
     # Paths
     "ensure_directory",
     "is_git_repository",
-    "find_file_upwards",
-    "is_subdirectory",
-    "get_relative_path",
-    "safe_path_join",
 ]
