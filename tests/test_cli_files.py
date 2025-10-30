@@ -6,6 +6,8 @@ import pytest
 from click.testing import CliRunner
 
 from claudefig.cli import main
+from claudefig.models import FileInstance, FileType
+from tests.factories import FileInstanceFactory
 
 
 @pytest.fixture
@@ -88,19 +90,12 @@ class TestFilesList:
         mock_get_file_instances.return_value = mock_load_config.return_value["files"]
 
         # Mock instance loading
-        claude_instance = FileInstance(
-            id="test-claude-md",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
-        settings_instance = FileInstance(
+        claude_instance = FileInstanceFactory(id="test-claude-md")
+        settings_instance = FileInstanceFactory.disabled(
             id="test-settings",
             type=FileType.SETTINGS_JSON,
             preset="settings_json:default",
             path=".claude/settings.json",
-            enabled=False,
         )
         mock_load_instances.return_value = (
             {"test-claude-md": claude_instance, "test-settings": settings_instance},
@@ -136,13 +131,7 @@ class TestFilesList:
         mock_get_file_instances.return_value = []
 
         # Mock instance loading
-        claude_instance = FileInstance(
-            id="test-claude-md",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        claude_instance = FileInstanceFactory(id="test-claude-md")
         mock_load_instances.return_value = ({"test-claude-md": claude_instance}, [])
         mock_list_instances.return_value = [claude_instance]
 
@@ -176,13 +165,7 @@ class TestFilesList:
         mock_get_file_instances.return_value = []
 
         # Mock instance loading
-        claude_instance = FileInstance(
-            id="test-claude-md",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        claude_instance = FileInstanceFactory(id="test-claude-md")
         mock_load_instances.return_value = ({"test-claude-md": claude_instance}, [])
         mock_list_instances.return_value = [claude_instance]
 
@@ -689,13 +672,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock update operation
@@ -751,13 +728,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock update operation
@@ -815,13 +786,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock update operation
@@ -908,13 +873,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         result = cli_runner.invoke(
@@ -949,13 +908,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock validation failure

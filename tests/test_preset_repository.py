@@ -15,6 +15,7 @@ from claudefig.repositories.preset_repository import (
     FakePresetRepository,
     TomlPresetRepository,
 )
+from tests.factories import PresetFactory
 
 
 class TestTomlPresetRepository:
@@ -96,13 +97,7 @@ class TestTomlPresetRepository:
             user_dir = Path(tmpdir) / "user"
             repo = TomlPresetRepository(user_presets_dir=user_dir)
 
-            preset = Preset(
-                id="claude_md:test",
-                name="test",
-                type=FileType.CLAUDE_MD,
-                description="Test preset",
-                source=PresetSource.USER,
-            )
+            preset = PresetFactory(id="claude_md:test", name="test", description="Test preset")
 
             repo.add_preset(preset, PresetSource.USER)
 
@@ -120,10 +115,9 @@ class TestTomlPresetRepository:
             project_dir = Path(tmpdir) / "project"
             repo = TomlPresetRepository(project_presets_dir=project_dir)
 
-            preset = Preset(
+            preset = PresetFactory(
                 id="claude_md:test",
                 name="test",
-                type=FileType.CLAUDE_MD,
                 description="Test preset",
                 source=PresetSource.PROJECT,
             )
@@ -139,12 +133,8 @@ class TestTomlPresetRepository:
         """Test adding to built-in source raises error."""
         repo = TomlPresetRepository()
 
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.BUILT_IN,
+        preset = PresetFactory(
+            id="claude_md:test", name="test", description="Test", source=PresetSource.BUILT_IN
         )
 
         with pytest.raises(BuiltInModificationError):
@@ -156,13 +146,7 @@ class TestTomlPresetRepository:
             user_dir = Path(tmpdir) / "user"
             repo = TomlPresetRepository(user_presets_dir=user_dir)
 
-            preset = Preset(
-                id="claude_md:test",
-                name="test",
-                type=FileType.CLAUDE_MD,
-                description="Test",
-                source=PresetSource.USER,
-            )
+            preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
             repo.add_preset(preset, PresetSource.USER)
 
@@ -176,13 +160,7 @@ class TestTomlPresetRepository:
             repo = TomlPresetRepository(user_presets_dir=user_dir)
 
             # Add preset
-            preset = Preset(
-                id="claude_md:test",
-                name="test",
-                type=FileType.CLAUDE_MD,
-                description="Test",
-                source=PresetSource.USER,
-            )
+            preset = PresetFactory(id="claude_md:test", name="test", description="Test")
             repo.add_preset(preset, PresetSource.USER)
 
             # Delete preset
@@ -211,13 +189,8 @@ class TestTomlPresetRepository:
             template_file = Path(tmpdir) / "template.md"
             template_file.write_text("# Template Content")
 
-            preset = Preset(
-                id="claude_md:test",
-                name="test",
-                type=FileType.CLAUDE_MD,
-                description="Test",
-                template_path=template_file,
-                source=PresetSource.USER,
+            preset = PresetFactory(
+                id="claude_md:test", name="test", description="Test", template_path=template_file
             )
 
             repo = TomlPresetRepository()
@@ -273,19 +246,9 @@ class TestFakePresetRepository:
 
     def test_init_with_presets(self):
         """Test initialization with preset list."""
-        preset1 = Preset(
-            id="claude_md:test1",
-            name="test1",
-            type=FileType.CLAUDE_MD,
-            description="Test 1",
-            source=PresetSource.USER,
-        )
-        preset2 = Preset(
-            id="gitignore:test2",
-            name="test2",
-            type=FileType.GITIGNORE,
-            description="Test 2",
-            source=PresetSource.USER,
+        preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test 1")
+        preset2 = PresetFactory(
+            id="gitignore:test2", name="test2", type=FileType.GITIGNORE, description="Test 2"
         )
 
         repo = FakePresetRepository([preset1, preset2])
@@ -296,19 +259,9 @@ class TestFakePresetRepository:
 
     def test_list_presets_filter_by_file_type(self):
         """Test filtering by file type."""
-        preset1 = Preset(
-            id="claude_md:test1",
-            name="test1",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
-        preset2 = Preset(
-            id="gitignore:test2",
-            name="test2",
-            type=FileType.GITIGNORE,
-            description="Test",
-            source=PresetSource.USER,
+        preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test")
+        preset2 = PresetFactory(
+            id="gitignore:test2", name="test2", type=FileType.GITIGNORE, description="Test"
         )
 
         repo = FakePresetRepository([preset1, preset2])
@@ -320,19 +273,9 @@ class TestFakePresetRepository:
 
     def test_list_presets_filter_by_source(self):
         """Test filtering by source."""
-        preset1 = Preset(
-            id="claude_md:test1",
-            name="test1",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
-        preset2 = Preset(
-            id="claude_md:test2",
-            name="test2",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.PROJECT,
+        preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test")
+        preset2 = PresetFactory(
+            id="claude_md:test2", name="test2", description="Test", source=PresetSource.PROJECT
         )
 
         repo = FakePresetRepository([preset1, preset2])
@@ -344,13 +287,7 @@ class TestFakePresetRepository:
 
     def test_get_preset_existing(self):
         """Test getting existing preset."""
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
+        preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
         repo = FakePresetRepository([preset])
 
@@ -369,13 +306,7 @@ class TestFakePresetRepository:
 
     def test_exists(self):
         """Test exists method."""
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
+        preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
         repo = FakePresetRepository([preset])
 
@@ -386,13 +317,7 @@ class TestFakePresetRepository:
         """Test adding a preset."""
         repo = FakePresetRepository()
 
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
+        preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
         repo.add_preset(preset, PresetSource.USER)
 
@@ -401,13 +326,7 @@ class TestFakePresetRepository:
 
     def test_add_preset_duplicate_raises_error(self):
         """Test adding duplicate preset raises error."""
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
+        preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
         repo = FakePresetRepository([preset])
 
@@ -420,12 +339,8 @@ class TestFakePresetRepository:
         """Test adding to built-in source raises error."""
         repo = FakePresetRepository()
 
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.BUILT_IN,
+        preset = PresetFactory(
+            id="claude_md:test", name="test", description="Test", source=PresetSource.BUILT_IN
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -435,13 +350,7 @@ class TestFakePresetRepository:
 
     def test_delete_preset_success(self):
         """Test deleting a preset."""
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
+        preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
         repo = FakePresetRepository([preset])
 
@@ -459,13 +368,7 @@ class TestFakePresetRepository:
 
     def test_get_template_content(self):
         """Test getting template content returns mock."""
-        preset = Preset(
-            id="claude_md:test",
-            name="test",
-            type=FileType.CLAUDE_MD,
-            description="Test",
-            source=PresetSource.USER,
-        )
+        preset = PresetFactory(id="claude_md:test", name="test", description="Test")
 
         repo = FakePresetRepository([preset])
 

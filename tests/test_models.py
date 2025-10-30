@@ -9,6 +9,7 @@ from claudefig.models import (
     PresetSource,
     ValidationResult,
 )
+from tests.factories import FileInstanceFactory
 
 
 class TestFileTypeEnum:
@@ -563,19 +564,15 @@ class TestFileInstance:
 
     def test_get_component_name_from_variables(self):
         """Test get_component_name() extracts from variables dict (Priority 1)."""
-        instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            variables={"component_name": "my-custom-component"},
+        instance = FileInstanceFactory(
+            id="test-instance", variables={"component_name": "my-custom-component"}
         )
 
         assert instance.get_component_name() == "my-custom-component"
 
     def test_get_component_name_from_preset(self):
         """Test get_component_name() extracts from preset field (Priority 2)."""
-        instance = FileInstance(
+        instance = FileInstanceFactory(
             id="test-instance",
             type=FileType.COMMANDS,
             preset="commands:backend-focused",
@@ -587,7 +584,7 @@ class TestFileInstance:
 
     def test_get_component_name_empty(self):
         """Test get_component_name() returns empty string when not found (Priority 3)."""
-        instance = FileInstance(
+        instance = FileInstanceFactory(
             id="test-instance",
             type=FileType.SETTINGS_JSON,
             preset="no_colon_preset",  # No colon separator
@@ -599,12 +596,8 @@ class TestFileInstance:
 
     def test_get_component_name_priority(self):
         """Test get_component_name() prioritizes variables over preset."""
-        instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            variables={"component_name": "from-variables"},
+        instance = FileInstanceFactory(
+            id="test-instance", variables={"component_name": "from-variables"}
         )
 
         # Should prefer variables over preset extraction
