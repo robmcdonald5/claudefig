@@ -275,7 +275,6 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 except PresetNotFoundError as e:
                     self.app.notify(str(e), severity="error")
                 except FileExistsError:
-                    # ConfigTemplateManager not yet migrated - backward compatibility
                     self.app.notify(".claudefig.toml already exists!", severity="error")
                 except Exception as e:
                     self.app.notify(f"Error applying preset: {e}", severity="error")
@@ -301,10 +300,8 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
         except FileOperationError as e:
             self.app.notify(str(e), severity="error")
         except ValueError as e:
-            # ConfigTemplateManager not yet migrated - backward compatibility
             self.app.notify(str(e), severity="error")
         except FileNotFoundError as e:
-            # ConfigTemplateManager not yet migrated - backward compatibility
             self.app.notify(str(e), severity="error")
         except Exception as e:
             self.app.notify(f"Error creating preset: {e}", severity="error")
@@ -337,7 +334,6 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 except FileOperationError as e:
                     self.app.notify(str(e), severity="error")
                 except FileNotFoundError as e:
-                    # ConfigTemplateManager not yet migrated - backward compatibility
                     self.app.notify(str(e), severity="error")
                 except Exception as e:
                     self.app.notify(f"Error deleting preset: {e}", severity="error")

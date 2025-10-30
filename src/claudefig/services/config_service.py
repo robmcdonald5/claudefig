@@ -9,6 +9,7 @@ All functions accept a repository for dependency injection, enabling:
 - Swappable storage backends
 """
 
+import copy
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -78,11 +79,9 @@ def load_config(repo: AbstractConfigRepository) -> dict[str, Any]:
 
     try:
         data = repo.load()
-        # Future: Could run validation here and auto-migrate
         return data
-    except Exception:
+    except (OSError, ValueError, KeyError):
         # On any error, return defaults
-        # Future: Could log error or attempt recovery from backup
         return DEFAULT_CONFIG.copy()
 
 
@@ -331,6 +330,22 @@ def validate_config_schema(data: dict[str, Any]) -> ValidationResult:
 
 
 @lru_cache(maxsize=1)
+def _get_config_singleton_cached(config_path: Path | None = None) -> dict[str, Any]:
+    """Internal cached config loader.
+
+    Args:
+        config_path: Optional path to config file.
+
+    Returns:
+        Configuration dictionary (internal use only - do not modify).
+    """
+    from claudefig.repositories import TomlConfigRepository
+
+    path = config_path or find_config_path() or Path.cwd() / ".claudefig.toml"
+    repo = TomlConfigRepository(path)
+    return load_config(repo)
+
+
 def get_config_singleton(config_path: Path | None = None) -> dict[str, Any]:
     """Get singleton configuration instance (cached).
 
@@ -341,17 +356,14 @@ def get_config_singleton(config_path: Path | None = None) -> dict[str, Any]:
         config_path: Optional path to config file. If None, searches using find_config_path().
 
     Returns:
-        Configuration dictionary.
+        Configuration dictionary (a deep copy to prevent cache pollution).
 
     Note:
-        This function caches the result. Call get_config_singleton.cache_clear()
-        to force reload.
+        This function caches the result. Call reload_config_singleton()
+        to force reload from disk.
     """
-    from claudefig.repositories import TomlConfigRepository
-
-    path = config_path or find_config_path() or Path.cwd() / ".claudefig.toml"
-    repo = TomlConfigRepository(path)
-    return load_config(repo)
+    # Return a deep copy to prevent callers from modifying the cached dict
+    return copy.deepcopy(_get_config_singleton_cached(config_path))
 
 
 def reload_config_singleton() -> dict[str, Any]:
@@ -360,5 +372,5 @@ def reload_config_singleton() -> dict[str, Any]:
     Returns:
         Freshly loaded configuration dictionary.
     """
-    get_config_singleton.cache_clear()
+    _get_config_singleton_cached.cache_clear()
     return get_config_singleton()
