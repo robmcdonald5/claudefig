@@ -245,18 +245,166 @@ class TomlPresetRepository(AbstractPresetRepository):
             TemplateNotFoundError: If template file doesn't exist.
             FileReadError: If read operation fails.
         """
-        if not preset.template_path:
+        # If preset has explicit template_path, use it
+        if preset.template_path and preset.template_path.exists():
+            try:
+                return preset.template_path.read_text(encoding="utf-8")
+            except Exception as e:
+                raise FileReadError(str(preset.template_path), str(e)) from e
+
+        # Otherwise, resolve from preset source using component system
+        component_path = self._resolve_component_path(preset)
+
+        if not component_path or not component_path.exists():
             raise TemplateNotFoundError(
-                preset.id, f"No template path configured for preset '{preset.id}'"
+                preset.id,
+                f"Component file not found for preset '{preset.id}' at {component_path}",
             )
 
-        if not preset.template_path.exists():
-            raise TemplateNotFoundError(preset.id, str(preset.template_path))
+        try:
+            return component_path.read_text(encoding="utf-8")
+        except Exception as e:
+            raise FileReadError(str(component_path), str(e)) from e
+
+    def _resolve_component_path(self, preset: Preset) -> Path | None:
+        """Resolve the component file path for a preset.
+
+        Args:
+            preset: Preset to resolve component path for
+
+        Returns:
+            Path to component file, or None if not found
+        """
+        # Extract component name from preset ID (e.g., "gitignore:default" -> "default")
+        component_name = preset.id.split(":")[-1] if ":" in preset.id else preset.name
+
+        # Determine component file name based on file type
+        file_name = self._get_component_filename(preset.type)
+
+        if preset.source == PresetSource.BUILT_IN:
+            return self._resolve_builtin_component(
+                preset.type, component_name, file_name
+            )
+        elif preset.source == PresetSource.USER:
+            return self._resolve_user_component(preset.type, component_name, file_name)
+        elif preset.source == PresetSource.PROJECT:
+            return self._resolve_project_component(
+                preset.type, component_name, file_name
+            )
+
+        return None
+
+    def _get_component_filename(self, file_type: FileType) -> str:
+        """Get the expected filename for a component type.
+
+        Args:
+            file_type: Type of file/component
+
+        Returns:
+            Expected filename for that component type
+        """
+        filename_map = {
+            FileType.CLAUDE_MD: "CLAUDE.md",
+            FileType.GITIGNORE: "entries.txt",
+            FileType.SETTINGS_JSON: "settings.json",
+            FileType.SETTINGS_LOCAL_JSON: "settings.local.json",
+            FileType.STATUSLINE: "statusline.sh",
+            FileType.COMMANDS: "example.md",  # Commands are usually example files
+            FileType.AGENTS: "example.md",
+            FileType.HOOKS: "example.py",
+            FileType.OUTPUT_STYLES: "example.md",
+            FileType.MCP: "config.json",  # MCP servers use config.json
+        }
+        return filename_map.get(file_type, "template.txt")
+
+    def _resolve_builtin_component(
+        self, file_type: FileType, component_name: str, file_name: str
+    ) -> Path | None:
+        """Resolve component path from built-in presets.
+
+        Args:
+            file_type: Type of file/component
+            component_name: Name of the component variant
+            file_name: Expected filename
+
+        Returns:
+            Path to component file, or None if not found
+        """
+        from importlib.resources import files
 
         try:
-            return preset.template_path.read_text(encoding="utf-8")
-        except Exception as e:
-            raise FileReadError(str(preset.template_path), str(e)) from e
+            # Path: src/presets/default/components/{file_type}/{component_name}/{file_name}
+            builtin_source = files("claudefig").joinpath("../presets/default")
+
+            # Get the actual path
+            if hasattr(builtin_source, "__fspath__"):
+                source_path = Path(builtin_source)  # type: ignore[arg-type]
+            else:
+                # For Python 3.10+, extract path as string
+                source_path = Path(str(builtin_source))
+
+            component_path = (
+                source_path
+                / "components"
+                / file_type.value
+                / component_name
+                / file_name
+            )
+
+            return component_path if component_path.exists() else None
+
+        except Exception:
+            return None
+
+    def _resolve_user_component(
+        self, file_type: FileType, component_name: str, file_name: str
+    ) -> Path | None:
+        """Resolve component path from user presets.
+
+        Args:
+            file_type: Type of file/component
+            component_name: Name of the component variant
+            file_name: Expected filename
+
+        Returns:
+            Path to component file, or None if not found
+        """
+        # Path: ~/.claudefig/presets/default/components/{file_type}/{component_name}/{file_name}
+        component_path = (
+            self.user_presets_dir
+            / "default"
+            / "components"
+            / file_type.value
+            / component_name
+            / file_name
+        )
+
+        return component_path if component_path.exists() else None
+
+    def _resolve_project_component(
+        self, file_type: FileType, component_name: str, file_name: str
+    ) -> Path | None:
+        """Resolve component path from project presets.
+
+        Args:
+            file_type: Type of file/component
+            component_name: Name of the component variant
+            file_name: Expected filename
+
+        Returns:
+            Path to component file, or None if not found
+        """
+        # Path: .claudefig/presets/default/components/{file_type}/{component_name}/{file_name}
+        component_path = (
+            self.project_presets_dir
+            / "default"
+            / "components"
+            / file_type.value
+            / component_name
+            / file_name
+        )
+
+        return component_path if component_path.exists() else None
 
     def clear_cache(self) -> None:
         """Clear the internal preset cache.
@@ -364,6 +512,14 @@ class TomlPresetRepository(AbstractPresetRepository):
                 tags=["personal", "local"],
             ),
             # Gitignore presets
+            Preset(
+                id="gitignore:default",
+                type=FileType.GITIGNORE,
+                name="Default",
+                description="Default Claude Code gitignore entries",
+                source=PresetSource.BUILT_IN,
+                tags=["default", "standard"],
+            ),
             Preset(
                 id="gitignore:standard",
                 type=FileType.GITIGNORE,
