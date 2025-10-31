@@ -260,7 +260,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
 
             if result and result.get("action") == "apply":
                 try:
-                    self.config_template_manager.apply_preset_to_project(preset_name)
+                    # User has confirmed via modal, so overwrite existing config
+                    self.config_template_manager.apply_preset_to_project(
+                        preset_name, overwrite=True
+                    )
                     self.app.notify(
                         f"Applied preset '{preset_name}' successfully!",
                         severity="information",
@@ -282,8 +285,6 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                     self.app.notify(str(e), severity="error")
                 except PresetNotFoundError as e:
                     self.app.notify(str(e), severity="error")
-                except FileExistsError:
-                    self.app.notify(".claudefig.toml already exists!", severity="error")
                 except Exception as e:
                     self.app.notify(f"Error applying preset: {e}", severity="error")
         except asyncio.CancelledError:

@@ -39,30 +39,30 @@ enabled = false
 
 [[components]]
 type = "commands"
-name = "default"
+name = "example"
 path = ".claude/commands/"
 enabled = false
 
 [[components]]
 type = "agents"
-name = "default"
+name = "example"
 path = ".claude/agents/"
 enabled = false
 
 [[components]]
 type = "hooks"
-name = "default"
+name = "example"
 path = ".claude/hooks/"
 enabled = false
 
 [[components]]
 type = "mcp"
-name = "default"
+name = "example-github"
 path = ".claude/mcp/"
 enabled = false
 
 [[components]]
 type = "output_styles"
-name = "default"
+name = "example"
 path = ".claude/output-styles/"
 enabled = false
