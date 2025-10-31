@@ -305,7 +305,7 @@ class TomlPresetRepository(AbstractPresetRepository):
         """
         filename_map = {
             FileType.CLAUDE_MD: "CLAUDE.md",
-            FileType.GITIGNORE: "entries.txt",
+            FileType.GITIGNORE: ".gitignore",
             FileType.SETTINGS_JSON: "settings.json",
             FileType.SETTINGS_LOCAL_JSON: "settings.local.json",
             FileType.STATUSLINE: "statusline.sh",
@@ -334,7 +334,7 @@ class TomlPresetRepository(AbstractPresetRepository):
 
         try:
             # Path: src/presets/default/components/{file_type}/{component_name}/{file_name}
-            builtin_source = files("claudefig").joinpath("../presets/default")
+            builtin_source = files("presets").joinpath("default")
 
             # Get the actual path
             if hasattr(builtin_source, "__fspath__"):

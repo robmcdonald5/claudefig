@@ -287,12 +287,14 @@ class TestReadTemplateFile:
         """Test reading an existing template file."""
         manager = FileTemplateManager()
 
-        # Read a file from default template (CLAUDE.md should exist)
-        content = manager.read_template_file("default", "CLAUDE.md")
+        # Read a file from default template (.claudefig.toml should exist)
+        content = manager.read_template_file("default", ".claudefig.toml")
 
         # Should return string content
         assert isinstance(content, str)
         assert len(content) > 0
+        # Verify it's a valid preset configuration file
+        assert "[preset]" in content or "[claudefig]" in content
 
     def test_read_nonexistent_file_raises(self):
         """Test that reading non-existent file raises FileNotFoundError."""

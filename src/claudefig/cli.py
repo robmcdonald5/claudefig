@@ -1461,19 +1461,27 @@ def templates_show(template_name):
     extra_handlers={
         TemplateNotFoundError: lambda e: (
             console.print(f"[red]Template not found:[/red] {e}"),  # type: ignore[func-returns-value]
-            console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"),  # type: ignore[func-returns-value]
+            console.print(
+                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+            ),  # type: ignore[func-returns-value]
         )[-1],
         FileNotFoundError: lambda e: (
             console.print(f"[red]Template not found:[/red] {e}"),  # type: ignore[func-returns-value]
-            console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"),  # type: ignore[func-returns-value]
+            console.print(
+                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+            ),  # type: ignore[func-returns-value]
         )[-1],
         ConfigFileExistsError: lambda e: (
             console.print(f"[red]Error:[/red] {e}"),  # type: ignore[func-returns-value]
-            console.print("[dim]Remove existing config or choose a different directory[/dim]"),  # type: ignore[func-returns-value]
+            console.print(
+                "[dim]Remove existing config or choose a different directory[/dim]"
+            ),  # type: ignore[func-returns-value]
         )[-1],
         FileExistsError: lambda e: (
             console.print("[red]Error:[/red] .claudefig.toml already exists"),  # type: ignore[func-returns-value]
-            console.print("[dim]Remove existing config or choose a different directory[/dim]"),  # type: ignore[func-returns-value]
+            console.print(
+                "[dim]Remove existing config or choose a different directory[/dim]"
+            ),  # type: ignore[func-returns-value]
         )[-1],
     },
 )

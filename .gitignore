@@ -154,8 +154,9 @@ src/claudefig/_version.py
 # Claude
 .claude/
 CLAUDE.md
-# Exception: Include template CLAUDE.md file
+# Exception: Include template CLAUDE.md files in presets
 !src/presets/default/CLAUDE.md
+!src/presets/**/components/**/CLAUDE.md
 
 # Test directories
 test-init-demo/
