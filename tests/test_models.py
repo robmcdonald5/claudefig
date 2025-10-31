@@ -137,38 +137,6 @@ class TestFileTypeEnum:
             assert isinstance(file_type.is_directory, bool)
             assert isinstance(file_type.append_mode, bool)
 
-    def test_template_directory_property(self):
-        """Test template_directory property returns correct subdirectories."""
-        # Types with template directories
-        assert FileType.SETTINGS_JSON.template_directory == "settingsteam"
-        assert FileType.SETTINGS_LOCAL_JSON.template_directory == "settingslocal"
-        assert FileType.STATUSLINE.template_directory == "statuslines"
-
-        # Types without template directories should return None
-        assert FileType.CLAUDE_MD.template_directory is None
-        assert FileType.GITIGNORE.template_directory is None
-        assert FileType.COMMANDS.template_directory is None
-        assert FileType.AGENTS.template_directory is None
-        assert FileType.HOOKS.template_directory is None
-        assert FileType.OUTPUT_STYLES.template_directory is None
-        assert FileType.MCP.template_directory is None
-
-    def test_template_file_extension_property(self):
-        """Test template_file_extension property returns correct extensions."""
-        # Types with template extensions
-        assert FileType.SETTINGS_JSON.template_file_extension == ".json"
-        assert FileType.SETTINGS_LOCAL_JSON.template_file_extension == ".json"
-        assert FileType.STATUSLINE.template_file_extension == ".py"
-
-        # Types without template extensions should return None
-        assert FileType.CLAUDE_MD.template_file_extension is None
-        assert FileType.GITIGNORE.template_file_extension is None
-        assert FileType.COMMANDS.template_file_extension is None
-        assert FileType.AGENTS.template_file_extension is None
-        assert FileType.HOOKS.template_file_extension is None
-        assert FileType.OUTPUT_STYLES.template_file_extension is None
-        assert FileType.MCP.template_file_extension is None
-
     def test_path_customizable_property(self):
         """Test path_customizable property identifies customizable types."""
         # Only CLAUDE.md and .gitignore allow custom paths

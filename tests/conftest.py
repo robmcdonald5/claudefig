@@ -72,7 +72,7 @@ user_editable = true
 
 @pytest.fixture
 def mock_user_home(tmp_path: Path, monkeypatch):
-    """Mock Path.home() and platformdirs to use temp directory.
+    """Mock Path.home() to use temp directory.
 
     Args:
         tmp_path: Pytest temporary path fixture.
@@ -84,12 +84,6 @@ def mock_user_home(tmp_path: Path, monkeypatch):
     home_dir = tmp_path / "home"
     home_dir.mkdir()
     monkeypatch.setattr(Path, "home", lambda: home_dir)
-
-    # Mock platformdirs to use the legacy location for test compatibility
-    monkeypatch.setattr(
-        "claudefig.user_config.user_config_dir",
-        lambda app_name, appauthor=None: str(home_dir / ".claudefig")
-    )
 
     return home_dir
 
