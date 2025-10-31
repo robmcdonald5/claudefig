@@ -7,6 +7,10 @@
 
 Universal configuration manager for Claude Code projects with preset templates and interactive TUI.
 
+**User Configuration Directory:**
+- Windows: `C:\Users\{username}\.claudefig\`
+- macOS/Linux: `~/.claudefig/`
+
 ## Overview
 
 **claudefig** helps you set up and manage Claude Code repositories with a powerful preset system and interactive terminal UI. Instead of manually creating configuration files, use presets to generate best-practice templates for CLAUDE.md files, settings, slash commands, agents, hooks, and more.
@@ -314,6 +318,7 @@ claudefig --help
 - [Installation Guide](#installation) - Installation instructions
 - [Quick Start](#quick-start) - Get up and running quickly
 - [Usage Examples](#usage) - Common workflows and examples
+- [Architecture Documentation](ARCHITECTURE.md) - System architecture and design patterns
 - [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
 - [Changelog](CHANGELOG.md) - Version history
 
