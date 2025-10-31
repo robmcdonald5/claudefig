@@ -141,11 +141,13 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
 
                         # Component/Template selector
                         with Horizontal(classes="tab-actions"):
-                            # Get available components for this file type
-                            from claudefig.user_config import get_components_dir
+                            # Get available components from both global and preset sources
+                            from claudefig.user_config import (
+                                get_components_dir,
+                                get_user_config_dir,
+                            )
 
                             components = []
-                            components_dir = get_components_dir()
 
                             # Map file type to component directory (unified for all types)
                             type_dirs = {
@@ -161,35 +163,39 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                                 FileType.STATUSLINE: "statusline",
                             }
 
-                            type_dir = components_dir / type_dirs.get(
-                                file_type, file_type.value
-                            )
+                            type_dir_name = type_dirs.get(file_type, file_type.value)
 
-                            if type_dir.exists():
-                                # For folder-based components (files that need unique names)
-                                if file_type in (
-                                    FileType.CLAUDE_MD,
-                                    FileType.GITIGNORE,
-                                    FileType.SETTINGS_JSON,
-                                    FileType.SETTINGS_LOCAL_JSON,
-                                    FileType.STATUSLINE,
-                                ):
-                                    components = [
-                                        (item.name, item)
-                                        for item in type_dir.iterdir()
-                                        if item.is_dir()
-                                    ]
-                                else:
-                                    # For JSON-based components (commands, agents, hooks, etc.)
-                                    components = [
-                                        (item.stem, item)
-                                        for item in type_dir.glob("*.json")
-                                    ]
+                            # Scan global components: ~/.claudefig/components/{type}/
+                            components_dir = get_components_dir()
+                            global_type_dir = components_dir / type_dir_name
+
+                            if global_type_dir.exists():
+                                # All component types are folder-based (directories with files inside)
+                                components.extend([
+                                    (f"{item.name} (g)", item, "global")
+                                    for item in global_type_dir.iterdir()
+                                    if item.is_dir()
+                                ])
+
+                            # Scan preset components: ~/.claudefig/presets/default/components/{type}/
+                            user_config_dir = get_user_config_dir()
+                            default_preset_dir = user_config_dir / "presets" / "default"
+                            preset_type_dir = default_preset_dir / "components" / type_dir_name
+
+                            if preset_type_dir.exists():
+                                # All component types are folder-based
+                                components.extend([
+                                    (f"{item.name} (p)", item, "preset")
+                                    for item in preset_type_dir.iterdir()
+                                    if item.is_dir()
+                                ])
 
                             if components:
-                                # Build options: (display_name, component_name/template_name)
+                                # Build options: (display_name, component_data)
+                                # Store component data as JSON string: "name|source"
                                 component_options = [
-                                    (f"+ Add {name}", name) for name, _ in components
+                                    (f"+ Add {display_name}", f"{path.stem if not path.is_dir() else path.name}|{source}")
+                                    for display_name, path, source in components
                                 ]
 
                                 yield Select(
@@ -239,15 +245,23 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
 
         # Extract file type from select id
         file_type_value = select_id.replace("select-add-", "")
-        component_name = event.value
+        component_data = event.value
 
         # Ignore if blank/prompt selected or not a string
-        if not component_name or not isinstance(component_name, str):
+        if not component_data or not isinstance(component_data, str):
             return
+
+        # Parse component data: "name|source"
+        if "|" in component_data:
+            component_name, source = component_data.split("|", 1)
+        else:
+            # Fallback for backward compatibility
+            component_name = component_data
+            source = "global"
 
         try:
             file_type = FileType(file_type_value)
-            self._add_component_instance(file_type, component_name)
+            self._add_component_instance(file_type, component_name, source)
 
             # Reset select back to prompt
             event.select.value = Select.BLANK
@@ -294,7 +308,7 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             instance_id = button_id.replace("toggle-", "")
             self._toggle_instance(instance_id)
 
-    def _add_component_instance(self, file_type: FileType, component_name: str) -> None:
+    def _add_component_instance(self, file_type: FileType, component_name: str, source: str = "global") -> None:
         """Load a component/template and add it as a file instance.
 
         For single-instance types, auto-replaces any existing instance.
@@ -303,6 +317,7 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         Args:
             file_type: Type of file
             component_name: Name of the component/template to load
+            source: Source of component - "global" or "preset"
         """
         try:
             is_single_instance = not file_type.supports_multiple
@@ -334,34 +349,27 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                     if existing.type != file_type:
                         continue
 
-                    # For CLAUDE.md and .gitignore (folder-based), check folder name
-                    if file_type in (FileType.CLAUDE_MD, FileType.GITIGNORE):
-                        component_folder = existing.variables.get(
-                            "component_folder", ""
-                        )
-                        if component_folder:
-                            # Extract the component folder name from the path
-                            folder_name = Path(component_folder).name
-                            if folder_name == component_name:
-                                self.notify(
-                                    f"Component '{component_name}' has already been added",
-                                    severity="warning",
-                                )
-                                return
-                    else:
-                        # For other types, check component file name (stem without extension)
-                        component_file = existing.variables.get("component_file", "")
-                        if component_file:
-                            file_stem = Path(component_file).stem
-                            if file_stem == component_name:
-                                self.notify(
-                                    f"Component '{component_name}' has already been added",
-                                    severity="warning",
-                                )
-                                return
+                    # All types are folder-based now, check component_folder
+                    component_folder = existing.variables.get("component_folder", "")
+                    if component_folder:
+                        # Extract the component folder name from the path
+                        folder_name = Path(component_folder).name
+                        if folder_name == component_name:
+                            self.notify(
+                                f"Component '{component_name}' has already been added",
+                                severity="warning",
+                            )
+                            return
 
             instance = None
-            components_dir = get_components_dir()
+
+            # Determine base components directory based on source
+            if source == "preset":
+                from claudefig.user_config import get_user_config_dir
+                user_config_dir = get_user_config_dir()
+                base_components_dir = user_config_dir / "presets" / "default" / "components"
+            else:
+                base_components_dir = get_components_dir()
 
             type_dirs = {
                 FileType.CLAUDE_MD: "claude_md",
@@ -376,47 +384,23 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                 FileType.STATUSLINE: "statusline",
             }
 
-            type_dir = components_dir / type_dirs.get(file_type, file_type.value)
+            type_dir = base_components_dir / type_dirs.get(file_type, file_type.value)
 
-            # For folder-based components (no component.json needed!)
-            if file_type in (
-                FileType.CLAUDE_MD,
-                FileType.GITIGNORE,
-                FileType.SETTINGS_JSON,
-                FileType.SETTINGS_LOCAL_JSON,
-                FileType.STATUSLINE,
-            ):
-                component_folder = type_dir / component_name
-                if component_folder.exists() and component_folder.is_dir():
-                    # Derive all metadata from folder structure - no component.json needed!
-                    instance = FileInstance(
-                        id=f"{file_type.value}-{component_name}",
-                        type=file_type,
-                        preset=f"component:{component_name}",
-                        path=file_type.default_path,  # Use default path from FileType
-                        enabled=True,
-                        variables={
-                            "component_folder": str(component_folder),
-                            "component_name": component_name,
-                        },
-                    )
-            else:
-                # For JSON-based components
-                import json
-
-                component_file = type_dir / f"{component_name}.json"
-                if component_file.exists():
-                    component_data = json.loads(
-                        component_file.read_text(encoding="utf-8")
-                    )
-                    instance = FileInstance(
-                        id=f"{file_type.value}-{component_name}",
-                        type=file_type,
-                        preset=f"component:{component_name}",
-                        path=component_data.get("path", file_type.default_path),
-                        enabled=True,
-                        variables={"component_name": component_name},
-                    )
+            # All component types are folder-based (no component.json needed!)
+            component_folder = type_dir / component_name
+            if component_folder.exists() and component_folder.is_dir():
+                # Derive all metadata from folder structure
+                instance = FileInstance(
+                    id=f"{file_type.value}-{component_name}",
+                    type=file_type,
+                    preset=f"component:{component_name}",
+                    path=file_type.default_path,  # Use default path from FileType
+                    enabled=True,
+                    variables={
+                        "component_folder": str(component_folder),
+                        "component_name": component_name,
+                    },
+                )
 
             if not instance:
                 self.notify(
@@ -520,93 +504,66 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             return
 
         # Determine the file to open based on component type
-        file_to_open = None
+        # All component types are now folder-based (consistent with line 389)
+        component_folder = instance.variables.get("component_folder")
 
-        if instance.type in (
-            FileType.CLAUDE_MD,
-            FileType.GITIGNORE,
-            FileType.SETTINGS_JSON,
-            FileType.SETTINGS_LOCAL_JSON,
-            FileType.STATUSLINE,
-        ):
-            # For folder-based components, find the actual file in the folder
-            component_folder = instance.variables.get("component_folder")
+        # If component_folder is missing, try to find it from component_name variable
+        if not component_folder:
+            component_name = instance.variables.get("component_name")
 
-            # If component_folder is missing, try to find it from component_name variable
-            if not component_folder:
-                component_name = instance.variables.get("component_name")
+            # If component_name is also missing, try to extract from preset
+            # Preset format: "claude_md:default" or "gitignore:standard"
+            if not component_name and ":" in instance.preset:
+                component_name = instance.preset.split(":")[-1]
 
-                # If component_name is also missing, try to extract from preset
-                # Preset format: "claude_md:default" or "gitignore:standard"
-                if not component_name and ":" in instance.preset:
-                    component_name = instance.preset.split(":")[-1]
-
-                if component_name:
-                    # Reconstruct the component folder path
-                    components_dir = get_components_dir()
-                    type_dir = components_dir / instance.type.value
-                    component_folder = str(type_dir / component_name)
-                    # Update the instance to cache both values for next time
-                    instance.variables = instance.variables or {}
-                    instance.variables["component_name"] = component_name
-                    instance.variables["component_folder"] = component_folder
-                    file_instance_service.update_instance(
-                        self.instances_dict,
-                        instance,
-                        self.preset_repo,
-                        self.config_repo.config_path.parent,
-                    )
-                    self.sync_instances_to_config()
-                else:
-                    self.notify(
-                        f"Cannot determine component folder - no component_name or component_folder in variables, and cannot extract from preset '{instance.preset}'. Available: {list(instance.variables.keys())}",
-                        severity="error",
-                    )
-                    return
-
-            folder_path = Path(component_folder)
-            if not folder_path.exists():
+            if component_name:
+                # Reconstruct the component folder path
+                components_dir = get_components_dir()
+                type_dir = components_dir / instance.type.value
+                component_folder = str(type_dir / component_name)
+                # Update the instance to cache both values for next time
+                instance.variables = instance.variables or {}
+                instance.variables["component_name"] = component_name
+                instance.variables["component_folder"] = component_folder
+                file_instance_service.update_instance(
+                    self.instances_dict,
+                    instance,
+                    self.preset_repo,
+                    self.config_repo.config_path.parent,
+                )
+                self.sync_instances_to_config()
+            else:
                 self.notify(
-                    f"Component folder does not exist: {folder_path}",
+                    f"Cannot determine component folder - no component_name or component_folder in variables, and cannot extract from preset '{instance.preset}'. Available: {list(instance.variables.keys())}",
                     severity="error",
                 )
                 return
 
-            if not folder_path.is_dir():
-                self.notify(
-                    f"Component folder is not a directory: {folder_path}",
-                    severity="error",
-                )
-                return
+        folder_path = Path(component_folder)
+        if not folder_path.exists():
+            self.notify(
+                f"Component folder does not exist: {folder_path}",
+                severity="error",
+            )
+            return
 
-            # Find the actual file in the folder (uses the filename from the path)
-            actual_filename = Path(instance.path).name
-            file_to_open = folder_path / actual_filename
+        if not folder_path.is_dir():
+            self.notify(
+                f"Component folder is not a directory: {folder_path}",
+                severity="error",
+            )
+            return
 
-            if not file_to_open.exists():
-                self.notify(
-                    f"Component file does not exist: {file_to_open}",
-                    severity="error",
-                )
-                return
-        else:
-            # For other types, use component_file
-            component_file = instance.variables.get("component_file")
-            if not component_file:
-                self.notify(
-                    f"No component file found in variables. Available: {list(instance.variables.keys())}",
-                    severity="error",
-                )
-                return
+        # Find the actual file in the folder (uses the filename from the path)
+        actual_filename = Path(instance.path).name
+        file_to_open = folder_path / actual_filename
 
-            file_to_open = Path(component_file)
-
-            if not file_to_open.exists():
-                self.notify(
-                    f"Component file does not exist: {file_to_open}",
-                    severity="error",
-                )
-                return
+        if not file_to_open.exists():
+            self.notify(
+                f"Component file does not exist: {file_to_open}",
+                severity="error",
+            )
+            return
 
         # Open file using SystemUtilityMixin method
         self.open_file_in_editor(file_to_open)
