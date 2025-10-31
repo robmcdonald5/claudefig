@@ -89,11 +89,15 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 initial_value: str | NoSelection = Select.BLANK
                 if PresetsPanel._last_selected_preset in self._presets_data:
                     initial_value = PresetsPanel._last_selected_preset
+                elif "default" in self._presets_data:
+                    # Default to "default" preset if no previous selection
+                    initial_value = "default"
+                    PresetsPanel._last_selected_preset = "default"
 
                 yield Select(
                     options,
                     prompt="Choose a preset...",
-                    allow_blank=True,
+                    allow_blank=False,  # Changed to False to ensure a preset is always selected
                     value=initial_value,
                     id="preset-select",
                 )
@@ -122,6 +126,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
         # This must be done after mounting so the watch method can find the button
         if PresetsPanel._last_selected_preset in self._presets_data:
             self.selected_preset = PresetsPanel._last_selected_preset
+        elif "default" in self._presets_data:
+            # Default to "default" preset if no previous selection
+            self.selected_preset = "default"
+            PresetsPanel._last_selected_preset = "default"
 
         # Restore focus to the last focused widget
         self.restore_focus()

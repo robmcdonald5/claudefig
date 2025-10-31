@@ -20,8 +20,6 @@ from claudefig.exceptions import (
     ConfigFileNotFoundError,
     FileOperationError,
     InitializationRollbackError,
-    InstanceNotFoundError,
-    InstanceValidationError,
     PresetExistsError,
     PresetNotFoundError,
     TemplateNotFoundError,
@@ -1478,7 +1476,7 @@ def templates_show(template_name):
         TemplateNotFoundError: lambda e: (console.print(f"[red]Template not found:[/red] {e}"), console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"))[-1],
         FileNotFoundError: lambda e: (console.print(f"[red]Template not found:[/red] {e}"), console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"))[-1],
         ConfigFileExistsError: lambda e: (console.print(f"[red]Error:[/red] {e}"), console.print("[dim]Remove existing config or choose a different directory[/dim]"))[-1],
-        FileExistsError: lambda e: (console.print(f"[red]Error:[/red] .claudefig.toml already exists"), console.print("[dim]Remove existing config or choose a different directory[/dim]"))[-1],
+        FileExistsError: lambda e: (console.print("[red]Error:[/red] .claudefig.toml already exists"), console.print("[dim]Remove existing config or choose a different directory[/dim]"))[-1],
     },
 )
 def templates_apply(template_name, path):
@@ -1512,7 +1510,7 @@ def templates_apply(template_name, path):
     extra_handlers={
         TemplateNotFoundError: lambda e: console.print(f"[yellow]Template not found:[/yellow] {e}"),
         ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
-        FileNotFoundError: lambda e: console.print(f"[yellow]Template not found[/yellow]"),
+        FileNotFoundError: lambda e: console.print("[yellow]Template not found[/yellow]"),
     },
 )
 def templates_delete(template_name):
@@ -1564,10 +1562,11 @@ def templates_edit(template_name):
 
     manager = ConfigTemplateManager()
 
-    # Check if template exists
-    template_file = manager.global_presets_dir / f"{template_name}.toml"
+    # Check if template exists (directory-based structure)
+    template_dir = manager.global_presets_dir / template_name
+    template_file = template_dir / ".claudefig.toml"
 
-    if not template_file.exists():
+    if not template_dir.exists() or not template_file.exists():
         console.print(
             format_cli_warning(ErrorMessages.not_found("template", template_name))
         )
@@ -1669,7 +1668,7 @@ def templates_save(template_name, description, path):
         f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]"
     )
     console.print(
-        f"[dim]Location: {manager.global_presets_dir / (template_name + '.toml')}[/dim]"
+        f"[dim]Location: {manager.global_presets_dir / template_name / '.claudefig.toml'}[/dim]"
     )
 
 
