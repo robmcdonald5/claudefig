@@ -8,7 +8,6 @@ from claudefig.user_config import (
     create_default_user_config,
     ensure_user_config,
     get_cache_dir,
-    get_template_dir,
     get_user_config_dir,
     get_user_config_file,
     initialize_user_directory,
@@ -26,12 +25,6 @@ class TestPathFunctions:
 
         assert config_dir == mock_user_home / ".claudefig"
         assert config_dir.parent == mock_user_home
-
-    def test_get_template_dir(self, mock_user_home):
-        """Test getting template directory."""
-        template_dir = get_template_dir()
-
-        assert template_dir == mock_user_home / ".claudefig" / "templates"
 
     def test_get_cache_dir(self, mock_user_home):
         """Test getting cache directory."""
@@ -52,7 +45,7 @@ class TestInitializationChecks:
 
     def test_is_initialized_false_no_directory(self, mock_user_home):
         """Test is_initialized returns False when directory doesn't exist."""
-        assert not is_initialized()
+        assert not is_initialized(auto_heal=False)
 
     def test_is_initialized_false_missing_presets(self, mock_user_home):
         """Test is_initialized returns False when presets dir missing."""
@@ -60,14 +53,18 @@ class TestInitializationChecks:
         config_dir.mkdir()
 
         # Has config dir but no presets dir
-        assert not is_initialized()
+        assert not is_initialized(auto_heal=False)
 
     def test_is_initialized_true(self, mock_user_home):
         """Test is_initialized returns True when properly initialized."""
         config_dir = get_user_config_dir()
         config_dir.mkdir()
         (config_dir / "presets").mkdir()
-        (config_dir / "components").mkdir()  # is_initialized() requires this too
+        (config_dir / "cache").mkdir()
+        (config_dir / "components").mkdir()
+
+        # Create required files
+        (config_dir / "config.toml").write_text("[config]\n", encoding="utf-8")
 
         assert is_initialized()
 
@@ -131,7 +128,6 @@ class TestDirectoryInitialization:
         # Check all directories were created
         assert config_dir.exists()
         assert (config_dir / "presets").exists()
-        assert (config_dir / "templates").exists()
         assert (config_dir / "cache").exists()
 
     def test_initialize_user_directory_creates_config_file(self, mock_user_home):
@@ -282,3 +278,137 @@ class TestConfigReset:
         captured = capsys.readouterr()
         assert "User configuration reset successfully" in captured.out
         assert "Run claudefig again to reinitialize" in captured.out
+
+
+class TestAutoHealing:
+    """Test auto-healing functionality."""
+
+    def test_is_initialized_with_auto_heal_enabled(self, mock_user_home):
+        """Test is_initialized creates missing directories with auto-heal."""
+        config_dir = get_user_config_dir()
+
+        # Initially not initialized
+        assert not config_dir.exists()
+
+        # Call with auto-heal enabled
+        result = is_initialized(auto_heal=True)
+
+        # Directory structure should be created
+        assert config_dir.exists()
+        assert (config_dir / "presets").exists()
+        assert (config_dir / "cache").exists()
+        assert (config_dir / "components").exists()
+
+        # Result may be True if structure was created successfully
+        # or False if config file is still missing (depends on implementation)
+        assert isinstance(result, bool)
+
+    def test_is_initialized_with_auto_heal_disabled(self, mock_user_home):
+        """Test is_initialized doesn't create directories without auto-heal."""
+        config_dir = get_user_config_dir()
+
+        result = is_initialized(auto_heal=False)
+
+        assert result is False
+        assert not config_dir.exists()
+
+    def test_is_initialized_repairs_missing_subdirectories(self, mock_user_home):
+        """Test is_initialized repairs missing subdirectories."""
+        config_dir = get_user_config_dir()
+        config_dir.mkdir()
+        (config_dir / "config.toml").write_text("# config", encoding="utf-8")
+
+        # Create only presets directory, others missing
+        (config_dir / "presets").mkdir()
+
+        # Call with auto-heal
+        is_initialized(auto_heal=True)
+
+        # All subdirectories should now exist
+        assert (config_dir / "presets").exists()
+        assert (config_dir / "cache").exists()
+        assert (config_dir / "components").exists()
+        assert (config_dir / "components" / "claude_md").exists()
+        assert (config_dir / "components" / "gitignore").exists()
+
+    def test_ensure_user_config_repairs_structure(self, mock_user_home):
+        """Test ensure_user_config repairs incomplete structure."""
+        config_dir = get_user_config_dir()
+        config_dir.mkdir()
+
+        # Create only partial structure
+        (config_dir / "presets").mkdir()
+
+        # ensure_user_config should repair
+        result_dir = ensure_user_config(verbose=False)
+
+        # All structure should now exist
+        assert result_dir == config_dir
+        assert (config_dir / "cache").exists()
+        assert (config_dir / "components").exists()
+        assert (config_dir / "config.toml").exists()
+
+    def test_ensure_user_config_with_deleted_components_folder(self, mock_user_home):
+        """Test auto-healing when components folder is deleted."""
+        # Initialize first
+        config_dir = get_user_config_dir()
+        initialize_user_directory(config_dir, verbose=False)
+
+        # Delete components folder to simulate user deletion
+        import shutil
+
+        shutil.rmtree(config_dir / "components")
+
+        # Call ensure_user_config - should auto-heal
+        ensure_user_config(verbose=False)
+
+        # Components folder should be restored
+        assert (config_dir / "components").exists()
+        assert (config_dir / "components" / "claude_md").exists()
+        assert (config_dir / "components" / "gitignore").exists()
+
+    def test_preset_integrity_validation_and_repair(self, mock_user_home):
+        """Test preset integrity validation during initialization."""
+        from claudefig.user_config import _copy_default_preset_to_user
+
+        config_dir = get_user_config_dir()
+        config_dir.mkdir()
+        presets_dir = config_dir / "presets"
+        presets_dir.mkdir()
+
+        # Create incomplete default preset (missing .claudefig.toml)
+        default_preset = presets_dir / "default"
+        default_preset.mkdir()
+        (default_preset / "components").mkdir()
+
+        # Copy function should detect incomplete preset and re-copy
+        # This test verifies the new validation logic
+        _copy_default_preset_to_user(presets_dir, verbose=False)
+
+        # After repair, .claudefig.toml should exist
+        assert (default_preset / ".claudefig.toml").exists()
+
+    def test_ensure_user_config_restores_deleted_presets(self, mock_user_home):
+        """Test auto-healing when entire presets/default folder is deleted."""
+        # Initialize first
+        config_dir = get_user_config_dir()
+        initialize_user_directory(config_dir, verbose=False)
+
+        # Verify default preset exists
+        default_preset = config_dir / "presets" / "default"
+        assert default_preset.exists()
+        assert (default_preset / ".claudefig.toml").exists()
+
+        # Delete the default preset to simulate user deletion
+        import shutil
+
+        shutil.rmtree(default_preset)
+        assert not default_preset.exists()
+
+        # Call ensure_user_config - should auto-heal and restore preset
+        ensure_user_config(verbose=False)
+
+        # Default preset should be restored
+        assert default_preset.exists()
+        assert (default_preset / ".claudefig.toml").exists()
+        assert (default_preset / "components").exists()

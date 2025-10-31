@@ -74,7 +74,6 @@ class PresetDetailsScreen(BaseModalScreen):
         except FileReadError as e:
             yield Label(str(e), classes="dialog-error")
         except FileNotFoundError as e:
-            # ConfigTemplateManager not yet migrated - backward compatibility
             yield Label(f"Error loading preset: {e}", classes="dialog-error")
         except Exception as e:
             # Catch other unexpected errors

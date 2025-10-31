@@ -213,7 +213,6 @@ class InitializePanel(BaseHorizontalNavigablePanel):
         except ConfigFileExistsError as e:
             self.app.notify(str(e), severity="error")
         except FileExistsError:
-            # Fallback for non-migrated code - backward compatibility
             self.app.notify(
                 ".claudefig.toml already exists! Go to Presets panel to overwrite.",
                 severity="error",

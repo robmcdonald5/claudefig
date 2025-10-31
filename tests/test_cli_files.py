@@ -6,6 +6,8 @@ import pytest
 from click.testing import CliRunner
 
 from claudefig.cli import main
+from claudefig.models import FileType
+from tests.factories import FileInstanceFactory
 
 
 @pytest.fixture
@@ -62,7 +64,6 @@ class TestFilesList:
         tmp_path,
     ):
         """Test listing all file instances."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {
@@ -88,19 +89,12 @@ class TestFilesList:
         mock_get_file_instances.return_value = mock_load_config.return_value["files"]
 
         # Mock instance loading
-        claude_instance = FileInstance(
-            id="test-claude-md",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
-        settings_instance = FileInstance(
+        claude_instance = FileInstanceFactory(id="test-claude-md")
+        settings_instance = FileInstanceFactory.disabled(
             id="test-settings",
             type=FileType.SETTINGS_JSON,
             preset="settings_json:default",
             path=".claude/settings.json",
-            enabled=False,
         )
         mock_load_instances.return_value = (
             {"test-claude-md": claude_instance, "test-settings": settings_instance},
@@ -129,20 +123,13 @@ class TestFilesList:
         tmp_path,
     ):
         """Test listing files filtered by type."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
         mock_get_file_instances.return_value = []
 
         # Mock instance loading
-        claude_instance = FileInstance(
-            id="test-claude-md",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        claude_instance = FileInstanceFactory(id="test-claude-md")
         mock_load_instances.return_value = ({"test-claude-md": claude_instance}, [])
         mock_list_instances.return_value = [claude_instance]
 
@@ -169,20 +156,13 @@ class TestFilesList:
         tmp_path,
     ):
         """Test listing only enabled file instances."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
         mock_get_file_instances.return_value = []
 
         # Mock instance loading
-        claude_instance = FileInstance(
-            id="test-claude-md",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        claude_instance = FileInstanceFactory(id="test-claude-md")
         mock_load_instances.return_value = ({"test-claude-md": claude_instance}, [])
         mock_list_instances.return_value = [claude_instance]
 
@@ -681,7 +661,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing a file instance's preset."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -689,13 +669,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock update operation
@@ -743,7 +717,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing a file instance's path."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -751,13 +725,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock update operation
@@ -807,7 +775,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing a file instance's enabled status."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -815,13 +783,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock update operation
@@ -900,7 +862,6 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing without specifying any changes."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -908,13 +869,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         result = cli_runner.invoke(
@@ -941,7 +896,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing with validation failure."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -949,13 +904,7 @@ class TestFilesEdit:
         mock_load_instances.return_value = ({}, [])
 
         # Mock instance retrieval
-        existing_instance = FileInstance(
-            id="test-instance",
-            type=FileType.CLAUDE_MD,
-            preset="claude_md:default",
-            path="CLAUDE.md",
-            enabled=True,
-        )
+        existing_instance = FileInstanceFactory(id="test-instance")
         mock_get_instance.return_value = existing_instance
 
         # Mock validation failure

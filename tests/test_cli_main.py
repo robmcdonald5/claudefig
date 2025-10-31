@@ -221,18 +221,6 @@ enabled = false
             assert "2.0" in result.output
 
 
-class TestAddTemplate:
-    """Tests for 'claudefig add-template' command."""
-
-    def test_add_template_shows_work_in_progress(self, cli_runner):
-        """Test that add-template shows implementation in progress message."""
-        result = cli_runner.invoke(main, ["add-template", "my_template"])
-
-        assert result.exit_code == 0
-        assert "Adding template" in result.output
-        assert "Implementation in progress" in result.output
-
-
 class TestListTemplates:
     """Tests for 'claudefig list-templates' command."""
 

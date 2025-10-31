@@ -89,11 +89,15 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 initial_value: str | NoSelection = Select.BLANK
                 if PresetsPanel._last_selected_preset in self._presets_data:
                     initial_value = PresetsPanel._last_selected_preset
+                elif "default" in self._presets_data:
+                    # Default to "default" preset if no previous selection
+                    initial_value = "default"
+                    PresetsPanel._last_selected_preset = "default"
 
                 yield Select(
                     options,
                     prompt="Choose a preset...",
-                    allow_blank=True,
+                    allow_blank=False,  # Changed to False to ensure a preset is always selected
                     value=initial_value,
                     id="preset-select",
                 )
@@ -122,6 +126,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
         # This must be done after mounting so the watch method can find the button
         if PresetsPanel._last_selected_preset in self._presets_data:
             self.selected_preset = PresetsPanel._last_selected_preset
+        elif "default" in self._presets_data:
+            # Default to "default" preset if no previous selection
+            self.selected_preset = "default"
+            PresetsPanel._last_selected_preset = "default"
 
         # Restore focus to the last focused widget
         self.restore_focus()
@@ -252,7 +260,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
 
             if result and result.get("action") == "apply":
                 try:
-                    self.config_template_manager.apply_preset_to_project(preset_name)
+                    # User has confirmed via modal, so overwrite existing config
+                    self.config_template_manager.apply_preset_to_project(
+                        preset_name, overwrite=True
+                    )
                     self.app.notify(
                         f"Applied preset '{preset_name}' successfully!",
                         severity="information",
@@ -274,9 +285,6 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                     self.app.notify(str(e), severity="error")
                 except PresetNotFoundError as e:
                     self.app.notify(str(e), severity="error")
-                except FileExistsError:
-                    # ConfigTemplateManager not yet migrated - backward compatibility
-                    self.app.notify(".claudefig.toml already exists!", severity="error")
                 except Exception as e:
                     self.app.notify(f"Error applying preset: {e}", severity="error")
         except asyncio.CancelledError:
@@ -301,10 +309,8 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
         except FileOperationError as e:
             self.app.notify(str(e), severity="error")
         except ValueError as e:
-            # ConfigTemplateManager not yet migrated - backward compatibility
             self.app.notify(str(e), severity="error")
         except FileNotFoundError as e:
-            # ConfigTemplateManager not yet migrated - backward compatibility
             self.app.notify(str(e), severity="error")
         except Exception as e:
             self.app.notify(f"Error creating preset: {e}", severity="error")
@@ -337,7 +343,6 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 except FileOperationError as e:
                     self.app.notify(str(e), severity="error")
                 except FileNotFoundError as e:
-                    # ConfigTemplateManager not yet migrated - backward compatibility
                     self.app.notify(str(e), severity="error")
                 except Exception as e:
                     self.app.notify(f"Error deleting preset: {e}", severity="error")

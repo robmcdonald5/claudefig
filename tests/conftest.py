@@ -5,6 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from pytest_factoryboy import register
+
+# Import and register factories for automatic fixture creation
+from tests.factories import FileInstanceFactory, PresetDefinitionFactory, PresetFactory
+
+# Register factories as pytest fixtures
+# This creates fixtures like: file_instance, preset, preset_definition
+register(FileInstanceFactory)
+register(PresetFactory)
+register(PresetDefinitionFactory)
 
 
 @pytest.fixture
@@ -74,6 +84,7 @@ def mock_user_home(tmp_path: Path, monkeypatch):
     home_dir = tmp_path / "home"
     home_dir.mkdir()
     monkeypatch.setattr(Path, "home", lambda: home_dir)
+
     return home_dir
 
 

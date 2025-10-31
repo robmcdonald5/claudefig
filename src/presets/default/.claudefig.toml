@@ -1,0 +1,68 @@
+# Default Preset Configuration
+# This file defines the built-in default preset for claudefig
+
+[preset]
+name = "default"
+version = "1.0.0"
+description = "Default Claude Code configuration with standard components"
+
+# Components to include in this preset (PresetDefinition format)
+[[components]]
+type = "claude_md"
+name = "default"
+path = "CLAUDE.md"
+enabled = true
+
+[[components]]
+type = "gitignore"
+name = "default"
+path = ".gitignore"
+enabled = true
+
+[[components]]
+type = "settings_json"
+name = "default"
+path = ".claude/settings.json"
+enabled = false
+
+[[components]]
+type = "settings_local_json"
+name = "default"
+path = ".claude/settings.local.json"
+enabled = false
+
+[[components]]
+type = "statusline"
+name = "default"
+path = ".claude/statusline.sh"
+enabled = false
+
+[[components]]
+type = "commands"
+name = "example"
+path = ".claude/commands/"
+enabled = false
+
+[[components]]
+type = "agents"
+name = "example"
+path = ".claude/agents/"
+enabled = false
+
+[[components]]
+type = "hooks"
+name = "example"
+path = ".claude/hooks/"
+enabled = false
+
+[[components]]
+type = "mcp"
+name = "example-github"
+path = ".claude/mcp/"
+enabled = false
+
+[[components]]
+type = "output_styles"
+name = "example"
+path = ".claude/output-styles/"
+enabled = false

@@ -13,7 +13,7 @@ from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
 from claudefig.template_manager import FileTemplateManager
-from claudefig.utils import ensure_directory, is_git_repository
+from claudefig.utils.paths import ensure_directory, is_git_repository
 
 console = Console()
 
@@ -294,12 +294,7 @@ class Initializer:
         Returns:
             True if successful, False otherwise
         """
-        # Check if this file type uses template directories
-        if instance.type.template_directory:
-            # Use template directory system (new approach for single-instance types)
-            return self._generate_from_template_directory(instance, repo_path, force)
-
-        # Otherwise, use preset system (existing approach)
+        # Use preset/component system for all file types
         preset = self.preset_manager.get_preset(instance.preset)
         if not preset:
             console.print(
@@ -334,75 +329,6 @@ class Initializer:
             console.print(f"[red]x[/red] Error generating {instance.path}: {e}")
             return False
 
-    def _generate_from_template_directory(
-        self, instance, repo_path: Path, force: bool
-    ) -> bool:
-        """Generate a file from GLOBAL template directory (new system for single-instance types).
-
-        Reads templates from ~/.claudefig/{template_dir}/ (global user directory).
-
-        Args:
-            instance: FileInstance to generate
-            repo_path: Repository root path
-            force: Whether to overwrite existing files
-
-        Returns:
-            True if successful, False otherwise
-        """
-        template_dir = instance.type.template_directory
-        extension = instance.type.template_file_extension
-
-        if not template_dir or not extension:
-            console.print(
-                f"[red]x[/red] No template directory configured for {instance.type.value}"
-            )
-            return False
-
-        # Build template path from GLOBAL ~/.claudefig/ directory
-        global_claudefig = Path.home() / ".claudefig"
-        template_name = instance.preset
-        # Strip preset ID prefix if present (backwards compatibility)
-        if ":" in template_name:
-            template_name = template_name.split(":", 1)[1]
-
-        template_path = global_claudefig / template_dir / f"{template_name}{extension}"
-
-        if not template_path.exists():
-            console.print(f"[red]x[/red] Template not found: {template_path}")
-            console.print(
-                f"[yellow]![/yellow] Expected template in global directory: {global_claudefig / template_dir}/"
-            )
-            return False
-
-        # Determine destination path
-        dest_path = repo_path / instance.path
-
-        # Check if file already exists
-        if dest_path.exists() and not force:
-            console.print(f"[blue]i[/blue] Already exists (skipped): {dest_path}")
-            return True  # Treat existing files as success (skip)
-
-        try:
-            # Read template content
-            content = template_path.read_text(encoding="utf-8")
-
-            # Create parent directory if needed
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Write content
-            dest_path.write_text(content, encoding="utf-8")
-            console.print(f"[green]+[/green] Created: {dest_path}")
-
-            # Make statusline executable
-            if instance.type == FileType.STATUSLINE:
-                dest_path.chmod(0o755)
-
-            return True
-
-        except Exception as e:
-            console.print(f"[red]x[/red] Error generating {instance.path}: {e}")
-            return False
-
     def _generate_single_file_from_instance(
         self, instance, preset, dest_path: Path
     ) -> bool:
@@ -416,60 +342,27 @@ class Initializer:
         Returns:
             True if successful
         """
-        # Get template content
-        template_name = config_service.get_value(
-            self.config_data, "claudefig.template_source", "default"
-        )
-
         try:
-            # Try to read template file
-            content = self.template_manager.read_template_file(
-                template_name, instance.path
-            )
-        except FileNotFoundError:
-            # Fallback: Try preset-specific path
-            try:
-                # For CLAUDE.md, try different paths
-                if instance.type == FileType.CLAUDE_MD:
-                    content = self.template_manager.read_template_file(
-                        template_name, "CLAUDE.md"
-                    )
-                elif instance.type == FileType.SETTINGS_JSON:
-                    content = self.template_manager.read_template_file(
-                        template_name, "claude/settings.json"
-                    )
-                elif instance.type == FileType.SETTINGS_LOCAL_JSON:
-                    content = self.template_manager.read_template_file(
-                        template_name, "claude/settings.local.json"
-                    )
-                elif instance.type == FileType.STATUSLINE:
-                    content = self.template_manager.read_template_file(
-                        template_name, "claude/statusline.sh"
-                    )
-                else:
-                    console.print(
-                        f"[yellow]![/yellow] No template found for {instance.type.value}"
-                    )
-                    return False
-            except FileNotFoundError:
-                console.print(
-                    f"[yellow]![/yellow] Template file not found for {instance.type.value}"
-                )
-                return False
+            # Get content from preset using component system
+            content = self.preset_repo.get_template_content(preset)
 
-        # Create parent directory if needed
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
+            # Create parent directory if needed
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write content
-        dest_path.write_text(content, encoding="utf-8")
-        self._track_file(dest_path)  # Track for rollback
-        console.print(f"[green]+[/green] Created: {dest_path}")
+            # Write content
+            dest_path.write_text(content, encoding="utf-8")
+            self._track_file(dest_path)  # Track for rollback
+            console.print(f"[green]+[/green] Created: {dest_path}")
 
-        # Make statusline executable
-        if instance.type == FileType.STATUSLINE:
-            dest_path.chmod(0o755)
+            # Make statusline executable
+            if instance.type == FileType.STATUSLINE:
+                dest_path.chmod(0o755)
 
-        return True
+            return True
+
+        except Exception as e:
+            console.print(f"[red]x[/red] Error generating {instance.path}: {e}")
+            return False
 
     def _append_file_from_instance(self, instance, preset, dest_path: Path) -> bool:
         """Append content to a file (for gitignore).
@@ -482,15 +375,9 @@ class Initializer:
         Returns:
             True if successful
         """
-        template_name = config_service.get_value(
-            self.config_data, "claudefig.template_source", "default"
-        )
-
         try:
-            # Read gitignore entries template
-            entries = self.template_manager.read_template_file(
-                template_name, "gitignore_entries.txt"
-            )
+            # Get entries from preset using component system
+            entries = self.preset_repo.get_template_content(preset)
             entries = entries.strip()
 
             # Check if .gitignore exists
@@ -521,8 +408,8 @@ class Initializer:
 
             return True
 
-        except FileNotFoundError:
-            console.print("[yellow]![/yellow] Template not found for gitignore entries")
+        except Exception as e:
+            console.print(f"[red]x[/red] Error reading preset template: {e}")
             return False
 
     def _generate_directory_from_instance(
@@ -760,7 +647,7 @@ class Initializer:
         """
 
         # Source is claude/filename in template
-        source_path = f"claude/{filename}"
+        source_path = Path("claude") / filename
         # Destination is dest_dir/filename (not dest_dir/claude/filename)
         dest_path = dest_dir / filename
 
@@ -773,7 +660,7 @@ class Initializer:
 
         try:
             content = self.template_manager.read_template_file(
-                template_name, source_path
+                template_name, str(source_path)
             )
             dest_path.write_text(content, encoding="utf-8")
             self._track_file(dest_path)  # Track for rollback
@@ -804,7 +691,7 @@ class Initializer:
 
         try:
             # Get template source directory
-            template_root = files("templates").joinpath(template_name)
+            template_root = files("presets").joinpath(template_name)
             source_path = template_root.joinpath(source_dir)
 
             # Create destination directory

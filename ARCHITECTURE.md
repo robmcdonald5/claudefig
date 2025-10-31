@@ -79,6 +79,12 @@ claudefig v2.0 uses a **preset-based architecture** with **file instances** as t
 - `FileInstanceManager` - CRUD operations
 - `FileType` (enum) - Supported file types
 
+**Component Architecture:**
+All component types are now **folder-based** (unified architecture as of v2.1):
+- Each component is a directory containing template files
+- No JSON metadata files required
+- Consistent discovery pattern across all file types
+
 **File Instance Structure:**
 ```python
 FileInstance(
@@ -108,6 +114,10 @@ FileInstance(
 - Enable/disable without deletion
 - Path conflict detection
 - Preset existence validation
+- **Dual-source component discovery** - Components can be sourced from:
+  - Global: `~/.claudefig/components/{type}/`
+  - Preset-specific: `~/.claudefig/presets/{preset_name}/components/{type}/`
+  - Visual indicators: `(g)` for global, `(p)` for preset components
 
 #### 3. Configuration System (`config.py`)
 
@@ -1018,6 +1028,6 @@ The architecture prioritizes:
 
 ---
 
-**Last Updated:** 2025-01-10
+**Last Updated:** 2025-01-30
 **Schema Version:** 2.0
 **TUI Architecture Version:** 3 (Base Classes + Mixins)

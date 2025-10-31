@@ -1,5 +1,6 @@
 """CLI interface for claudefig."""
 
+import subprocess
 from pathlib import Path
 
 import click
@@ -7,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from claudefig import __version__
+from claudefig.cli_decorators import handle_errors, with_config
 from claudefig.error_messages import (
     ErrorMessages,
     format_cli_error,
@@ -18,8 +20,6 @@ from claudefig.exceptions import (
     ConfigFileNotFoundError,
     FileOperationError,
     InitializationRollbackError,
-    InstanceNotFoundError,
-    InstanceValidationError,
     PresetExistsError,
     PresetNotFoundError,
     TemplateNotFoundError,
@@ -236,18 +236,6 @@ def show():
         )
 
 
-@main.command()
-@click.argument("template_name")
-def add_template(template_name):
-    """Add a new template to the repository.
-
-    TEMPLATE_NAME: Name of the template to add
-    """
-    console.print(f"[bold green]Adding template:[/bold green] {template_name}")
-    # TODO: Implement add-template logic
-    console.print("[yellow]Implementation in progress...[/yellow]")
-
-
 @main.command("list-templates")
 def list_templates():
     """List all available templates."""
@@ -296,31 +284,20 @@ def config():
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def config_get(key, path):
+@with_config()
+@handle_errors("getting config")
+def config_get(key, path, config_data, config_repo):
     """Get a configuration value.
 
     KEY: Configuration key in dot notation (e.g., claude.create_settings)
     """
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    value = config_service.get_value(config_data, key)
 
-    try:
-        repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(repo)
-        value = config_service.get_value(config_data, key)
-
-        if value is None:
-            console.print(f"[yellow]Key not found:[/yellow] {key}")
-            console.print("[dim]Use 'claudefig config list' to see all settings[/dim]")
-        else:
-            console.print(f"[cyan]{key}:[/cyan] {value}")
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(f"[red]Error getting config:[/red] {e}")
-        raise click.Abort() from e
+    if value is None:
+        console.print(f"[yellow]Key not found:[/yellow] {key}")
+        console.print("[dim]Use 'claudefig config list' to see all settings[/dim]")
+    else:
+        console.print(f"[cyan]{key}:[/cyan] {value}")
 
 
 @config.command("set")
@@ -332,42 +309,29 @@ def config_get(key, path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def config_set(key, value, path):
+@with_config()
+@handle_errors("setting config")
+def config_set(key, value, path, config_data, config_repo):
     """Set a configuration value.
 
     KEY: Configuration key in dot notation (e.g., claude.create_settings)
     VALUE: Value to set (use 'true', 'false' for booleans)
     """
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    # Parse value
+    parsed_value = value
+    if value.lower() in ("true", "false"):
+        parsed_value = value.lower() == "true"
+    elif value.isdigit():
+        parsed_value = int(value)
 
-    try:
-        # Load or create config
-        repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(repo)
+    # Set value
+    config_service.set_value(config_data, key, parsed_value)
 
-        # Parse value
-        parsed_value = value
-        if value.lower() in ("true", "false"):
-            parsed_value = value.lower() == "true"
-        elif value.isdigit():
-            parsed_value = int(value)
+    # Save to config file
+    config_service.save_config(config_data, config_repo)
 
-        # Set value
-        config_service.set_value(config_data, key, parsed_value)
-
-        # Save to config file
-        config_service.save_config(config_data, repo)
-
-        console.print(f"[green]+[/green] Set [cyan]{key}[/cyan] = {parsed_value}")
-        console.print(f"[dim]Config saved to: {config_path}[/dim]")
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(f"[red]Error setting config:[/red] {e}")
-        raise click.Abort() from e
+    console.print(f"[green]+[/green] Set [cyan]{key}[/cyan] = {parsed_value}")
+    console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
 
 
 @config.command("set-init")
@@ -387,60 +351,48 @@ def config_set(key, value, path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def config_set_init(overwrite, backup, path):
+@with_config()
+@handle_errors("setting init config")
+def config_set_init(overwrite, backup, path, config_data, config_repo):
     """Manage initialization settings.
 
     Configure how claudefig behaves during file generation.
     """
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    changes = []
 
-    try:
-        repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(repo)
+    # Update overwrite setting
+    if overwrite is not None:
+        config_service.set_value(config_data, "init.overwrite_existing", overwrite)
+        status = "enabled" if overwrite else "disabled"
+        changes.append(f"overwrite_existing: {status}")
 
-        changes = []
+    # Update backup setting
+    if backup is not None:
+        config_service.set_value(config_data, "init.create_backup", backup)
+        status = "enabled" if backup else "disabled"
+        changes.append(f"create_backup: {status}")
 
-        # Update overwrite setting
-        if overwrite is not None:
-            config_service.set_value(config_data, "init.overwrite_existing", overwrite)
-            status = "enabled" if overwrite else "disabled"
-            changes.append(f"overwrite_existing: {status}")
+    if not changes:
+        # Show current settings
+        console.print("[bold blue]Current initialization settings:[/bold blue]\n")
+        console.print(
+            f"Overwrite existing: {config_service.get_value(config_data, 'init.overwrite_existing', False)}"
+        )
+        console.print(
+            f"Create backups:     {config_service.get_value(config_data, 'init.create_backup', True)}"
+        )
+        console.print(
+            "\n[dim]Use --overwrite/--no-overwrite or --backup/--no-backup to change settings[/dim]"
+        )
+        return
 
-        # Update backup setting
-        if backup is not None:
-            config_service.set_value(config_data, "init.create_backup", backup)
-            status = "enabled" if backup else "disabled"
-            changes.append(f"create_backup: {status}")
+    # Save changes
+    config_service.save_config(config_data, config_repo)
 
-        if not changes:
-            # Show current settings
-            console.print("[bold blue]Current initialization settings:[/bold blue]\n")
-            console.print(
-                f"Overwrite existing: {config_service.get_value(config_data, 'init.overwrite_existing', False)}"
-            )
-            console.print(
-                f"Create backups:     {config_service.get_value(config_data, 'init.create_backup', True)}"
-            )
-            console.print(
-                "\n[dim]Use --overwrite/--no-overwrite or --backup/--no-backup to change settings[/dim]"
-            )
-            return
-
-        # Save changes
-        config_service.save_config(config_data, repo)
-
-        console.print("\n[green]+[/green] Updated initialization settings:")
-        for change in changes:
-            console.print(f"  {change}")
-        console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(f"[red]Error setting init config:[/red] {e}")
-        raise click.Abort() from e
+    console.print("\n[green]+[/green] Updated initialization settings:")
+    for change in changes:
+        console.print(f"  {change}")
+    console.print(f"\n[dim]Config saved to: {config_repo.get_path()}[/dim]")
 
 
 @config.command("list")
@@ -450,99 +402,89 @@ def config_set_init(overwrite, backup, path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def config_list(path):
+@with_config()
+@handle_errors("listing config")
+def config_list(path, config_data, config_repo):
     """List all configuration settings and file instances."""
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
-
-    try:
-        repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(repo)
-
-        if config_path and config_path.exists():
-            console.print(f"[bold blue]Configuration from:[/bold blue] {config_path}\n")
-        else:
-            console.print(
-                "[bold blue]Configuration:[/bold blue] [dim](using defaults)[/dim]\n"
-            )
-
-        # Display config in organized sections
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Setting", style="cyan", width=35)
-        table.add_column("Value", style="green")
-
-        # Claudefig section
-        table.add_row("[bold]Claudefig[/bold]", "")
-        table.add_row(
-            "  version", str(config_service.get_value(config_data, "claudefig.version"))
+    if config_repo.exists():
+        console.print(
+            f"[bold blue]Configuration from:[/bold blue] {config_repo.get_path()}\n"
         )
-        table.add_row(
-            "  schema_version",
-            str(config_service.get_value(config_data, "claudefig.schema_version")),
-        )
-        table.add_row(
-            "  template_source",
-            config_service.get_value(config_data, "claudefig.template_source"),
+    else:
+        console.print(
+            "[bold blue]Configuration:[/bold blue] [dim](using defaults)[/dim]\n"
         )
 
-        # Init section
-        table.add_row("[bold]Init[/bold]", "")
-        table.add_row(
-            "  overwrite_existing",
-            str(config_service.get_value(config_data, "init.overwrite_existing")),
+    # Display config in organized sections
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Setting", style="cyan", width=35)
+    table.add_column("Value", style="green")
+
+    # Claudefig section
+    table.add_row("[bold]Claudefig[/bold]", "")
+    table.add_row(
+        "  version", str(config_service.get_value(config_data, "claudefig.version"))
+    )
+    table.add_row(
+        "  schema_version",
+        str(config_service.get_value(config_data, "claudefig.schema_version")),
+    )
+    table.add_row(
+        "  template_source",
+        config_service.get_value(config_data, "claudefig.template_source"),
+    )
+
+    # Init section
+    table.add_row("[bold]Init[/bold]", "")
+    table.add_row(
+        "  overwrite_existing",
+        str(config_service.get_value(config_data, "init.overwrite_existing")),
+    )
+
+    # Custom section
+    custom_dir = config_service.get_value(config_data, "custom.template_dir")
+    presets_dir = config_service.get_value(config_data, "custom.presets_dir")
+    if custom_dir or presets_dir:
+        table.add_row("[bold]Custom[/bold]", "")
+        if custom_dir:
+            table.add_row("  template_dir", custom_dir)
+        if presets_dir:
+            table.add_row("  presets_dir", presets_dir)
+
+    console.print(table)
+
+    # Display file instances
+    console.print("\n[bold blue]File Instances:[/bold blue]\n")
+
+    instances_data = config_service.get_file_instances(config_data)
+    if instances_data:
+        instances_dict, _ = file_instance_service.load_instances_from_config(
+            instances_data
         )
+        all_instances = file_instance_service.list_instances(instances_dict)
 
-        # Custom section
-        custom_dir = config_service.get_value(config_data, "custom.template_dir")
-        presets_dir = config_service.get_value(config_data, "custom.presets_dir")
-        if custom_dir or presets_dir:
-            table.add_row("[bold]Custom[/bold]", "")
-            if custom_dir:
-                table.add_row("  template_dir", custom_dir)
-            if presets_dir:
-                table.add_row("  presets_dir", presets_dir)
+        if all_instances:
+            # Group by file type
+            current_type = None
+            for instance in all_instances:
+                if instance.type != current_type:
+                    current_type = instance.type
+                    console.print(f"\n[bold]{instance.type.display_name}[/bold]")
 
-        console.print(table)
-
-        # Display file instances
-        console.print("\n[bold blue]File Instances:[/bold blue]\n")
-
-        instances_data = config_service.get_file_instances(config_data)
-        if instances_data:
-            instances_dict, _ = file_instance_service.load_instances_from_config(
-                instances_data
-            )
-            all_instances = file_instance_service.list_instances(instances_dict)
-
-            if all_instances:
-                # Group by file type
-                current_type = None
-                for instance in all_instances:
-                    if instance.type != current_type:
-                        current_type = instance.type
-                        console.print(f"\n[bold]{instance.type.display_name}[/bold]")
-
-                    status = (
-                        "[green]enabled[/green]"
-                        if instance.enabled
-                        else "[dim]disabled[/dim]"
-                    )
-                    console.print(f"  • {instance.id} ({status})")
-                    console.print(f"      Path: {instance.path}")
-                    console.print(f"      Preset: {instance.preset}")
-            else:
-                console.print("[yellow]No file instances configured[/yellow]")
+                status = (
+                    "[green]enabled[/green]"
+                    if instance.enabled
+                    else "[dim]disabled[/dim]"
+                )
+                console.print(f"  • {instance.id} ({status})")
+                console.print(f"      Path: {instance.path}")
+                console.print(f"      Preset: {instance.preset}")
         else:
             console.print("[yellow]No file instances configured[/yellow]")
+    else:
+        console.print("[yellow]No file instances configured[/yellow]")
 
-        console.print("\n[dim]Use 'claudefig files list' for more details[/dim]")
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(f"[red]Error listing config:[/red] {e}")
-        raise click.Abort() from e
+    console.print("\n[dim]Use 'claudefig files list' for more details[/dim]")
 
 
 @main.group()
@@ -568,76 +510,62 @@ def files():
     is_flag=True,
     help="Show only enabled instances",
 )
-def files_list(path, file_type, enabled_only):
+@with_config()
+@handle_errors("listing file instances")
+def files_list(path, file_type, enabled_only, config_data, config_repo):
     """List all configured file instances."""
     from claudefig.models import FileType
 
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    # Load instances from config
+    instances_data = config_service.get_file_instances(config_data)
+    instances_dict, load_errors = file_instance_service.load_instances_from_config(
+        instances_data
+    )
 
-    try:
-        # Load config
-        repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(repo)
+    # Show load errors if any
+    if load_errors:
+        for error in load_errors:
+            console.print(f"[yellow]Warning:[/yellow] {error}")
 
-        # Load instances from config
-        instances_data = config_service.get_file_instances(config_data)
-        instances_dict, load_errors = file_instance_service.load_instances_from_config(
-            instances_data
-        )
-
-        # Show load errors if any
-        if load_errors:
-            for error in load_errors:
-                console.print(f"[yellow]Warning:[/yellow] {error}")
-
-        # Filter by file type if provided
-        filter_type = None
-        if file_type:
-            try:
-                filter_type = FileType(file_type)
-            except ValueError:
-                valid_types = [ft.value for ft in FileType]
-                console.print(
-                    format_cli_error(
-                        ErrorMessages.invalid_type("file type", file_type, valid_types)
-                    )
-                )
-                raise click.Abort() from None
-
-        # List instances with filters
-        instances = file_instance_service.list_instances(
-            instances_dict, filter_type, enabled_only
-        )
-
-        if not instances:
-            console.print("[yellow]No file instances configured[/yellow]")
+    # Filter by file type if provided
+    filter_type = None
+    if file_type:
+        try:
+            filter_type = FileType(file_type)
+        except ValueError:
+            valid_types = [ft.value for ft in FileType]
             console.print(
-                "\nUse [cyan]claudefig files add[/cyan] to add a new file instance"
+                format_cli_error(
+                    ErrorMessages.invalid_type("file type", file_type, valid_types)
+                )
             )
-            return
+            raise click.Abort() from None
 
-        # Display instances grouped by type
-        console.print(f"\n[bold blue]File Instances[/bold blue] ({len(instances)})\n")
+    # List instances with filters
+    instances = file_instance_service.list_instances(
+        instances_dict, filter_type, enabled_only
+    )
 
-        current_type = None
-        for instance in instances:
-            if instance.type != current_type:
-                current_type = instance.type
-                console.print(f"\n[bold]{instance.type.display_name}[/bold]")
-
-            status = "[green]+[/green]" if instance.enabled else "[dim]-[/dim]"
-            console.print(f"  {status} {instance.id}")
-            console.print(f"      Path: {instance.path}")
-            console.print(f"      Preset: {instance.preset}")
-
-    except Exception as e:
+    if not instances:
+        console.print("[yellow]No file instances configured[/yellow]")
         console.print(
-            format_cli_error(
-                ErrorMessages.operation_failed("listing file instances", str(e))
-            )
+            "\nUse [cyan]claudefig files add[/cyan] to add a new file instance"
         )
-        raise click.Abort() from e
+        return
+
+    # Display instances grouped by type
+    console.print(f"\n[bold blue]File Instances[/bold blue] ({len(instances)})\n")
+
+    current_type = None
+    for instance in instances:
+        if instance.type != current_type:
+            current_type = instance.type
+            console.print(f"\n[bold]{instance.type.display_name}[/bold]")
+
+        status = "[green]+[/green]" if instance.enabled else "[dim]-[/dim]"
+        console.print(f"  {status} {instance.id}")
+        console.print(f"      Path: {instance.path}")
+        console.print(f"      Preset: {instance.preset}")
 
 
 @files.command("add")
@@ -664,108 +592,89 @@ def files_list(path, file_type, enabled_only):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def files_add(file_type, preset, path_target, disabled, repo_path_arg):
+@with_config(path_param="repo_path_arg")
+@handle_errors("adding file instance")
+def files_add(
+    file_type, preset, path_target, disabled, repo_path_arg, config_data, config_repo
+):
     """Add a new file instance.
 
     FILE_TYPE: Type of file (e.g., claude_md, settings_json)
     """
     from claudefig.models import FileInstance, FileType
 
-    repo_path = Path(repo_path_arg).resolve()
-    config_path = repo_path / ".claudefig.toml"
-
+    # Parse file type
     try:
-        # Parse file type
-        try:
-            file_type_enum = FileType(file_type)
-        except ValueError:
-            console.print(f"[red]Invalid file type:[/red] {file_type}")
-            console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
-            raise click.Abort() from None
+        file_type_enum = FileType(file_type)
+    except ValueError:
+        console.print(f"[red]Invalid file type:[/red] {file_type}")
+        console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
+        raise click.Abort() from None
 
-        # Load config
-        config_repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(config_repo)
+    # Load existing instances
+    instances_data = config_service.get_file_instances(config_data)
+    instances_dict, load_errors = file_instance_service.load_instances_from_config(
+        instances_data
+    )
 
-        # Load existing instances
-        instances_data = config_service.get_file_instances(config_data)
-        instances_dict, load_errors = file_instance_service.load_instances_from_config(
-            instances_data
-        )
+    # Show load errors if any
+    if load_errors:
+        for error in load_errors:
+            console.print(f"[yellow]Warning:[/yellow] {error}")
 
-        # Show load errors if any
-        if load_errors:
-            for error in load_errors:
-                console.print(f"[yellow]Warning:[/yellow] {error}")
+    # Determine path
+    if not path_target:
+        path_target = file_type_enum.default_path
 
-        # Determine path
-        if not path_target:
-            path_target = file_type_enum.default_path
+    # Generate instance ID
+    instance_id = file_instance_service.generate_instance_id(
+        file_type_enum, preset, path_target, instances_dict
+    )
 
-        # Generate instance ID
-        instance_id = file_instance_service.generate_instance_id(
-            file_type_enum, preset, path_target, instances_dict
-        )
+    # Build preset ID
+    preset_id = f"{file_type_enum.value}:{preset}"
 
-        # Build preset ID
-        preset_id = f"{file_type_enum.value}:{preset}"
+    # Create instance
+    instance = FileInstance(
+        id=instance_id,
+        type=file_type_enum,
+        preset=preset_id,
+        path=path_target,
+        enabled=not disabled,
+        variables={},
+    )
 
-        # Create instance
-        instance = FileInstance(
-            id=instance_id,
-            type=file_type_enum,
-            preset=preset_id,
-            path=path_target,
-            enabled=not disabled,
-            variables={},
-        )
+    # Validate and add
+    repo_path = Path(repo_path_arg).resolve()
+    preset_repo = TomlPresetRepository()
+    result = file_instance_service.add_instance(
+        instances_dict, instance, preset_repo, repo_path
+    )
 
-        # Validate and add
-        preset_repo = TomlPresetRepository()
-        result = file_instance_service.add_instance(
-            instances_dict, instance, preset_repo, repo_path
-        )
+    if not result.valid:
+        console.print("[red]Validation failed:[/red]")
+        for error in result.errors:
+            console.print(f"  • {error}")
+        raise click.Abort()
 
-        if not result.valid:
-            console.print("[red]Validation failed:[/red]")
-            for error in result.errors:
-                console.print(f"  • {error}")
-            raise click.Abort()
+    if result.has_warnings:
+        console.print("[yellow]Warnings:[/yellow]")
+        for warning in result.warnings:
+            console.print(f"  • {warning}")
 
-        if result.has_warnings:
-            console.print("[yellow]Warnings:[/yellow]")
-            for warning in result.warnings:
-                console.print(f"  • {warning}")
+    # Save instances back to config
+    updated_instances_data = file_instance_service.save_instances_to_config(
+        instances_dict
+    )
+    config_service.set_file_instances(config_data, updated_instances_data)
+    config_service.save_config(config_data, config_repo)
 
-        # Save instances back to config
-        updated_instances_data = file_instance_service.save_instances_to_config(
-            instances_dict
-        )
-        config_service.set_file_instances(config_data, updated_instances_data)
-        config_service.save_config(config_data, config_repo)
-
-        console.print(
-            f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]"
-        )
-        console.print(f"  Type: {instance.type.display_name}")
-        console.print(f"  Preset: {instance.preset}")
-        console.print(f"  Path: {instance.path}")
-        console.print(f"  Enabled: {instance.enabled}")
-        console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
-
-    except InstanceValidationError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(
-            format_cli_error(
-                ErrorMessages.operation_failed("adding file instance", str(e))
-            )
-        )
-        raise click.Abort() from e
+    console.print(f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]")
+    console.print(f"  Type: {instance.type.display_name}")
+    console.print(f"  Preset: {instance.preset}")
+    console.print(f"  Path: {instance.path}")
+    console.print(f"  Enabled: {instance.enabled}")
+    console.print(f"\n[dim]Config saved to: {config_repo.get_path()}[/dim]")
 
 
 @files.command("remove")
@@ -776,55 +685,34 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def files_remove(instance_id, path):
+@with_config()
+@handle_errors("removing file instance")
+def files_remove(instance_id, path, config_data, config_repo):
     """Remove a file instance.
 
     INSTANCE_ID: ID of the instance to remove
     """
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    # Load instances
+    instances_data = config_service.get_file_instances(config_data)
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
-    try:
-        # Load config
-        config_repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(config_repo)
-
-        # Load instances
-        instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(
-            instances_data
+    # Remove instance
+    if file_instance_service.remove_instance(instances_dict, instance_id):
+        # Save instances back to config
+        updated_instances_data = file_instance_service.save_instances_to_config(
+            instances_dict
         )
+        config_service.set_file_instances(config_data, updated_instances_data)
+        config_service.save_config(config_data, config_repo)
 
-        # Remove instance
-        if file_instance_service.remove_instance(instances_dict, instance_id):
-            # Save instances back to config
-            updated_instances_data = file_instance_service.save_instances_to_config(
-                instances_dict
-            )
-            config_service.set_file_instances(config_data, updated_instances_data)
-            config_service.save_config(config_data, config_repo)
-
-            console.print(
-                f"[green]+[/green] Removed file instance: [cyan]{instance_id}[/cyan]"
-            )
-            console.print(f"[dim]Config saved to: {config_path}[/dim]")
-        else:
-            console.print(
-                format_cli_warning(
-                    ErrorMessages.not_found("file instance", instance_id)
-                )
-            )
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
         console.print(
-            format_cli_error(
-                ErrorMessages.operation_failed("removing file instance", str(e))
-            )
+            f"[green]+[/green] Removed file instance: [cyan]{instance_id}[/cyan]"
         )
-        raise click.Abort() from e
+        console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
+    else:
+        console.print(
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
+        )
 
 
 @files.command("enable")
@@ -835,55 +723,34 @@ def files_remove(instance_id, path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def files_enable(instance_id, path):
+@with_config()
+@handle_errors("enabling file instance")
+def files_enable(instance_id, path, config_data, config_repo):
     """Enable a file instance.
 
     INSTANCE_ID: ID of the instance to enable
     """
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    # Load instances
+    instances_data = config_service.get_file_instances(config_data)
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
-    try:
-        # Load config
-        config_repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(config_repo)
-
-        # Load instances
-        instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(
-            instances_data
+    # Enable instance
+    if file_instance_service.enable_instance(instances_dict, instance_id):
+        # Save instances back to config
+        updated_instances_data = file_instance_service.save_instances_to_config(
+            instances_dict
         )
+        config_service.set_file_instances(config_data, updated_instances_data)
+        config_service.save_config(config_data, config_repo)
 
-        # Enable instance
-        if file_instance_service.enable_instance(instances_dict, instance_id):
-            # Save instances back to config
-            updated_instances_data = file_instance_service.save_instances_to_config(
-                instances_dict
-            )
-            config_service.set_file_instances(config_data, updated_instances_data)
-            config_service.save_config(config_data, config_repo)
-
-            console.print(
-                f"[green]+[/green] Enabled file instance: [cyan]{instance_id}[/cyan]"
-            )
-            console.print(f"[dim]Config saved to: {config_path}[/dim]")
-        else:
-            console.print(
-                format_cli_warning(
-                    ErrorMessages.not_found("file instance", instance_id)
-                )
-            )
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
         console.print(
-            format_cli_error(
-                ErrorMessages.operation_failed("enabling file instance", str(e))
-            )
+            f"[green]+[/green] Enabled file instance: [cyan]{instance_id}[/cyan]"
         )
-        raise click.Abort() from e
+        console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
+    else:
+        console.print(
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
+        )
 
 
 @files.command("disable")
@@ -894,55 +761,34 @@ def files_enable(instance_id, path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def files_disable(instance_id, path):
+@with_config()
+@handle_errors("disabling file instance")
+def files_disable(instance_id, path, config_data, config_repo):
     """Disable a file instance.
 
     INSTANCE_ID: ID of the instance to disable
     """
-    repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    # Load instances
+    instances_data = config_service.get_file_instances(config_data)
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
-    try:
-        # Load config
-        config_repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(config_repo)
-
-        # Load instances
-        instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(
-            instances_data
+    # Disable instance
+    if file_instance_service.disable_instance(instances_dict, instance_id):
+        # Save instances back to config
+        updated_instances_data = file_instance_service.save_instances_to_config(
+            instances_dict
         )
+        config_service.set_file_instances(config_data, updated_instances_data)
+        config_service.save_config(config_data, config_repo)
 
-        # Disable instance
-        if file_instance_service.disable_instance(instances_dict, instance_id):
-            # Save instances back to config
-            updated_instances_data = file_instance_service.save_instances_to_config(
-                instances_dict
-            )
-            config_service.set_file_instances(config_data, updated_instances_data)
-            config_service.save_config(config_data, config_repo)
-
-            console.print(
-                f"[green]+[/green] Disabled file instance: [cyan]{instance_id}[/cyan]"
-            )
-            console.print(f"[dim]Config saved to: {config_path}[/dim]")
-        else:
-            console.print(
-                format_cli_warning(
-                    ErrorMessages.not_found("file instance", instance_id)
-                )
-            )
-
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
         console.print(
-            format_cli_error(
-                ErrorMessages.operation_failed("disabling file instance", str(e))
-            )
+            f"[green]+[/green] Disabled file instance: [cyan]{instance_id}[/cyan]"
         )
-        raise click.Abort() from e
+        console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
+    else:
+        console.print(
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
+        )
 
 
 @files.command("edit")
@@ -968,109 +814,89 @@ def files_disable(instance_id, path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Repository path (default: current directory)",
 )
-def files_edit(instance_id, preset, path_target, enable, repo_path_arg):
+@with_config(path_param="repo_path_arg")
+@handle_errors("editing file instance")
+def files_edit(
+    instance_id, preset, path_target, enable, repo_path_arg, config_data, config_repo
+):
     """Edit an existing file instance.
 
     INSTANCE_ID: ID of the instance to edit
     """
     repo_path = Path(repo_path_arg).resolve()
-    config_path = repo_path / ".claudefig.toml"
 
-    try:
-        # Load config
-        config_repo = TomlConfigRepository(config_path)
-        config_data = config_service.load_config(config_repo)
+    # Load instances
+    instances_data = config_service.get_file_instances(config_data)
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
-        # Load instances
-        instances_data = config_service.get_file_instances(config_data)
-        instances_dict, _ = file_instance_service.load_instances_from_config(
-            instances_data
-        )
-
-        # Get existing instance
-        instance = file_instance_service.get_instance(instances_dict, instance_id)
-        if not instance:
-            console.print(
-                format_cli_warning(
-                    ErrorMessages.not_found("file instance", instance_id)
-                )
-            )
-            raise click.Abort()
-
-        # Track changes
-        changes = []
-
-        # Update preset if provided
-        if preset:
-            old_preset = instance.preset
-            instance.preset = f"{instance.type.value}:{preset}"
-            changes.append(f"preset: {old_preset} → {instance.preset}")
-
-        # Update path if provided
-        if path_target:
-            old_path = instance.path
-            instance.path = path_target
-            changes.append(f"path: {old_path} → {instance.path}")
-
-        # Update enabled state if provided
-        if enable is not None:
-            old_enabled = instance.enabled
-            instance.enabled = enable
-            status = "enabled" if enable else "disabled"
-            old_status = "enabled" if old_enabled else "disabled"
-            changes.append(f"status: {old_status} → {status}")
-
-        if not changes:
-            console.print("[yellow]No changes specified[/yellow]")
-            console.print(
-                "\n[dim]Use --preset, --path-target, or --enable/--disable to make changes[/dim]"
-            )
-            return
-
-        # Validate changes
-        preset_repo = TomlPresetRepository()
-        result = file_instance_service.update_instance(
-            instances_dict, instance, preset_repo, repo_path
-        )
-
-        if not result.valid:
-            console.print("[red]Validation failed:[/red]")
-            for error in result.errors:
-                console.print(f"  • {error}")
-            raise click.Abort()
-
-        if result.has_warnings:
-            console.print("[yellow]Warnings:[/yellow]")
-            for warning in result.warnings:
-                console.print(f"  • {warning}")
-
-        # Save instances back to config
-        updated_instances_data = file_instance_service.save_instances_to_config(
-            instances_dict
-        )
-        config_service.set_file_instances(config_data, updated_instances_data)
-        config_service.save_config(config_data, config_repo)
-
+    # Get existing instance
+    instance = file_instance_service.get_instance(instances_dict, instance_id)
+    if not instance:
         console.print(
-            f"\n[green]+[/green] Updated file instance: [cyan]{instance_id}[/cyan]"
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
         )
-        for change in changes:
-            console.print(f"  {change}")
-        console.print(f"\n[dim]Config saved to: {config_path}[/dim]")
+        raise click.Abort()
 
-    except ConfigFileNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except InstanceNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except Exception as e:
+    # Track changes
+    changes = []
+
+    # Update preset if provided
+    if preset:
+        old_preset = instance.preset
+        instance.preset = f"{instance.type.value}:{preset}"
+        changes.append(f"preset: {old_preset} → {instance.preset}")
+
+    # Update path if provided
+    if path_target:
+        old_path = instance.path
+        instance.path = path_target
+        changes.append(f"path: {old_path} → {instance.path}")
+
+    # Update enabled state if provided
+    if enable is not None:
+        old_enabled = instance.enabled
+        instance.enabled = enable
+        status = "enabled" if enable else "disabled"
+        old_status = "enabled" if old_enabled else "disabled"
+        changes.append(f"status: {old_status} → {status}")
+
+    if not changes:
+        console.print("[yellow]No changes specified[/yellow]")
         console.print(
-            format_cli_error(
-                ErrorMessages.operation_failed("editing file instance", str(e))
-            )
+            "\n[dim]Use --preset, --path-target, or --enable/--disable to make changes[/dim]"
         )
-        raise click.Abort() from e
+        return
+
+    # Validate changes
+    preset_repo = TomlPresetRepository()
+    result = file_instance_service.update_instance(
+        instances_dict, instance, preset_repo, repo_path
+    )
+
+    if not result.valid:
+        console.print("[red]Validation failed:[/red]")
+        for error in result.errors:
+            console.print(f"  • {error}")
+        raise click.Abort()
+
+    if result.has_warnings:
+        console.print("[yellow]Warnings:[/yellow]")
+        for warning in result.warnings:
+            console.print(f"  • {warning}")
+
+    # Save instances back to config
+    updated_instances_data = file_instance_service.save_instances_to_config(
+        instances_dict
+    )
+    config_service.set_file_instances(config_data, updated_instances_data)
+    config_service.save_config(config_data, config_repo)
+
+    console.print(
+        f"\n[green]+[/green] Updated file instance: [cyan]{instance_id}[/cyan]"
+    )
+    for change in changes:
+        console.print(f"  {change}")
+    console.print(f"\n[dim]Config saved to: {config_repo.get_path()}[/dim]")
 
 
 @main.group()
@@ -1092,65 +918,58 @@ def presets():
     "file_type",
     help="Filter by file type (e.g., claude_md, settings_json)",
 )
+@handle_errors("listing presets")
 def presets_list(file_type):
     """List available presets."""
     from claudefig.models import FileType
     from claudefig.preset_manager import PresetManager
 
-    try:
-        preset_manager = PresetManager()
+    preset_manager = PresetManager()
 
-        # Filter by file type if provided
-        filter_type = None
-        if file_type:
-            try:
-                filter_type = FileType(file_type)
-            except ValueError:
-                valid_types = [ft.value for ft in FileType]
-                console.print(
-                    format_cli_error(
-                        ErrorMessages.invalid_type("file type", file_type, valid_types)
-                    )
+    # Filter by file type if provided
+    filter_type = None
+    if file_type:
+        try:
+            filter_type = FileType(file_type)
+        except ValueError:
+            valid_types = [ft.value for ft in FileType]
+            console.print(
+                format_cli_error(
+                    ErrorMessages.invalid_type("file type", file_type, valid_types)
                 )
-                raise click.Abort() from None
-
-        presets_list = preset_manager.list_presets(filter_type)
-
-        if not presets_list:
-            console.print("[yellow]No presets found[/yellow]")
-            return
-
-        console.print(
-            f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n"
-        )
-
-        # Group by file type
-        current_type = None
-        for preset in presets_list:
-            if preset.type != current_type:
-                current_type = preset.type
-                console.print(f"\n[bold]{preset.type.display_name}[/bold]")
-
-            source_badge = (
-                "[cyan][built-in][/cyan]"
-                if preset.source.value == "built-in"
-                else f"[yellow][{preset.source.value}][/yellow]"
             )
+            raise click.Abort() from None
 
-            console.print(f"  - {preset.name} {source_badge}")
-            console.print(f"      ID: {preset.id}")
-            if preset.description:
-                console.print(f"      {preset.description}")
+    presets_list = preset_manager.list_presets(filter_type)
 
-    except Exception as e:
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("listing presets", str(e)))
+    if not presets_list:
+        console.print("[yellow]No presets found[/yellow]")
+        return
+
+    console.print(f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n")
+
+    # Group by file type
+    current_type = None
+    for preset in presets_list:
+        if preset.type != current_type:
+            current_type = preset.type
+            console.print(f"\n[bold]{preset.type.display_name}[/bold]")
+
+        source_badge = (
+            "[cyan][built-in][/cyan]"
+            if preset.source.value == "built-in"
+            else f"[yellow][{preset.source.value}][/yellow]"
         )
-        raise click.Abort() from e
+
+        console.print(f"  - {preset.name} {source_badge}")
+        console.print(f"      ID: {preset.id}")
+        if preset.description:
+            console.print(f"      {preset.description}")
 
 
 @presets.command("show")
 @click.argument("preset_id")
+@handle_errors("showing preset")
 def presets_show(preset_id):
     """Show detailed information about a preset.
 
@@ -1158,42 +977,34 @@ def presets_show(preset_id):
     """
     from claudefig.preset_manager import PresetManager
 
-    try:
-        preset_manager = PresetManager()
-        preset = preset_manager.get_preset(preset_id)
+    preset_manager = PresetManager()
+    preset = preset_manager.get_preset(preset_id)
 
-        if not preset:
-            console.print(
-                format_cli_warning(ErrorMessages.not_found("preset", preset_id))
-            )
-            return
+    if not preset:
+        console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
+        return
 
-        console.print("\n[bold blue]Preset Details[/bold blue]\n")
-        console.print(f"ID:          {preset.id}")
-        console.print(f"Name:        {preset.name}")
-        console.print(f"Type:        {preset.type.display_name}")
-        console.print(f"Source:      {preset.source.value}")
-        console.print(f"Description: {preset.description or 'N/A'}")
+    console.print("\n[bold blue]Preset Details[/bold blue]\n")
+    console.print(f"ID:          {preset.id}")
+    console.print(f"Name:        {preset.name}")
+    console.print(f"Type:        {preset.type.display_name}")
+    console.print(f"Source:      {preset.source.value}")
+    console.print(f"Description: {preset.description or 'N/A'}")
 
-        if preset.tags:
-            console.print(f"Tags:        {', '.join(preset.tags)}")
+    if preset.tags:
+        console.print(f"Tags:        {', '.join(preset.tags)}")
 
-        if preset.template_path:
-            console.print(f"Template:    {preset.template_path}")
+    if preset.template_path:
+        console.print(f"Template:    {preset.template_path}")
 
-        if preset.variables:
-            console.print("\nVariables:")
-            for key, value in preset.variables.items():
-                console.print(f"  • {key}: {value}")
-
-    except Exception as e:
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("showing preset", str(e)))
-        )
-        raise click.Abort() from e
+    if preset.variables:
+        console.print("\nVariables:")
+        for key, value in preset.variables.items():
+            console.print(f"  • {key}: {value}")
 
 
 @presets.command("open")
+@handle_errors("opening presets directory")
 def presets_open():
     """Open the global presets directory in file explorer.
 
@@ -1211,41 +1022,36 @@ def presets_open():
 
     console.print(f"[bold blue]Opening presets directory:[/bold blue] {presets_dir}\n")
 
-    try:
-        system = platform.system()
+    system = platform.system()
 
-        if system == "Windows":
-            subprocess.run(["explorer", str(presets_dir)], check=True)
-        elif system == "Darwin":  # macOS
-            subprocess.run(["open", str(presets_dir)], check=True)
-        elif system == "Linux":
-            # Try xdg-open first, fall back to alternatives
-            try:
-                subprocess.run(["xdg-open", str(presets_dir)], check=True)
-            except (FileNotFoundError, subprocess.CalledProcessError):
-                # Try other common file managers
-                for cmd in ["nautilus", "dolphin", "thunar", "nemo"]:
-                    try:
-                        subprocess.run([cmd, str(presets_dir)], check=True)
-                        break
-                    except FileNotFoundError:
-                        continue
-                else:
-                    console.print(
-                        "[yellow]Could not open file manager automatically[/yellow]"
-                    )
-                    console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
-                    return
-        else:
-            console.print(f"[yellow]Unsupported platform:[/yellow] {system}")
-            console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
-            return
-
-        console.print("[green]+[/green] Opened in file manager")
-
-    except Exception as e:
-        console.print(f"[red]Error opening directory:[/red] {e}")
+    if system == "Windows":
+        subprocess.run(["explorer", str(presets_dir)], check=True)
+    elif system == "Darwin":  # macOS
+        subprocess.run(["open", str(presets_dir)], check=True)
+    elif system == "Linux":
+        # Try xdg-open first, fall back to alternatives
+        try:
+            subprocess.run(["xdg-open", str(presets_dir)], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            # Try other common file managers
+            for cmd in ["nautilus", "dolphin", "thunar", "nemo"]:
+                try:
+                    subprocess.run([cmd, str(presets_dir)], check=True)
+                    break
+                except FileNotFoundError:
+                    continue
+            else:
+                console.print(
+                    "[yellow]Could not open file manager automatically[/yellow]"
+                )
+                console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
+                return
+    else:
+        console.print(f"[yellow]Unsupported platform:[/yellow] {system}")
         console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")
+        return
+
+    console.print("[green]+[/green] Opened in file manager")
 
 
 @presets.command("create")
@@ -1277,6 +1083,13 @@ def presets_open():
     "--tags",
     help="Comma-separated tags for the preset",
 )
+@handle_errors(
+    "creating preset",
+    extra_handlers={
+        BuiltInModificationError: lambda e: console.print(format_cli_error(str(e))),
+        PresetExistsError: lambda e: console.print(format_cli_error(str(e))),
+    },
+)
 def presets_create(preset_name, file_type, description, template_path, source, tags):
     """Create a new custom preset.
 
@@ -1300,74 +1113,55 @@ def presets_create(preset_name, file_type, description, template_path, source, t
     from claudefig.models import FileType, Preset, PresetSource
     from claudefig.preset_manager import PresetManager
 
+    # Validate file type
     try:
-        # Validate file type
-        try:
-            preset_type = FileType(file_type)
-        except ValueError:
-            valid_types = [ft.value for ft in FileType]
-            console.print(
-                format_cli_error(
-                    ErrorMessages.invalid_type("file type", file_type, valid_types)
-                )
+        preset_type = FileType(file_type)
+    except ValueError:
+        valid_types = [ft.value for ft in FileType]
+        console.print(
+            format_cli_error(
+                ErrorMessages.invalid_type("file type", file_type, valid_types)
             )
-            raise click.Abort() from None
-
-        # Parse source
-        preset_source = (
-            PresetSource.USER if source.lower() == "user" else PresetSource.PROJECT
         )
+        raise click.Abort() from None
 
-        # Parse tags
-        tag_list = []
-        if tags:
-            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+    # Parse source
+    preset_source = (
+        PresetSource.USER if source.lower() == "user" else PresetSource.PROJECT
+    )
 
-        # Create preset ID
-        preset_id = f"{preset_type.value}:{preset_name}"
+    # Parse tags
+    tag_list = []
+    if tags:
+        tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
 
-        # Create Preset object
-        preset = Preset(
-            id=preset_id,
-            type=preset_type,
-            name=preset_name,
-            description=description,
-            source=preset_source,
-            tags=tag_list,
-            template_path=Path(template_path) if template_path else None,
-        )
+    # Create preset ID
+    preset_id = f"{preset_type.value}:{preset_name}"
 
-        # Create via preset manager
-        preset_manager = PresetManager()
-        preset_manager.add_preset(preset, preset_source)
+    # Create Preset object
+    preset = Preset(
+        id=preset_id,
+        type=preset_type,
+        name=preset_name,
+        description=description,
+        source=preset_source,
+        tags=tag_list,
+        template_path=Path(template_path) if template_path else None,
+    )
 
-        console.print(f"\n[green]+[/green] Created preset: [bold]{preset_id}[/bold]")
-        console.print(f"  Type:        {preset_type.display_name}")
-        console.print(f"  Source:      {preset_source.value}")
-        if description:
-            console.print(f"  Description: {description}")
-        if template_path:
-            console.print(f"  Template:    {template_path}")
-        if tag_list:
-            console.print(f"  Tags:        {', '.join(tag_list)}")
+    # Create via preset manager
+    preset_manager = PresetManager()
+    preset_manager.add_preset(preset, preset_source)
 
-    except BuiltInModificationError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except PresetExistsError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except ValueError as e:
-        # Catch validation errors (file type, etc.)
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("creating preset", str(e)))
-        )
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("creating preset", str(e)))
-        )
-        raise click.Abort() from e
+    console.print(f"\n[green]+[/green] Created preset: [bold]{preset_id}[/bold]")
+    console.print(f"  Type:        {preset_type.display_name}")
+    console.print(f"  Source:      {preset_source.value}")
+    if description:
+        console.print(f"  Description: {description}")
+    if template_path:
+        console.print(f"  Template:    {template_path}")
+    if tag_list:
+        console.print(f"  Tags:        {', '.join(tag_list)}")
 
 
 @presets.command("delete")
@@ -1376,6 +1170,23 @@ def presets_create(preset_name, file_type, description, template_path, source, t
     "--force",
     is_flag=True,
     help="Skip confirmation prompt",
+)
+@handle_errors(
+    "deleting preset",
+    extra_handlers={
+        PresetNotFoundError: lambda e: console.print(format_cli_error(str(e))),
+        BuiltInModificationError: lambda e: console.print(format_cli_error(str(e))),
+        FileOperationError: lambda e: console.print(format_cli_error(str(e))),
+        FileNotFoundError: lambda e: console.print(
+            format_cli_error(f"Failed to delete preset: {e}")
+        ),
+        PermissionError: lambda e: console.print(
+            format_cli_error(f"Failed to delete preset: {e}")
+        ),
+        OSError: lambda e: console.print(
+            format_cli_error(f"Failed to delete preset: {e}")
+        ),
+    },
 )
 def presets_delete(preset_id, force):
     """Delete a user or project preset.
@@ -1396,64 +1207,49 @@ def presets_delete(preset_id, force):
     """
     from claudefig.preset_manager import PresetManager
 
-    try:
-        preset_manager = PresetManager()
+    preset_manager = PresetManager()
 
-        # Check if preset exists
-        preset = preset_manager.get_preset(preset_id)
-        if not preset:
-            console.print(
-                format_cli_warning(ErrorMessages.not_found("preset", preset_id))
-            )
+    # Check if preset exists
+    preset = preset_manager.get_preset(preset_id)
+    if not preset:
+        console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
+        return
+
+    # Check if it's a built-in preset
+    from claudefig.models import PresetSource
+
+    if preset.source == PresetSource.BUILT_IN:
+        console.print(format_cli_error("Cannot delete built-in presets"))
+        raise click.Abort() from None
+
+    # Confirmation prompt unless --force
+    if not force:
+        console.print("\n[yellow]About to delete preset:[/yellow]")
+        console.print(f"  ID:     {preset.id}")
+        console.print(f"  Name:   {preset.name}")
+        console.print(f"  Type:   {preset.type.display_name}")
+        console.print(f"  Source: {preset.source.value}")
+
+        if not click.confirm("\nAre you sure you want to delete this preset?"):
+            console.print("[dim]Cancelled[/dim]")
             return
 
-        # Check if it's a built-in preset
-        from claudefig.models import PresetSource
+    # Delete the preset
+    preset_manager.delete_preset(preset_id)
 
-        if preset.source == PresetSource.BUILT_IN:
-            console.print(format_cli_error("Cannot delete built-in presets"))
-            raise click.Abort() from None
-
-        # Confirmation prompt unless --force
-        if not force:
-            console.print("\n[yellow]About to delete preset:[/yellow]")
-            console.print(f"  ID:     {preset.id}")
-            console.print(f"  Name:   {preset.name}")
-            console.print(f"  Type:   {preset.type.display_name}")
-            console.print(f"  Source: {preset.source.value}")
-
-            if not click.confirm("\nAre you sure you want to delete this preset?"):
-                console.print("[dim]Cancelled[/dim]")
-                return
-
-        # Delete the preset
-        preset_manager.delete_preset(preset_id)
-
-        console.print(f"\n[green]+[/green] Deleted preset: [bold]{preset_id}[/bold]")
-
-    except PresetNotFoundError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except BuiltInModificationError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except FileOperationError as e:
-        console.print(format_cli_error(str(e)))
-        raise click.Abort() from e
-    except (FileNotFoundError, PermissionError, OSError) as e:
-        # Catch any remaining OS-level errors (for backward compatibility)
-        console.print(format_cli_error(f"Failed to delete preset: {e}"))
-        raise click.Abort() from e
-    except Exception as e:
-        # Catch remaining unexpected errors
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("deleting preset", str(e)))
-        )
-        raise click.Abort() from e
+    console.print(f"\n[green]+[/green] Deleted preset: [bold]{preset_id}[/bold]")
 
 
 @presets.command("edit")
 @click.argument("preset_id")
+@handle_errors(
+    "editing preset",
+    extra_handlers={
+        subprocess.CalledProcessError: lambda e: console.print(
+            f"[red]Error opening editor:[/red] {e}"
+        ),
+    },
+)
 def presets_edit(preset_id):
     """Edit a preset's TOML file in your default editor.
 
@@ -1478,73 +1274,62 @@ def presets_edit(preset_id):
     from claudefig.preset_manager import PresetManager
     from claudefig.user_config import get_user_config_dir
 
-    try:
-        preset_manager = PresetManager()
+    preset_manager = PresetManager()
 
-        # Check if preset exists
-        preset = preset_manager.get_preset(preset_id)
-        if not preset:
-            console.print(
-                format_cli_warning(ErrorMessages.not_found("preset", preset_id))
-            )
-            return
+    # Check if preset exists
+    preset = preset_manager.get_preset(preset_id)
+    if not preset:
+        console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
+        return
 
-        # Check if it's a built-in preset
-        from claudefig.models import PresetSource
+    # Check if it's a built-in preset
+    from claudefig.models import PresetSource
 
-        if preset.source == PresetSource.BUILT_IN:
-            console.print(format_cli_error("Cannot edit built-in presets"))
-            raise click.Abort() from None
+    if preset.source == PresetSource.BUILT_IN:
+        console.print(format_cli_error("Cannot edit built-in presets"))
+        raise click.Abort() from None
 
-        # Determine preset file path
-        if preset.source == PresetSource.USER:
-            preset_dir = get_user_config_dir() / "presets"
-        else:  # PROJECT
-            preset_dir = Path.cwd() / ".claudefig" / "presets"
+    # Determine preset file path
+    if preset.source == PresetSource.USER:
+        preset_dir = get_user_config_dir() / "presets"
+    else:  # PROJECT
+        preset_dir = Path.cwd() / ".claudefig" / "presets"
 
-        preset_file = preset_dir / f"{preset_id.replace(':', '_')}.toml"
+    preset_file = preset_dir / f"{preset_id.replace(':', '_')}.toml"
 
-        if not preset_file.exists():
-            console.print(format_cli_error(f"Preset file not found: {preset_file}"))
-            raise click.Abort() from None
+    if not preset_file.exists():
+        console.print(format_cli_error(f"Preset file not found: {preset_file}"))
+        raise click.Abort() from None
 
-        console.print(f"[bold blue]Opening preset file:[/bold blue] {preset_file}\n")
+    console.print(f"[bold blue]Opening preset file:[/bold blue] {preset_file}\n")
 
-        # Determine editor based on environment and platform
-        editor = os.environ.get("EDITOR")
+    # Determine editor based on environment and platform
+    editor = os.environ.get("EDITOR")
 
-        if editor:
-            # Use EDITOR environment variable
-            subprocess.run([editor, str(preset_file)], check=True)
-        else:
-            # Fall back to platform defaults
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["notepad", str(preset_file)], check=True)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", "-t", str(preset_file)], check=True)
-            else:  # Linux and others
-                # Try common editors
-                for cmd in ["nano", "vim", "vi", "gedit"]:
-                    try:
-                        subprocess.run([cmd, str(preset_file)], check=True)
-                        break
-                    except FileNotFoundError:
-                        continue
-                else:
-                    console.print("[yellow]No suitable editor found[/yellow]")
-                    console.print(f"\n[dim]Edit manually: {preset_file}[/dim]")
-                    return
+    if editor:
+        # Use EDITOR environment variable
+        subprocess.run([editor, str(preset_file)], check=True)
+    else:
+        # Fall back to platform defaults
+        system = platform.system()
+        if system == "Windows":
+            subprocess.run(["notepad", str(preset_file)], check=True)
+        elif system == "Darwin":  # macOS
+            subprocess.run(["open", "-t", str(preset_file)], check=True)
+        else:  # Linux and others
+            # Try common editors
+            for cmd in ["nano", "vim", "vi", "gedit"]:
+                try:
+                    subprocess.run([cmd, str(preset_file)], check=True)
+                    break
+                except FileNotFoundError:
+                    continue
+            else:
+                console.print("[yellow]No suitable editor found[/yellow]")
+                console.print(f"\n[dim]Edit manually: {preset_file}[/dim]")
+                return
 
-        console.print("[green]+[/green] Preset file edited")
-
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Error opening editor:[/red] {e}")
-    except Exception as e:
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("editing preset", str(e)))
-        )
-        raise click.Abort() from e
+    console.print("[green]+[/green] Preset file edited")
 
 
 @main.group()
@@ -1566,57 +1351,52 @@ def templates():
     is_flag=True,
     help="Include validation status for each template",
 )
+@handle_errors("listing templates")
 def templates_list(validate):
     """List all global config templates."""
     from claudefig.config_template_manager import ConfigTemplateManager
 
-    try:
-        manager = ConfigTemplateManager()
-        templates_list = manager.list_global_presets(include_validation=validate)
+    manager = ConfigTemplateManager()
+    templates_list = manager.list_global_presets(include_validation=validate)
 
-        if not templates_list:
-            console.print("[yellow]No global templates found[/yellow]")
-            console.print(
-                f"\n[dim]Templates location: {manager.global_presets_dir}[/dim]"
-            )
-            return
+    if not templates_list:
+        console.print("[yellow]No global templates found[/yellow]")
+        console.print(f"\n[dim]Templates location: {manager.global_presets_dir}[/dim]")
+        return
 
-        console.print(
-            f"\n[bold blue]Global Config Templates[/bold blue] ({len(templates_list)})\n"
-        )
-        console.print(f"[dim]Location: {manager.global_presets_dir}[/dim]\n")
+    console.print(
+        f"\n[bold blue]Global Config Templates[/bold blue] ({len(templates_list)})\n"
+    )
+    console.print(f"[dim]Location: {manager.global_presets_dir}[/dim]\n")
 
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Name", style="cyan", width=20)
-        table.add_column("Description", style="white", width=40)
-        table.add_column("Files", style="green", width=8)
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Name", style="cyan", width=20)
+    table.add_column("Description", style="white", width=40)
+    table.add_column("Files", style="green", width=8)
 
-        if validate:
-            table.add_column("Valid", style="yellow", width=8)
+    if validate:
+        table.add_column("Valid", style="yellow", width=8)
 
-        for template in templates_list:
-            row = [
-                template["name"],
-                template.get("description", "N/A"),
-                str(template.get("file_count", 0)),
-            ]
+    for template in templates_list:
+        row = [
+            template["name"],
+            template.get("description", "N/A"),
+            str(template.get("file_count", 0)),
+        ]
 
-            if validate and "validation" in template:
-                valid = template["validation"].get("valid", False)
-                row.append("[green]Yes[/green]" if valid else "[red]No[/red]")
+        if validate and "validation" in template:
+            valid = template["validation"].get("valid", False)
+            row.append("[green]Yes[/green]" if valid else "[red]No[/red]")
 
-            table.add_row(*row)
+        table.add_row(*row)
 
-        console.print(table)
-        console.print("\n[dim]Use 'claudefig templates show <name>' for details[/dim]")
-
-    except Exception as e:
-        console.print(f"[red]Error listing templates:[/red] {e}")
-        raise click.Abort() from e
+    console.print(table)
+    console.print("\n[dim]Use 'claudefig templates show <name>' for details[/dim]")
 
 
 @templates.command("show")
 @click.argument("template_name")
+@handle_errors("showing template")
 def templates_show(template_name):
     """Show details of a global config template.
 
@@ -1624,53 +1404,48 @@ def templates_show(template_name):
     """
     from claudefig.config_template_manager import ConfigTemplateManager
 
+    manager = ConfigTemplateManager()
+
+    # Get template config
     try:
-        manager = ConfigTemplateManager()
-
-        # Get template config
-        try:
-            template_config = manager.get_preset_config(template_name)
-        except FileNotFoundError:
-            console.print(
-                format_cli_warning(ErrorMessages.not_found("template", template_name))
-            )
-            console.print(
-                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
-            )
-            return
-
-        # Get template metadata
-        templates_list = manager.list_global_presets()
-        template_info = next(
-            (t for t in templates_list if t["name"] == template_name), None
+        template_config = manager.get_preset_config(template_name)
+    except FileNotFoundError:
+        console.print(
+            format_cli_warning(ErrorMessages.not_found("template", template_name))
         )
+        console.print(
+            "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+        )
+        return
 
-        console.print(f"\n[bold blue]Template: {template_name}[/bold blue]\n")
+    # Get template metadata
+    templates_list = manager.list_global_presets()
+    template_info = next(
+        (t for t in templates_list if t["name"] == template_name), None
+    )
 
-        if template_info:
-            console.print(f"Description: {template_info.get('description', 'N/A')}")
-            console.print(f"File Count:  {template_info.get('file_count', 0)}")
+    console.print(f"\n[bold blue]Template: {template_name}[/bold blue]\n")
 
-        console.print("\n[bold]File Instances:[/bold]\n")
+    if template_info:
+        console.print(f"Description: {template_info.get('description', 'N/A')}")
+        console.print(f"File Count:  {template_info.get('file_count', 0)}")
 
-        # Display file instances
-        files = template_config.get_file_instances()
-        if files:
-            for file_inst in files:
-                file_type = file_inst.get("type", "?")
-                path = file_inst.get("path", "?")
-                preset = file_inst.get("preset", "?")
-                enabled = file_inst.get("enabled", True)
+    console.print("\n[bold]File Instances:[/bold]\n")
 
-                status = "[green]enabled[/green]" if enabled else "[dim]disabled[/dim]"
-                console.print(f"  • {file_type}: {path} ({status})")
-                console.print(f"      Preset: {preset}")
-        else:
-            console.print("  [dim]No file instances[/dim]")
+    # Display file instances
+    files = template_config.get_file_instances()
+    if files:
+        for file_inst in files:
+            file_type = file_inst.get("type", "?")
+            path = file_inst.get("path", "?")
+            preset = file_inst.get("preset", "?")
+            enabled = file_inst.get("enabled", True)
 
-    except Exception as e:
-        console.print(f"[red]Error showing template:[/red] {e}")
-        raise click.Abort() from e
+            status = "[green]enabled[/green]" if enabled else "[dim]disabled[/dim]"
+            console.print(f"  • {file_type}: {path} ({status})")
+            console.print(f"      Preset: {preset}")
+    else:
+        console.print("  [dim]No file instances[/dim]")
 
 
 @templates.command("apply")
@@ -1681,6 +1456,35 @@ def templates_show(template_name):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Project path to apply template to (default: current directory)",
 )
+@handle_errors(
+    "applying template",
+    extra_handlers={
+        TemplateNotFoundError: lambda e: (
+            console.print(f"[red]Template not found:[/red] {e}"),  # type: ignore[func-returns-value]
+            console.print(
+                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+            ),  # type: ignore[func-returns-value]
+        )[-1],
+        FileNotFoundError: lambda e: (
+            console.print(f"[red]Template not found:[/red] {e}"),  # type: ignore[func-returns-value]
+            console.print(
+                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+            ),  # type: ignore[func-returns-value]
+        )[-1],
+        ConfigFileExistsError: lambda e: (
+            console.print(f"[red]Error:[/red] {e}"),  # type: ignore[func-returns-value]
+            console.print(
+                "[dim]Remove existing config or choose a different directory[/dim]"
+            ),  # type: ignore[func-returns-value]
+        )[-1],
+        FileExistsError: lambda e: (
+            console.print("[red]Error:[/red] .claudefig.toml already exists"),  # type: ignore[func-returns-value]
+            console.print(
+                "[dim]Remove existing config or choose a different directory[/dim]"
+            ),  # type: ignore[func-returns-value]
+        )[-1],
+    },
+)
 def templates_apply(template_name, path):
     """Apply a global template to a project.
 
@@ -1690,58 +1494,35 @@ def templates_apply(template_name, path):
 
     repo_path = Path(path).resolve()
 
-    try:
-        manager = ConfigTemplateManager()
+    manager = ConfigTemplateManager()
 
-        console.print(
-            f"[bold green]Applying template '{template_name}' to:[/bold green] {repo_path}"
-        )
+    console.print(
+        f"[bold green]Applying template '{template_name}' to:[/bold green] {repo_path}"
+    )
 
-        manager.apply_preset_to_project(template_name, target_path=repo_path)
+    manager.apply_preset_to_project(template_name, target_path=repo_path)
 
-        console.print(
-            f"\n[green]+[/green] Template '{template_name}' applied successfully!"
-        )
-        console.print(f"[dim]Created: {repo_path / '.claudefig.toml'}[/dim]")
-
-    except TemplateNotFoundError as e:
-        console.print(f"[red]Template not found:[/red] {template_name}")
-        console.print(
-            "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
-        )
-        raise click.Abort() from e
-    except ConfigFileExistsError as e:
-        console.print(
-            f"[red]Error:[/red] .claudefig.toml already exists in {repo_path}"
-        )
-        console.print(
-            "[dim]Remove existing config or choose a different directory[/dim]"
-        )
-        raise click.Abort() from e
-    except FileNotFoundError as e:
-        # ConfigTemplateManager not yet migrated - catch for backward compatibility
-        console.print(f"[red]Template not found:[/red] {template_name}")
-        console.print(
-            "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
-        )
-        raise click.Abort() from e
-    except FileExistsError:
-        # ConfigTemplateManager not yet migrated - catch for backward compatibility
-        console.print(
-            f"[red]Error:[/red] .claudefig.toml already exists in {repo_path}"
-        )
-        console.print(
-            "[dim]Remove existing config or choose a different directory[/dim]"
-        )
-        raise click.Abort() from None
-    except Exception as e:
-        console.print(f"[red]Error applying template:[/red] {e}")
-        raise click.Abort() from e
+    console.print(
+        f"\n[green]+[/green] Template '{template_name}' applied successfully!"
+    )
+    console.print(f"[dim]Created: {repo_path / '.claudefig.toml'}[/dim]")
 
 
 @templates.command("delete")
 @click.argument("template_name")
 @click.confirmation_option(prompt="Are you sure you want to delete this template?")
+@handle_errors(
+    "deleting template",
+    extra_handlers={
+        TemplateNotFoundError: lambda e: console.print(
+            f"[yellow]Template not found:[/yellow] {e}"
+        ),
+        ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+        FileNotFoundError: lambda e: console.print(
+            "[yellow]Template not found[/yellow]"
+        ),
+    },
+)
 def templates_delete(template_name):
     """Delete a global config template.
 
@@ -1749,33 +1530,23 @@ def templates_delete(template_name):
     """
     from claudefig.config_template_manager import ConfigTemplateManager
 
-    try:
-        manager = ConfigTemplateManager()
+    manager = ConfigTemplateManager()
 
-        manager.delete_global_preset(template_name)
+    manager.delete_global_preset(template_name)
 
-        console.print(
-            f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]"
-        )
-
-    except TemplateNotFoundError as e:
-        console.print(f"[yellow]Template not found:[/yellow] {template_name}")
-        raise click.Abort() from e
-    except ValueError as e:
-        # Catch validation errors (protected templates, etc.)
-        console.print(f"[red]Error:[/red] {e}")
-        raise click.Abort() from e
-    except FileNotFoundError:
-        # ConfigTemplateManager not yet migrated - catch for backward compatibility
-        console.print(f"[yellow]Template not found:[/yellow] {template_name}")
-        raise click.Abort() from None
-    except Exception as e:
-        console.print(f"[red]Error deleting template:[/red] {e}")
-        raise click.Abort() from e
+    console.print(f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]")
 
 
 @templates.command("edit")
 @click.argument("template_name")
+@handle_errors(
+    "editing template",
+    extra_handlers={
+        subprocess.CalledProcessError: lambda e: console.print(
+            f"[red]Error opening editor:[/red] {e}"
+        ),
+    },
+)
 def templates_edit(template_name):
     """Edit a global template's TOML file in your default editor.
 
@@ -1799,66 +1570,56 @@ def templates_edit(template_name):
 
     from claudefig.config_template_manager import ConfigTemplateManager
 
-    try:
-        manager = ConfigTemplateManager()
+    manager = ConfigTemplateManager()
 
-        # Check if template exists
-        template_file = manager.global_presets_dir / f"{template_name}.toml"
+    # Check if template exists (directory-based structure)
+    template_dir = manager.global_presets_dir / template_name
+    template_file = template_dir / ".claudefig.toml"
 
-        if not template_file.exists():
-            console.print(
-                format_cli_warning(ErrorMessages.not_found("template", template_name))
-            )
-            console.print(
-                "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
-            )
-            return
-
-        # Check if it's a default template
-        if template_name == "default":
-            console.print(
-                "[yellow]Warning: Editing default template - changes will affect new projects[/yellow]\n"
-            )
-
+    if not template_dir.exists() or not template_file.exists():
         console.print(
-            f"[bold blue]Opening template file:[/bold blue] {template_file}\n"
+            format_cli_warning(ErrorMessages.not_found("template", template_name))
+        )
+        console.print(
+            "\n[dim]Use 'claudefig templates list' to see available templates[/dim]"
+        )
+        return
+
+    # Check if it's a default template
+    if template_name == "default":
+        console.print(
+            "[yellow]Warning: Editing default template - changes will affect new projects[/yellow]\n"
         )
 
-        # Determine editor based on environment and platform
-        editor = os.environ.get("EDITOR")
+    console.print(f"[bold blue]Opening template file:[/bold blue] {template_file}\n")
 
-        if editor:
-            # Use EDITOR environment variable
-            subprocess.run([editor, str(template_file)], check=True)
-        else:
-            # Fall back to platform defaults
-            system = platform.system()
-            if system == "Windows":
-                subprocess.run(["notepad", str(template_file)], check=True)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", "-t", str(template_file)], check=True)
-            else:  # Linux and others
-                # Try common editors
-                for cmd in ["nano", "vim", "vi", "gedit"]:
-                    try:
-                        subprocess.run([cmd, str(template_file)], check=True)
-                        break
-                    except FileNotFoundError:
-                        continue
-                else:
-                    console.print("[yellow]No suitable editor found[/yellow]")
-                    console.print(f"\n[dim]Edit manually: {template_file}[/dim]")
-                    return
+    # Determine editor based on environment and platform
+    editor = os.environ.get("EDITOR")
 
-        console.print("[green]+[/green] Template file edited")
+    if editor:
+        # Use EDITOR environment variable
+        subprocess.run([editor, str(template_file)], check=True)
+    else:
+        # Fall back to platform defaults
+        system = platform.system()
+        if system == "Windows":
+            subprocess.run(["notepad", str(template_file)], check=True)
+        elif system == "Darwin":  # macOS
+            subprocess.run(["open", "-t", str(template_file)], check=True)
+        else:  # Linux and others
+            # Try common editors
+            for cmd in ["nano", "vim", "vi", "gedit"]:
+                try:
+                    subprocess.run([cmd, str(template_file)], check=True)
+                    break
+                except FileNotFoundError:
+                    continue
+            else:
+                console.print("[yellow]No suitable editor found[/yellow]")
+                console.print(f"\n[dim]Edit manually: {template_file}[/dim]")
+                return
 
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Error opening editor:[/red] {e}")
-    except Exception as e:
-        console.print(
-            format_cli_error(ErrorMessages.operation_failed("editing template", str(e)))
-        )
-        raise click.Abort() from e
+    console.print("[green]+[/green] Template file edited")
 
 
 @templates.command("save")
@@ -1874,6 +1635,13 @@ def templates_edit(template_name):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="Project path to save config from (default: current directory)",
 )
+@handle_errors(
+    "saving template",
+    extra_handlers={
+        ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+        FileNotFoundError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+    },
+)
 def templates_save(template_name, description, path):
     """Save current project config as a global template.
 
@@ -1883,44 +1651,31 @@ def templates_save(template_name, description, path):
 
     repo_path = Path(path).resolve()
 
+    # Ensure a config exists in the project
+    config_path = repo_path / ".claudefig.toml"
+    if not config_path.exists():
+        console.print(
+            format_cli_error(ErrorMessages.config_file_not_found(str(repo_path)))
+        )
+        console.print("[dim]Initialize a config first with 'claudefig init'[/dim]")
+        raise click.Abort()
+
+    manager = ConfigTemplateManager()
+
+    # Temporarily change to project dir to read its config
+    import os
+
+    original_cwd = os.getcwd()
     try:
-        # Ensure a config exists in the project
-        config_path = repo_path / ".claudefig.toml"
-        if not config_path.exists():
-            console.print(
-                format_cli_error(ErrorMessages.config_file_not_found(str(repo_path)))
-            )
-            console.print("[dim]Initialize a config first with 'claudefig init'[/dim]")
-            raise click.Abort()
+        os.chdir(repo_path)
+        manager.save_global_preset(template_name, description)
+    finally:
+        os.chdir(original_cwd)
 
-        manager = ConfigTemplateManager()
-
-        # Temporarily change to project dir to read its config
-        import os
-
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(repo_path)
-            manager.save_global_preset(template_name, description)
-        finally:
-            os.chdir(original_cwd)
-
-        console.print(
-            f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]"
-        )
-        console.print(
-            f"[dim]Location: {manager.global_presets_dir / (template_name + '.toml')}[/dim]"
-        )
-
-    except ValueError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise click.Abort() from e
-    except FileNotFoundError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise click.Abort() from e
-    except Exception as e:
-        console.print(f"[red]Error saving template:[/red] {e}")
-        raise click.Abort() from e
+    console.print(f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]")
+    console.print(
+        f"[dim]Location: {manager.global_presets_dir / template_name / '.claudefig.toml'}[/dim]"
+    )
 
 
 @main.command("setup-mcp")
