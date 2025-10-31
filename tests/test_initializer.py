@@ -525,7 +525,10 @@ class TestInitializeTemplateErrors:
 
         BEHAVIOR: Should trigger rollback when >50% of files fail.
         """
-        from claudefig.exceptions import InitializationRollbackError, TemplateNotFoundError
+        from claudefig.exceptions import (
+            InitializationRollbackError,
+            TemplateNotFoundError,
+        )
 
         mock_is_git.return_value = True
         initializer = Initializer()
@@ -625,7 +628,10 @@ class TestInitializeTemplateErrors:
 
         BEHAVIOR: Should trigger rollback and display helpful error messages.
         """
-        from claudefig.exceptions import InitializationRollbackError, TemplateNotFoundError
+        from claudefig.exceptions import (
+            InitializationRollbackError,
+            TemplateNotFoundError,
+        )
 
         mock_is_git.return_value = True
         initializer = Initializer()

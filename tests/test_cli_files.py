@@ -6,7 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from claudefig.cli import main
-from claudefig.models import FileInstance, FileType
+from claudefig.models import FileType
 from tests.factories import FileInstanceFactory
 
 
@@ -64,7 +64,6 @@ class TestFilesList:
         tmp_path,
     ):
         """Test listing all file instances."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {
@@ -124,7 +123,6 @@ class TestFilesList:
         tmp_path,
     ):
         """Test listing files filtered by type."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -158,7 +156,6 @@ class TestFilesList:
         tmp_path,
     ):
         """Test listing only enabled file instances."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -664,7 +661,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing a file instance's preset."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -720,7 +717,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing a file instance's path."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -778,7 +775,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing a file instance's enabled status."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -865,7 +862,6 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing without specifying any changes."""
-        from claudefig.models import FileInstance, FileType
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}
@@ -900,7 +896,7 @@ class TestFilesEdit:
         tmp_path,
     ):
         """Test editing with validation failure."""
-        from claudefig.models import FileInstance, FileType, ValidationResult
+        from claudefig.models import ValidationResult
 
         # Mock config loading
         mock_load_config.return_value = {"claudefig": {"version": "2.0"}, "files": []}

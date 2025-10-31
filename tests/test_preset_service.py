@@ -9,7 +9,7 @@ from claudefig.exceptions import (
     BuiltInModificationError,
     PresetExistsError,
 )
-from claudefig.models import FileType, Preset, PresetSource
+from claudefig.models import FileType, PresetSource
 from claudefig.repositories.preset_repository import FakePresetRepository
 from claudefig.services import preset_service
 from tests.factories import PresetFactory
@@ -20,9 +20,14 @@ class TestListPresets:
 
     def test_lists_all_presets_when_no_filters(self):
         """Test listing all presets without filters."""
-        preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test 1")
+        preset1 = PresetFactory(
+            id="claude_md:test1", name="test1", description="Test 1"
+        )
         preset2 = PresetFactory(
-            id="gitignore:test2", name="test2", type=FileType.GITIGNORE, description="Test 2"
+            id="gitignore:test2",
+            name="test2",
+            type=FileType.GITIGNORE,
+            description="Test 2",
         )
         repo = FakePresetRepository([preset1, preset2])
 
@@ -34,7 +39,10 @@ class TestListPresets:
         """Test filtering presets by file type."""
         preset1 = PresetFactory(id="claude_md:test", name="test", description="Test")
         preset2 = PresetFactory(
-            id="gitignore:test", name="test", type=FileType.GITIGNORE, description="Test"
+            id="gitignore:test",
+            name="test",
+            type=FileType.GITIGNORE,
+            description="Test",
         )
         repo = FakePresetRepository([preset1, preset2])
 
@@ -47,7 +55,10 @@ class TestListPresets:
         """Test filtering presets by source."""
         preset1 = PresetFactory(id="claude_md:user", name="user", description="User")
         preset2 = PresetFactory(
-            id="claude_md:project", name="project", description="Project", source=PresetSource.PROJECT
+            id="claude_md:project",
+            name="project",
+            description="Project",
+            source=PresetSource.PROJECT,
         )
         repo = FakePresetRepository([preset1, preset2])
 
@@ -96,7 +107,10 @@ class TestCreatePreset:
         """Test creating preset in project source."""
         repo = FakePresetRepository()
         preset = PresetFactory(
-            id="claude_md:new", name="new", description="New", source=PresetSource.PROJECT
+            id="claude_md:new",
+            name="new",
+            description="New",
+            source=PresetSource.PROJECT,
         )
 
         preset_service.create_preset(repo, preset, PresetSource.PROJECT)
@@ -110,7 +124,10 @@ class TestCreatePreset:
         """Test raises error when trying to create in built-in source."""
         repo = FakePresetRepository()
         preset = PresetFactory(
-            id="claude_md:test", name="test", description="Test", source=PresetSource.BUILT_IN
+            id="claude_md:test",
+            name="test",
+            description="Test",
+            source=PresetSource.BUILT_IN,
         )
 
         with pytest.raises(BuiltInModificationError):
@@ -118,7 +135,9 @@ class TestCreatePreset:
 
     def test_raises_error_for_duplicate_preset(self):
         """Test raises error when preset already exists."""
-        preset = PresetFactory(id="claude_md:existing", name="existing", description="Existing")
+        preset = PresetFactory(
+            id="claude_md:existing", name="existing", description="Existing"
+        )
         repo = FakePresetRepository([preset])
 
         with pytest.raises(PresetExistsError):
@@ -204,7 +223,9 @@ class TestRenderPreset:
 
     def test_handles_empty_variable_dict(self):
         """Test handles empty variable dictionary."""
-        preset = PresetFactory(id="claude_md:test", name="test", description="Test", variables={})
+        preset = PresetFactory(
+            id="claude_md:test", name="test", description="Test", variables={}
+        )
         repo = FakePresetRepository([preset])
 
         result = preset_service.render_preset(repo, preset, variables={})
@@ -451,9 +472,15 @@ class TestResolvePresetVariables:
 
     def test_handles_multi_level_inheritance(self):
         """Test handles multi-level inheritance chain."""
-        grandparent = PresetFactory(name="grandparent", variables={"gp_var": "gp_value"})
-        parent = PresetFactory(name="parent", variables={"p_var": "p_value"}, extends=grandparent.id)
-        child = PresetFactory(name="child", variables={"c_var": "c_value"}, extends=parent.id)
+        grandparent = PresetFactory(
+            name="grandparent", variables={"gp_var": "gp_value"}
+        )
+        parent = PresetFactory(
+            name="parent", variables={"p_var": "p_value"}, extends=grandparent.id
+        )
+        child = PresetFactory(
+            name="child", variables={"c_var": "c_value"}, extends=parent.id
+        )
         repo = FakePresetRepository([grandparent, parent, child])
 
         result = preset_service.resolve_preset_variables(repo, child)
@@ -466,8 +493,12 @@ class TestResolvePresetVariables:
     def test_child_overrides_parent_and_grandparent(self):
         """Test child variables override parent and grandparent."""
         grandparent = PresetFactory(name="grandparent", variables={"var": "gp_value"})
-        parent = PresetFactory(name="parent", variables={"var": "p_value"}, extends=grandparent.id)
-        child = PresetFactory(name="child", variables={"var": "c_value"}, extends=parent.id)
+        parent = PresetFactory(
+            name="parent", variables={"var": "p_value"}, extends=grandparent.id
+        )
+        child = PresetFactory(
+            name="child", variables={"var": "c_value"}, extends=parent.id
+        )
         repo = FakePresetRepository([grandparent, parent, child])
 
         result = preset_service.resolve_preset_variables(repo, child)

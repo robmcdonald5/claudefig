@@ -1,6 +1,6 @@
 """Tests for file instance service layer."""
 
-from claudefig.models import FileInstance, FileType, Preset, PresetSource
+from claudefig.models import FileInstance, FileType, PresetSource
 from claudefig.repositories.preset_repository import FakePresetRepository
 from claudefig.services import file_instance_service
 from tests.factories import FileInstanceFactory, PresetFactory
@@ -92,7 +92,12 @@ class TestAddInstance:
     def test_adds_new_instance(self, tmp_path):
         """Test adding a new instance."""
         instances: dict[str, FileInstance] = {}
-        preset = PresetFactory(id="claude_md:default", name="default", type=FileType.CLAUDE_MD, source=PresetSource.BUILT_IN)
+        preset = PresetFactory(
+            id="claude_md:default",
+            name="default",
+            type=FileType.CLAUDE_MD,
+            source=PresetSource.BUILT_IN,
+        )
         preset_repo = FakePresetRepository([preset])
 
         new_instance = FileInstanceFactory(id="test-1")
@@ -111,8 +116,18 @@ class TestAddInstance:
         instances: dict[str, FileInstance] = {"test-1": existing}
 
         # Add presets to repository
-        preset1 = PresetFactory(id="claude_md:default", name="default", type=FileType.CLAUDE_MD, source=PresetSource.BUILT_IN)
-        preset2 = PresetFactory(id="gitignore:python", name="python", type=FileType.GITIGNORE, source=PresetSource.BUILT_IN)
+        preset1 = PresetFactory(
+            id="claude_md:default",
+            name="default",
+            type=FileType.CLAUDE_MD,
+            source=PresetSource.BUILT_IN,
+        )
+        preset2 = PresetFactory(
+            id="gitignore:python",
+            name="python",
+            type=FileType.GITIGNORE,
+            source=PresetSource.BUILT_IN,
+        )
         preset_repo = FakePresetRepository([preset1, preset2])
 
         new_instance = FileInstanceFactory.gitignore(id="test-1")
@@ -134,12 +149,24 @@ class TestUpdateInstance:
         instances: dict[str, FileInstance] = {"test-1": instance}
 
         # Add presets to repository
-        preset1 = PresetFactory(id="claude_md:default", name="default", type=FileType.CLAUDE_MD, source=PresetSource.BUILT_IN)
-        preset2 = PresetFactory(id="claude_md:custom", name="custom", type=FileType.CLAUDE_MD, source=PresetSource.USER)
+        preset1 = PresetFactory(
+            id="claude_md:default",
+            name="default",
+            type=FileType.CLAUDE_MD,
+            source=PresetSource.BUILT_IN,
+        )
+        preset2 = PresetFactory(
+            id="claude_md:custom",
+            name="custom",
+            type=FileType.CLAUDE_MD,
+            source=PresetSource.USER,
+        )
         preset_repo = FakePresetRepository([preset1, preset2])
 
         # Create updated instance
-        updated_instance = FileInstanceFactory(id="test-1", preset="claude_md:custom", enabled=False)
+        updated_instance = FileInstanceFactory(
+            id="test-1", preset="claude_md:custom", enabled=False
+        )
 
         result = file_instance_service.update_instance(
             instances,
@@ -157,7 +184,9 @@ class TestUpdateInstance:
         instances: dict[str, FileInstance] = {}
         preset_repo = FakePresetRepository()
 
-        nonexistent_instance = FileInstanceFactory(id="nonexistent", preset="claude_md:custom")
+        nonexistent_instance = FileInstanceFactory(
+            id="nonexistent", preset="claude_md:custom"
+        )
 
         result = file_instance_service.update_instance(
             instances,
@@ -241,7 +270,9 @@ class TestGenerateInstanceId:
 
     def test_generates_unique_id(self):
         """Test generating a unique instance ID."""
-        instances: dict[str, FileInstance] = {"claude_md-default": FileInstanceFactory(id="claude_md-default")}
+        instances: dict[str, FileInstance] = {
+            "claude_md-default": FileInstanceFactory(id="claude_md-default")
+        }
 
         result = file_instance_service.generate_instance_id(
             FileType.CLAUDE_MD,
@@ -321,7 +352,9 @@ class TestGetInstancesByType:
 
     def test_returns_empty_list_for_type_with_no_instances(self):
         """Test returns empty list for type with no instances."""
-        instances: dict[str, FileInstance] = {"test-1": FileInstanceFactory(id="test-1")}
+        instances: dict[str, FileInstance] = {
+            "test-1": FileInstanceFactory(id="test-1")
+        }
 
         result = file_instance_service.get_instances_by_type(
             instances, FileType.GITIGNORE
@@ -420,7 +453,9 @@ class TestSaveInstancesToConfig:
 
     def test_preserves_instance_properties(self):
         """Test preserves all instance properties."""
-        instances: dict[str, FileInstance] = {"test-1": FileInstanceFactory(id="test-1", variables={"key": "value"})}
+        instances: dict[str, FileInstance] = {
+            "test-1": FileInstanceFactory(id="test-1", variables={"key": "value"})
+        }
 
         result = file_instance_service.save_instances_to_config(instances)
 
@@ -555,7 +590,12 @@ class TestValidateInstanceComponentPresets:
     def test_mixed_preset_types_in_instances(self, tmp_path):
         """Test validation works with mix of component and regular presets."""
         # Setup: one component preset, one regular preset
-        regular_preset = PresetFactory(id="claude_md:default", name="default", type=FileType.CLAUDE_MD, source=PresetSource.BUILT_IN)
+        regular_preset = PresetFactory(
+            id="claude_md:default",
+            name="default",
+            type=FileType.CLAUDE_MD,
+            source=PresetSource.BUILT_IN,
+        )
         preset_repo = FakePresetRepository([regular_preset])
 
         # Existing instances

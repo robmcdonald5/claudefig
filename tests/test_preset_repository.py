@@ -10,7 +10,7 @@ from claudefig.exceptions import (
     PresetExistsError,
     PresetNotFoundError,
 )
-from claudefig.models import FileType, Preset, PresetSource
+from claudefig.models import FileType, PresetSource
 from claudefig.repositories.preset_repository import (
     FakePresetRepository,
     TomlPresetRepository,
@@ -97,7 +97,9 @@ class TestTomlPresetRepository:
             user_dir = Path(tmpdir) / "user"
             repo = TomlPresetRepository(user_presets_dir=user_dir)
 
-            preset = PresetFactory(id="claude_md:test", name="test", description="Test preset")
+            preset = PresetFactory(
+                id="claude_md:test", name="test", description="Test preset"
+            )
 
             repo.add_preset(preset, PresetSource.USER)
 
@@ -134,7 +136,10 @@ class TestTomlPresetRepository:
         repo = TomlPresetRepository()
 
         preset = PresetFactory(
-            id="claude_md:test", name="test", description="Test", source=PresetSource.BUILT_IN
+            id="claude_md:test",
+            name="test",
+            description="Test",
+            source=PresetSource.BUILT_IN,
         )
 
         with pytest.raises(BuiltInModificationError):
@@ -190,7 +195,10 @@ class TestTomlPresetRepository:
             template_file.write_text("# Template Content")
 
             preset = PresetFactory(
-                id="claude_md:test", name="test", description="Test", template_path=template_file
+                id="claude_md:test",
+                name="test",
+                description="Test",
+                template_path=template_file,
             )
 
             repo = TomlPresetRepository()
@@ -246,9 +254,14 @@ class TestFakePresetRepository:
 
     def test_init_with_presets(self):
         """Test initialization with preset list."""
-        preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test 1")
+        preset1 = PresetFactory(
+            id="claude_md:test1", name="test1", description="Test 1"
+        )
         preset2 = PresetFactory(
-            id="gitignore:test2", name="test2", type=FileType.GITIGNORE, description="Test 2"
+            id="gitignore:test2",
+            name="test2",
+            type=FileType.GITIGNORE,
+            description="Test 2",
         )
 
         repo = FakePresetRepository([preset1, preset2])
@@ -261,7 +274,10 @@ class TestFakePresetRepository:
         """Test filtering by file type."""
         preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test")
         preset2 = PresetFactory(
-            id="gitignore:test2", name="test2", type=FileType.GITIGNORE, description="Test"
+            id="gitignore:test2",
+            name="test2",
+            type=FileType.GITIGNORE,
+            description="Test",
         )
 
         repo = FakePresetRepository([preset1, preset2])
@@ -275,7 +291,10 @@ class TestFakePresetRepository:
         """Test filtering by source."""
         preset1 = PresetFactory(id="claude_md:test1", name="test1", description="Test")
         preset2 = PresetFactory(
-            id="claude_md:test2", name="test2", description="Test", source=PresetSource.PROJECT
+            id="claude_md:test2",
+            name="test2",
+            description="Test",
+            source=PresetSource.PROJECT,
         )
 
         repo = FakePresetRepository([preset1, preset2])
@@ -340,7 +359,10 @@ class TestFakePresetRepository:
         repo = FakePresetRepository()
 
         preset = PresetFactory(
-            id="claude_md:test", name="test", description="Test", source=PresetSource.BUILT_IN
+            id="claude_md:test",
+            name="test",
+            description="Test",
+            source=PresetSource.BUILT_IN,
         )
 
         with pytest.raises(ValueError) as exc_info:

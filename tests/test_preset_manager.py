@@ -11,7 +11,7 @@ from claudefig.exceptions import (
     PresetNotFoundError,
     TemplateNotFoundError,
 )
-from claudefig.models import FileType, Preset, PresetSource
+from claudefig.models import FileType, PresetSource
 from claudefig.preset_manager import PresetManager
 from tests.factories import PresetFactory
 

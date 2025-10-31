@@ -356,6 +356,7 @@ class TestAutoHealing:
 
         # Delete components folder to simulate user deletion
         import shutil
+
         shutil.rmtree(config_dir / "components")
 
         # Call ensure_user_config - should auto-heal
@@ -400,6 +401,7 @@ class TestAutoHealing:
 
         # Delete the default preset to simulate user deletion
         import shutil
+
         shutil.rmtree(default_preset)
         assert not default_preset.exists()
 
