@@ -113,8 +113,16 @@ class PresetValidator:
         if not self.global_presets_dir.exists():
             return results
 
-        for preset_file in self.global_presets_dir.glob("*.toml"):
-            preset_name = preset_file.stem
+        # Look for directory-based presets with .claudefig.toml files inside
+        for preset_dir in self.global_presets_dir.iterdir():
+            if not preset_dir.is_dir():
+                continue
+
+            preset_file = preset_dir / ".claudefig.toml"
+            if not preset_file.exists():
+                continue
+
+            preset_name = preset_dir.name
             results[preset_name] = self.validate_preset_config(preset_file)
 
         return results

@@ -11,8 +11,9 @@ from claudefig.exceptions import (
     PresetNotFoundError,
     TemplateNotFoundError,
 )
-from claudefig.models import FileType, Preset, PresetSource
+from claudefig.models import FileType, PresetSource
 from claudefig.preset_manager import PresetManager
+from tests.factories import PresetFactory
 
 
 @pytest.fixture
@@ -177,9 +178,8 @@ class TestAddDeletePreset:
         """Test that adding built-in preset raises error."""
         manager = PresetManager()
 
-        new_preset = Preset(
+        new_preset = PresetFactory(
             id="test:preset",
-            type=FileType.CLAUDE_MD,
             name="Test",
             description="Test",
             source=PresetSource.BUILT_IN,
@@ -193,12 +193,10 @@ class TestAddDeletePreset:
         manager = PresetManager()
 
         # Try to add a preset with ID that already exists
-        duplicate = Preset(
+        duplicate = PresetFactory(
             id="claude_md:default",  # Already exists as built-in
-            type=FileType.CLAUDE_MD,
             name="Duplicate",
             description="Test",
-            source=PresetSource.USER,
         )
 
         with pytest.raises(PresetExistsError):
@@ -220,12 +218,10 @@ class TestAddDeletePreset:
 
     def test_add_user_preset_success(self, preset_manager, tmp_path):
         """Test successfully adding a user preset (Priority 4)."""
-        new_preset = Preset(
+        new_preset = PresetFactory(
             id="claude_md:my_user_preset",
-            type=FileType.CLAUDE_MD,
             name="My User Preset",
             description="Custom user preset",
-            source=PresetSource.USER,
             template_path=None,
             variables={"key": "value"},
             extends=None,
@@ -253,7 +249,7 @@ class TestAddDeletePreset:
 
     def test_add_project_preset_success(self, preset_manager, tmp_path):
         """Test successfully adding a project preset (Priority 4)."""
-        new_preset = Preset(
+        new_preset = PresetFactory(
             id="settings_json:my_project_preset",
             type=FileType.SETTINGS_JSON,
             name="My Project Preset",
@@ -287,12 +283,10 @@ class TestAddDeletePreset:
     def test_delete_user_preset_success(self, preset_manager, tmp_path):
         """Test successfully deleting a user preset (Priority 4)."""
         # First, add a user preset
-        new_preset = Preset(
+        new_preset = PresetFactory(
             id="claude_md:delete_me",
-            type=FileType.CLAUDE_MD,
             name="Delete Me",
             description="Preset to delete",
-            source=PresetSource.USER,
             template_path=None,
             variables={},
             extends=None,
@@ -320,7 +314,7 @@ class TestAddDeletePreset:
     def test_delete_project_preset_success(self, preset_manager, tmp_path):
         """Test successfully deleting a project preset (Priority 4)."""
         # First, add a project preset
-        new_preset = Preset(
+        new_preset = PresetFactory(
             id="gitignore:delete_me_project",
             type=FileType.GITIGNORE,
             name="Delete Me Project",
@@ -361,12 +355,10 @@ class TestRenderPreset:
         template_file = tmp_path / "template.md"
         template_file.write_text("Hello {name}! Version: {version}", encoding="utf-8")
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:render",
-            type=FileType.CLAUDE_MD,
             name="Test",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={"name": "World", "version": "1.0"},
         )
@@ -381,12 +373,10 @@ class TestRenderPreset:
         template_file = tmp_path / "template.md"
         template_file.write_text("Name: {name}, Age: {age}", encoding="utf-8")
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:override",
-            type=FileType.CLAUDE_MD,
             name="Test",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={"name": "Default", "age": "0"},
         )
@@ -399,9 +389,8 @@ class TestRenderPreset:
 
     def test_render_preset_without_template_raises_error(self):
         """Test that rendering preset without template raises error."""
-        preset = Preset(
+        preset = PresetFactory(
             id="test:no_template",
-            type=FileType.CLAUDE_MD,
             name="No Template",
             description="Test",
             source=PresetSource.BUILT_IN,
@@ -516,12 +505,10 @@ class TestPresetEdgeCases:
         """Test rendering preset when template file doesn't exist."""
         nonexistent_template = tmp_path / "does_not_exist.md"
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:missing",
-            type=FileType.CLAUDE_MD,
             name="Missing Template",
             description="Test",
-            source=PresetSource.USER,
             template_path=nonexistent_template,
             variables={},
         )
@@ -537,12 +524,10 @@ class TestPresetEdgeCases:
         template_file = tmp_path / "template.md"
         template_file.write_text("Static content with no variables", encoding="utf-8")
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:static",
-            type=FileType.CLAUDE_MD,
             name="Static",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={},
         )
@@ -559,7 +544,7 @@ class TestPresetEdgeCases:
         # This should work without crashing even with invalid source
         # Implementation determines behavior - may return empty list or ignore filter
         try:
-            presets = manager.list_presets(source="invalid_source")
+            presets = manager.list_presets(source="invalid_source")  # type: ignore[arg-type]
             # Should either return empty list or all presets
             assert isinstance(presets, list)
         except (ValueError, KeyError):
@@ -571,12 +556,10 @@ class TestPresetEdgeCases:
         template_file = tmp_path / "unicode.md"
         template_file.write_text("Hello {name}! 你好 {greeting} 🎉", encoding="utf-8")
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:unicode",
-            type=FileType.CLAUDE_MD,
             name="Unicode Test",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={"name": "World", "greeting": "世界"},
         )
@@ -703,12 +686,10 @@ class TestValidateTemplateVariables:
         )
 
         # Preset only defines 'name' and 'version', missing 'env'
-        preset = Preset(
+        preset = PresetFactory(
             id="test:missing_vars",
-            type=FileType.CLAUDE_MD,
             name="Missing Variables",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={"name": "World", "version": "1.0"},
         )
@@ -729,12 +710,10 @@ class TestValidateTemplateVariables:
         template_file.write_text("Hello {name}!", encoding="utf-8")
 
         # Preset defines extra variables not used in template
-        preset = Preset(
+        preset = PresetFactory(
             id="test:unused_vars",
-            type=FileType.CLAUDE_MD,
             name="Unused Variables",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={
                 "name": "World",
@@ -762,12 +741,10 @@ class TestValidateTemplateVariables:
         template_file.write_text("Hello {name} in {env}!", encoding="utf-8")
 
         # Preset only defines {name}
-        preset = Preset(
+        preset = PresetFactory(
             id="test:user_vars",
-            type=FileType.CLAUDE_MD,
             name="User Variables",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={"name": "World"},
         )
@@ -783,12 +760,10 @@ class TestValidateTemplateVariables:
 
     def test_validate_template_no_template_path(self, preset_manager):
         """Test validation when preset has no template path."""
-        preset = Preset(
+        preset = PresetFactory(
             id="test:no_template",
-            type=FileType.CLAUDE_MD,
             name="No Template",
             description="Test",
-            source=PresetSource.USER,
             template_path=None,
             variables={},
         )
@@ -804,12 +779,10 @@ class TestValidateTemplateVariables:
         """Test validation when template file doesn't exist."""
         nonexistent_file = tmp_path / "does_not_exist.md"
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:missing_file",
-            type=FileType.CLAUDE_MD,
             name="Missing File",
             description="Test",
-            source=PresetSource.USER,
             template_path=nonexistent_file,
             variables={},
         )
@@ -827,12 +800,10 @@ class TestValidateTemplateVariables:
         template_file = tmp_path / "template.md"
         template_file.write_text("Hello {name}!", encoding="utf-8")
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:read_error",
-            type=FileType.CLAUDE_MD,
             name="Read Error",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={},
         )
@@ -857,12 +828,10 @@ class TestValidateTemplateVariables:
         template_file = tmp_path / "template.md"
         template_file.write_text("Name: {name}, Version: {version}", encoding="utf-8")
 
-        preset = Preset(
+        preset = PresetFactory(
             id="test:all_valid",
-            type=FileType.CLAUDE_MD,
             name="All Valid",
             description="Test",
-            source=PresetSource.USER,
             template_path=template_file,
             variables={"name": "Project", "version": "1.0.0"},
         )

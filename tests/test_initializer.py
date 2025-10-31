@@ -525,16 +525,20 @@ class TestInitializeTemplateErrors:
 
         BEHAVIOR: Should trigger rollback when >50% of files fail.
         """
-        from claudefig.exceptions import InitializationRollbackError
+        from claudefig.exceptions import (
+            InitializationRollbackError,
+            TemplateNotFoundError,
+        )
 
         mock_is_git.return_value = True
         initializer = Initializer()
-        initializer.template_manager = mock_template_manager
 
-        # Mock template manager to raise FileNotFoundError for all templates
-        mock_template_manager.read_template_file.side_effect = FileNotFoundError(
-            "Template not found"
+        # Mock preset repository to raise TemplateNotFoundError for all templates
+        mock_preset_repo = MagicMock()
+        mock_preset_repo.get_template_content.side_effect = TemplateNotFoundError(
+            "preset_id", "Template not found"
         )
+        initializer.preset_repo = mock_preset_repo
 
         with (
             patch.object(Config, "create_default"),
@@ -624,16 +628,20 @@ class TestInitializeTemplateErrors:
 
         BEHAVIOR: Should trigger rollback and display helpful error messages.
         """
-        from claudefig.exceptions import InitializationRollbackError
+        from claudefig.exceptions import (
+            InitializationRollbackError,
+            TemplateNotFoundError,
+        )
 
         mock_is_git.return_value = True
         initializer = Initializer()
-        initializer.template_manager = mock_template_manager
 
-        # Mock template manager to raise FileNotFoundError
-        mock_template_manager.read_template_file.side_effect = FileNotFoundError(
-            "CLAUDE.md not found"
+        # Mock preset repository to raise TemplateNotFoundError
+        mock_preset_repo = MagicMock()
+        mock_preset_repo.get_template_content.side_effect = TemplateNotFoundError(
+            "claude_md:default", "CLAUDE.md not found"
         )
+        initializer.preset_repo = mock_preset_repo
 
         with (
             patch.object(Config, "create_default"),

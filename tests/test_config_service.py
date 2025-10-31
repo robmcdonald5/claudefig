@@ -578,7 +578,7 @@ class TestConfigSingleton:
         config_file = tmp_path / "test.toml"
 
         # Clear cache first
-        config_service.get_config_singleton.cache_clear()
+        config_service._get_config_singleton_cached.cache_clear()
 
         result = config_service.get_config_singleton(config_file)
 
@@ -586,26 +586,32 @@ class TestConfigSingleton:
         assert "claudefig" in result
 
     def test_singleton_caches_result(self, tmp_path):
-        """Test singleton caches and returns same instance."""
+        """Test singleton caches result but returns deep copies."""
         config_file = tmp_path / "test.toml"
 
-        config_service.get_config_singleton.cache_clear()
+        config_service._get_config_singleton_cached.cache_clear()
 
         result1 = config_service.get_config_singleton(config_file)
         result2 = config_service.get_config_singleton(config_file)
 
-        assert result1 is result2
+        # Results are equal but not same object (deep copy protection)
+        assert result1 == result2
+        assert result1 is not result2
+
+        # Verify cache is working (only 1 miss, subsequent calls are hits)
+        cache_info = config_service._get_config_singleton_cached.cache_info()
+        assert cache_info.hits >= 1  # At least one cache hit
 
     def test_reload_config_singleton_clears_cache(self, tmp_path):
         """Test reload clears cache and returns fresh config."""
         config_file = tmp_path / "test.toml"
 
-        config_service.get_config_singleton.cache_clear()
+        config_service._get_config_singleton_cached.cache_clear()
 
         result1 = config_service.get_config_singleton(config_file)
         result2 = config_service.reload_config_singleton()
 
-        # Different instances (cache was cleared)
+        # Different instances (deep copy + cache cleared)
         assert result1 is not result2
         # Same content (both defaults)
         assert result1 == result2

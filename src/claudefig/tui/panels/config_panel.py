@@ -249,14 +249,13 @@ class ConfigPanel(BaseNavigablePanel):
         if button_id in self.GRID_POSITIONS:
             ConfigPanel._last_focused_button = button_id
 
-        # Load instances_dict for migrated screens
+        # Load instances_dict for screens
         instances_data = config_service.get_file_instances(self.config_data)
         instances_dict, _ = file_instance_service.load_instances_from_config(
             instances_data
         )
 
         if button_id == "btn-overview":
-            # OverviewScreen has been migrated - uses new architecture
             self.app.push_screen(
                 OverviewScreen(
                     config_data=self.config_data,
@@ -265,7 +264,6 @@ class ConfigPanel(BaseNavigablePanel):
                 )
             )
         elif button_id == "btn-settings":
-            # ProjectSettingsScreen has been migrated - uses new architecture
             self.app.push_screen(
                 ProjectSettingsScreen(
                     config_data=self.config_data,
@@ -274,7 +272,6 @@ class ConfigPanel(BaseNavigablePanel):
                 )
             )
         elif button_id == "btn-file-instances":
-            # FileInstancesScreen has been migrated - uses new architecture
             self.app.push_screen(
                 FileInstancesScreen(
                     config_data=self.config_data,

@@ -153,22 +153,27 @@ class TestValidateAllPresets:
     """Tests for validate_all_presets method."""
 
     def test_validate_all_presets(self, tmp_path):
-        """Test validating all global presets."""
+        """Test validating all global presets (directory-based structure)."""
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Create valid and invalid presets
+        # Create valid and invalid presets using directory structure
         valid_data = {
             "claudefig": {"version": "2.0"},
             "files": [],
         }
         invalid_data = {"missing": "sections"}
 
-        valid_file = global_dir / "valid.toml"
+        # Create directory-based presets
+        valid_preset_dir = global_dir / "valid"
+        valid_preset_dir.mkdir()
+        valid_file = valid_preset_dir / ".claudefig.toml"
         with open(valid_file, "wb") as f:
             tomli_w.dump(valid_data, f)
 
-        invalid_file = global_dir / "invalid.toml"
+        invalid_preset_dir = global_dir / "invalid"
+        invalid_preset_dir.mkdir()
+        invalid_file = invalid_preset_dir / ".claudefig.toml"
         with open(invalid_file, "wb") as f:
             tomli_w.dump(invalid_data, f)
 
@@ -186,18 +191,22 @@ class TestGetValidationSummary:
     """Tests for get_validation_summary method."""
 
     def test_get_validation_summary(self, tmp_path):
-        """Test getting validation summary for all presets."""
+        """Test getting validation summary for all presets (directory-based structure)."""
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Create various presets
+        # Create various presets using directory structure
         valid_data = {"claudefig": {"version": "2.0"}, "files": []}
-        valid_file = global_dir / "valid.toml"
+        valid_preset_dir = global_dir / "valid"
+        valid_preset_dir.mkdir()
+        valid_file = valid_preset_dir / ".claudefig.toml"
         with open(valid_file, "wb") as f:
             tomli_w.dump(valid_data, f)
 
         invalid_data = {}
-        invalid_file = global_dir / "invalid.toml"
+        invalid_preset_dir = global_dir / "invalid"
+        invalid_preset_dir.mkdir()
+        invalid_file = invalid_preset_dir / ".claudefig.toml"
         with open(invalid_file, "wb") as f:
             tomli_w.dump(invalid_data, f)
 

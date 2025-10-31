@@ -97,7 +97,8 @@ def validate_path_safe(path: str, repo_root: Path) -> ValidationResult:
 
         # Ensure resolved path stays within repo
         full_path = (repo_root / path_obj).resolve()
-        if not str(full_path).startswith(str(repo_root.resolve())):
+        repo_root_resolved = repo_root.resolve()
+        if not full_path.is_relative_to(repo_root_resolved):
             result.add_error("Path would escape repository root")
 
     except (ValueError, OSError) as e:

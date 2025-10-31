@@ -23,12 +23,8 @@ class TestTemplatesList:
 
         assert result.exit_code == 0
         assert "Global Config Templates" in result.output
-        # Should have the 5 default templates
+        # Should have at least the default template (others removed during simplification)
         assert "default" in result.output
-        assert "minimal" in result.output
-        assert "full" in result.output
-        assert "backend" in result.output
-        assert "frontend" in result.output
 
     def test_list_templates_with_validation(self, cli_runner):
         """Test listing templates with validation flag."""
@@ -43,11 +39,11 @@ class TestTemplatesShow:
 
     def test_show_existing_template(self, cli_runner):
         """Test showing an existing template."""
-        result = cli_runner.invoke(main, ["templates", "show", "minimal"])
+        result = cli_runner.invoke(main, ["templates", "show", "default"])
 
         assert result.exit_code == 0
-        assert "Template: minimal" in result.output
-        assert "Minimal Claude Code setup" in result.output
+        assert "Template: default" in result.output
+        assert "Default Claude Code configuration" in result.output
         assert "File Count:" in result.output
 
     def test_show_nonexistent_template(self, cli_runner):
@@ -68,7 +64,7 @@ class TestTemplatesApply:
             project_dir.mkdir()
 
             result = cli_runner.invoke(
-                main, ["templates", "apply", "minimal", "--path", str(project_dir)]
+                main, ["templates", "apply", "default", "--path", str(project_dir)]
             )
 
             assert result.exit_code == 0
@@ -86,7 +82,7 @@ class TestTemplatesApply:
             config_file.write_text("existing", encoding="utf-8")
 
             result = cli_runner.invoke(
-                main, ["templates", "apply", "minimal", "--path", str(project_dir)]
+                main, ["templates", "apply", "default", "--path", str(project_dir)]
             )
 
             assert result.exit_code == 1

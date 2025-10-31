@@ -33,49 +33,60 @@ class TestConfigTemplateManagerInit:
         assert manager.global_presets_dir == Path.home() / ".claudefig" / "presets"
 
     def test_init_creates_default_presets(self, tmp_path):
-        """Test that default presets are created on init."""
+        """Test that ConfigTemplateManager initializes without creating default presets.
+
+        Note: Default presets are now created by user_config.py during user
+        directory initialization, not by ConfigTemplateManager.
+        """
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Initialize manager to trigger default preset creation
+        # Initialize manager - should not create any presets
         ConfigTemplateManager(global_presets_dir=global_dir)
 
-        # Check that preset files were created
-        assert (global_dir / "default.toml").exists()
-        assert (global_dir / "minimal.toml").exists()
-        assert (global_dir / "full.toml").exists()
-        assert (global_dir / "backend.toml").exists()
-        assert (global_dir / "frontend.toml").exists()
+        # Verify directory exists but no presets created by ConfigTemplateManager
+        assert global_dir.exists()
+
+        # No flat .toml files should be created (old behavior)
+        preset_files = list(global_dir.glob("*.toml"))
+        assert len(preset_files) == 0
+
+        # No directories with .claudefig.toml should be created either
+        # (that's handled by user_config.py)
+        preset_dirs = [d for d in global_dir.iterdir() if d.is_dir()]
+        assert len(preset_dirs) == 0
 
 
 class TestListGlobalPresets:
     """Tests for list_global_presets method."""
 
     def test_list_global_presets(self, tmp_path):
-        """Test listing global config preset templates."""
+        """Test listing global config preset templates (directory-based)."""
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Create a sample preset
+        # Create a sample preset (directory structure)
+        preset_dir = global_dir / "test"
+        preset_dir.mkdir()
+
         preset_data = {
             "claudefig": {
                 "version": "2.0",
                 "schema_version": "2.0",
+            },
+            "preset": {
+                "name": "test",
                 "description": "Test preset",
             },
-            "files": [
-                {
-                    "id": "test-file",
-                    "type": "claude_md",
-                    "preset": "claude_md:default",
-                    "path": "CLAUDE.md",
-                    "enabled": True,
-                    "variables": {},
+            "components": {
+                "claude_md": {
+                    "variants": ["default"],
+                    "required_files": ["CLAUDE.md"],
                 }
-            ],
+            },
         }
 
-        preset_file = global_dir / "test.toml"
+        preset_file = preset_dir / ".claudefig.toml"
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
@@ -86,24 +97,29 @@ class TestListGlobalPresets:
         assert len(presets) >= 1  # At least our test preset
         test_preset = next(p for p in presets if p["name"] == "test")
         assert test_preset["description"] == "Test preset"
-        assert test_preset["file_count"] == 1
+        assert test_preset["file_count"] == 1  # 1 variant in claude_md component
 
     def test_list_global_presets_with_validation(self, tmp_path):
-        """Test listing global presets with validation."""
+        """Test listing global presets with validation (directory-based)."""
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Create a valid preset
+        # Create a valid preset directory
+        valid_dir = global_dir / "valid"
+        valid_dir.mkdir()
         valid_data = {
             "claudefig": {"version": "2.0", "schema_version": "2.0"},
-            "files": [],
+            "preset": {"name": "valid", "description": "Valid preset"},
+            "components": {},
         }
-        valid_file = global_dir / "valid.toml"
+        valid_file = valid_dir / ".claudefig.toml"
         with open(valid_file, "wb") as f:
             tomli_w.dump(valid_data, f)
 
-        # Create an invalid preset (missing required fields)
-        invalid_file = global_dir / "invalid.toml"
+        # Create an invalid preset directory (missing required fields)
+        invalid_dir = global_dir / "invalid"
+        invalid_dir.mkdir()
+        invalid_file = invalid_dir / ".claudefig.toml"
         with open(invalid_file, "wb") as f:
             tomli_w.dump({"incomplete": "data"}, f)
 
@@ -125,20 +141,22 @@ class TestDeleteGlobalPreset:
     """Tests for delete_global_preset method."""
 
     def test_delete_existing_preset(self, tmp_path):
-        """Test deleting an existing global preset."""
+        """Test deleting an existing global preset (directory)."""
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Create a preset to delete
-        preset_file = global_dir / "to_delete.toml"
+        # Create a preset directory to delete
+        preset_dir = global_dir / "to_delete"
+        preset_dir.mkdir()
+        preset_file = preset_dir / ".claudefig.toml"
         with open(preset_file, "wb") as f:
-            tomli_w.dump({"claudefig": {}}, f)
+            tomli_w.dump({"claudefig": {}, "preset": {}, "components": {}}, f)
 
         manager = ConfigTemplateManager(global_presets_dir=global_dir)
 
         manager.delete_global_preset("to_delete")
 
-        assert not preset_file.exists()
+        assert not preset_dir.exists()
 
     def test_delete_default_preset_raises_error(self, tmp_path):
         """Test that deleting 'default' preset raises error."""
@@ -161,15 +179,21 @@ class TestApplyPresetToProject:
     """Tests for apply_preset_to_project method."""
 
     def test_apply_preset_to_project(self, tmp_path):
-        """Test applying a global preset to a project directory."""
+        """Test applying a global preset to a project directory (directory-based)."""
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
         project_dir = tmp_path / "project"
         project_dir.mkdir(parents=True)
 
-        # Create a global preset
-        preset_data = {"claudefig": {"version": "2.0"}, "files": []}
-        preset_file = global_dir / "test.toml"
+        # Create a global preset directory
+        preset_dir = global_dir / "test"
+        preset_dir.mkdir()
+        preset_data = {
+            "claudefig": {"version": "2.0"},
+            "preset": {"name": "test"},
+            "components": {},
+        }
+        preset_file = preset_dir / ".claudefig.toml"
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
@@ -201,10 +225,12 @@ class TestApplyPresetToProject:
         existing_config = project_dir / ".claudefig.toml"
         existing_config.write_text("existing", encoding="utf-8")
 
-        # Create a preset
-        preset_file = global_dir / "test.toml"
+        # Create a preset directory
+        preset_dir = global_dir / "test"
+        preset_dir.mkdir()
+        preset_file = preset_dir / ".claudefig.toml"
         with open(preset_file, "wb") as f:
-            tomli_w.dump({}, f)
+            tomli_w.dump({"claudefig": {}, "preset": {}, "components": {}}, f)
 
         manager = ConfigTemplateManager(global_presets_dir=global_dir)
 
@@ -218,7 +244,8 @@ class TestPresetConfigCreation:
     def test_create_default_preset_config(self):
         """Test creating default preset configuration."""
         manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("default")
+        preset_def = manager.preset_loader.load_preset("default")
+        config = manager._build_from_preset_definition(preset_def)
 
         assert "claudefig" in config
         assert config["claudefig"]["version"] == "2.0"
@@ -228,54 +255,6 @@ class TestPresetConfigCreation:
         file_ids = [f["id"] for f in config["files"]]
         assert any("claude-md" in fid for fid in file_ids)
         assert any("gitignore" in fid for fid in file_ids)
-
-    def test_create_minimal_preset_config(self):
-        """Test creating minimal preset configuration."""
-        manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("minimal")
-
-        assert "claudefig" in config
-        assert "files" in config
-        # Minimal should only have CLAUDE.md
-        assert len(config["files"]) == 1
-        assert config["files"][0]["type"] == "claude_md"
-
-    def test_create_full_preset_config(self):
-        """Test creating full preset configuration."""
-        manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("full")
-
-        assert "claudefig" in config
-        assert "files" in config
-        # Full should have all file types
-        file_types = {f["type"] for f in config["files"]}
-        assert "claude_md" in file_types
-        assert "gitignore" in file_types
-        assert "settings_json" in file_types
-        assert "commands" in file_types
-        assert "agents" in file_types
-        assert "hooks" in file_types
-        assert "output_styles" in file_types
-        assert "statusline" in file_types
-        assert "mcp" in file_types
-
-    def test_create_backend_preset_config(self):
-        """Test creating backend preset configuration."""
-        manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("backend")
-
-        assert "claudefig" in config
-        assert "files" in config
-        assert "backend" in config["claudefig"]["description"].lower()
-
-    def test_create_frontend_preset_config(self):
-        """Test creating frontend preset configuration."""
-        manager = ConfigTemplateManager(global_presets_dir=Path("/tmp/test"))
-        config = manager._build_from_definition("frontend")
-
-        assert "claudefig" in config
-        assert "files" in config
-        assert "frontend" in config["claudefig"]["description"].lower()
 
 
 class TestSaveGlobalPreset:
@@ -299,9 +278,9 @@ class TestSaveGlobalPreset:
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
 
-        # Create existing preset
-        existing = global_dir / "existing.toml"
-        existing.write_text("data", encoding="utf-8")
+        # Create existing preset directory
+        existing = global_dir / "existing"
+        existing.mkdir()
 
         manager = ConfigTemplateManager(global_presets_dir=global_dir)
 
