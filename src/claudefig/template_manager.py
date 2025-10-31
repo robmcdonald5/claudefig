@@ -159,9 +159,7 @@ class FileTemplateManager:
 
         return path
 
-    def list_components(
-        self, preset: str, type: str | None = None
-    ) -> list[dict]:
+    def list_components(self, preset: str, type: str | None = None) -> list[dict]:
         """List available components from preset and global pool.
 
         Shows components from preset-specific folder and global pool,
@@ -189,23 +187,33 @@ class FileTemplateManager:
             if preset_components_path.exists():
                 # If type specified, only scan that type
                 if type:
-                    type_dirs = [preset_components_path / type] if (preset_components_path / type).exists() else []
+                    type_dirs = (
+                        [preset_components_path / type]
+                        if (preset_components_path / type).exists()
+                        else []
+                    )
                 else:
                     # Scan all type directories
-                    type_dirs = [d for d in preset_components_path.iterdir() if d.is_dir()]
+                    type_dirs = [
+                        d for d in preset_components_path.iterdir() if d.is_dir()
+                    ]
 
                 for type_dir in type_dirs:
                     comp_type = type_dir.name
                     for comp_dir in type_dir.iterdir():
                         if comp_dir.is_dir():
                             comp_name = comp_dir.name
-                            components.append({
-                                "name": comp_name,
-                                "type": comp_type,
-                                "source": "preset",
-                                "display_name": self.get_component_display_name(comp_name, "preset"),
-                                "path": comp_dir,
-                            })
+                            components.append(
+                                {
+                                    "name": comp_name,
+                                    "type": comp_type,
+                                    "source": "preset",
+                                    "display_name": self.get_component_display_name(
+                                        comp_name, "preset"
+                                    ),
+                                    "path": comp_dir,
+                                }
+                            )
         except (TypeError, AttributeError, OSError) as e:
             logger.debug(f"Could not list preset components for '{preset}': {e}")
 
@@ -218,23 +226,35 @@ class FileTemplateManager:
             if global_components_dir.exists():
                 # If type specified, only scan that type
                 if type:
-                    type_dirs = [global_components_dir / type] if (global_components_dir / type).exists() else []
+                    type_dirs = (
+                        [global_components_dir / type]
+                        if (global_components_dir / type).exists()
+                        else []
+                    )
                 else:
                     # Scan all type directories
-                    type_dirs = [d for d in global_components_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
+                    type_dirs = [
+                        d
+                        for d in global_components_dir.iterdir()
+                        if d.is_dir() and not d.name.startswith(".")
+                    ]
 
                 for type_dir in type_dirs:
                     comp_type = type_dir.name
                     for comp_dir in type_dir.iterdir():
                         if comp_dir.is_dir():
                             comp_name = comp_dir.name
-                            components.append({
-                                "name": comp_name,
-                                "type": comp_type,
-                                "source": "global",
-                                "display_name": self.get_component_display_name(comp_name, "global"),
-                                "path": comp_dir,
-                            })
+                            components.append(
+                                {
+                                    "name": comp_name,
+                                    "type": comp_type,
+                                    "source": "global",
+                                    "display_name": self.get_component_display_name(
+                                        comp_name, "global"
+                                    ),
+                                    "path": comp_dir,
+                                }
+                            )
         except (ImportError, OSError) as e:
             logger.debug(f"Could not list global components: {e}")
 

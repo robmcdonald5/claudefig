@@ -407,7 +407,9 @@ def config_set_init(overwrite, backup, path, config_data, config_repo):
 def config_list(path, config_data, config_repo):
     """List all configuration settings and file instances."""
     if config_repo.exists():
-        console.print(f"[bold blue]Configuration from:[/bold blue] {config_repo.get_path()}\n")
+        console.print(
+            f"[bold blue]Configuration from:[/bold blue] {config_repo.get_path()}\n"
+        )
     else:
         console.print(
             "[bold blue]Configuration:[/bold blue] [dim](using defaults)[/dim]\n"
@@ -592,7 +594,9 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
 )
 @with_config(path_param="repo_path_arg")
 @handle_errors("adding file instance")
-def files_add(file_type, preset, path_target, disabled, repo_path_arg, config_data, config_repo):
+def files_add(
+    file_type, preset, path_target, disabled, repo_path_arg, config_data, config_repo
+):
     """Add a new file instance.
 
     FILE_TYPE: Type of file (e.g., claude_md, settings_json)
@@ -665,9 +669,7 @@ def files_add(file_type, preset, path_target, disabled, repo_path_arg, config_da
     config_service.set_file_instances(config_data, updated_instances_data)
     config_service.save_config(config_data, config_repo)
 
-    console.print(
-        f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]"
-    )
+    console.print(f"\n[green]+[/green] Added file instance: [cyan]{instance.id}[/cyan]")
     console.print(f"  Type: {instance.type.display_name}")
     console.print(f"  Preset: {instance.preset}")
     console.print(f"  Path: {instance.path}")
@@ -692,9 +694,7 @@ def files_remove(instance_id, path, config_data, config_repo):
     """
     # Load instances
     instances_data = config_service.get_file_instances(config_data)
-    instances_dict, _ = file_instance_service.load_instances_from_config(
-        instances_data
-    )
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
     # Remove instance
     if file_instance_service.remove_instance(instances_dict, instance_id):
@@ -711,9 +711,7 @@ def files_remove(instance_id, path, config_data, config_repo):
         console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
     else:
         console.print(
-            format_cli_warning(
-                ErrorMessages.not_found("file instance", instance_id)
-            )
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
         )
 
 
@@ -734,9 +732,7 @@ def files_enable(instance_id, path, config_data, config_repo):
     """
     # Load instances
     instances_data = config_service.get_file_instances(config_data)
-    instances_dict, _ = file_instance_service.load_instances_from_config(
-        instances_data
-    )
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
     # Enable instance
     if file_instance_service.enable_instance(instances_dict, instance_id):
@@ -753,9 +749,7 @@ def files_enable(instance_id, path, config_data, config_repo):
         console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
     else:
         console.print(
-            format_cli_warning(
-                ErrorMessages.not_found("file instance", instance_id)
-            )
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
         )
 
 
@@ -776,9 +770,7 @@ def files_disable(instance_id, path, config_data, config_repo):
     """
     # Load instances
     instances_data = config_service.get_file_instances(config_data)
-    instances_dict, _ = file_instance_service.load_instances_from_config(
-        instances_data
-    )
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
     # Disable instance
     if file_instance_service.disable_instance(instances_dict, instance_id):
@@ -795,9 +787,7 @@ def files_disable(instance_id, path, config_data, config_repo):
         console.print(f"[dim]Config saved to: {config_repo.get_path()}[/dim]")
     else:
         console.print(
-            format_cli_warning(
-                ErrorMessages.not_found("file instance", instance_id)
-            )
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
         )
 
 
@@ -826,7 +816,9 @@ def files_disable(instance_id, path, config_data, config_repo):
 )
 @with_config(path_param="repo_path_arg")
 @handle_errors("editing file instance")
-def files_edit(instance_id, preset, path_target, enable, repo_path_arg, config_data, config_repo):
+def files_edit(
+    instance_id, preset, path_target, enable, repo_path_arg, config_data, config_repo
+):
     """Edit an existing file instance.
 
     INSTANCE_ID: ID of the instance to edit
@@ -835,17 +827,13 @@ def files_edit(instance_id, preset, path_target, enable, repo_path_arg, config_d
 
     # Load instances
     instances_data = config_service.get_file_instances(config_data)
-    instances_dict, _ = file_instance_service.load_instances_from_config(
-        instances_data
-    )
+    instances_dict, _ = file_instance_service.load_instances_from_config(instances_data)
 
     # Get existing instance
     instance = file_instance_service.get_instance(instances_dict, instance_id)
     if not instance:
         console.print(
-            format_cli_warning(
-                ErrorMessages.not_found("file instance", instance_id)
-            )
+            format_cli_warning(ErrorMessages.not_found("file instance", instance_id))
         )
         raise click.Abort()
 
@@ -958,9 +946,7 @@ def presets_list(file_type):
         console.print("[yellow]No presets found[/yellow]")
         return
 
-    console.print(
-        f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n"
-    )
+    console.print(f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n")
 
     # Group by file type
     current_type = None
@@ -995,9 +981,7 @@ def presets_show(preset_id):
     preset = preset_manager.get_preset(preset_id)
 
     if not preset:
-        console.print(
-            format_cli_warning(ErrorMessages.not_found("preset", preset_id))
-        )
+        console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
         return
 
     console.print("\n[bold blue]Preset Details[/bold blue]\n")
@@ -1193,9 +1177,15 @@ def presets_create(preset_name, file_type, description, template_path, source, t
         PresetNotFoundError: lambda e: console.print(format_cli_error(str(e))),
         BuiltInModificationError: lambda e: console.print(format_cli_error(str(e))),
         FileOperationError: lambda e: console.print(format_cli_error(str(e))),
-        FileNotFoundError: lambda e: console.print(format_cli_error(f"Failed to delete preset: {e}")),
-        PermissionError: lambda e: console.print(format_cli_error(f"Failed to delete preset: {e}")),
-        OSError: lambda e: console.print(format_cli_error(f"Failed to delete preset: {e}")),
+        FileNotFoundError: lambda e: console.print(
+            format_cli_error(f"Failed to delete preset: {e}")
+        ),
+        PermissionError: lambda e: console.print(
+            format_cli_error(f"Failed to delete preset: {e}")
+        ),
+        OSError: lambda e: console.print(
+            format_cli_error(f"Failed to delete preset: {e}")
+        ),
     },
 )
 def presets_delete(preset_id, force):
@@ -1222,9 +1212,7 @@ def presets_delete(preset_id, force):
     # Check if preset exists
     preset = preset_manager.get_preset(preset_id)
     if not preset:
-        console.print(
-            format_cli_warning(ErrorMessages.not_found("preset", preset_id))
-        )
+        console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
         return
 
     # Check if it's a built-in preset
@@ -1257,7 +1245,9 @@ def presets_delete(preset_id, force):
 @handle_errors(
     "editing preset",
     extra_handlers={
-        subprocess.CalledProcessError: lambda e: console.print(f"[red]Error opening editor:[/red] {e}"),
+        subprocess.CalledProcessError: lambda e: console.print(
+            f"[red]Error opening editor:[/red] {e}"
+        ),
     },
 )
 def presets_edit(preset_id):
@@ -1289,9 +1279,7 @@ def presets_edit(preset_id):
     # Check if preset exists
     preset = preset_manager.get_preset(preset_id)
     if not preset:
-        console.print(
-            format_cli_warning(ErrorMessages.not_found("preset", preset_id))
-        )
+        console.print(format_cli_warning(ErrorMessages.not_found("preset", preset_id)))
         return
 
     # Check if it's a built-in preset
@@ -1373,9 +1361,7 @@ def templates_list(validate):
 
     if not templates_list:
         console.print("[yellow]No global templates found[/yellow]")
-        console.print(
-            f"\n[dim]Templates location: {manager.global_presets_dir}[/dim]"
-        )
+        console.print(f"\n[dim]Templates location: {manager.global_presets_dir}[/dim]")
         return
 
     console.print(
@@ -1473,10 +1459,22 @@ def templates_show(template_name):
 @handle_errors(
     "applying template",
     extra_handlers={
-        TemplateNotFoundError: lambda e: (console.print(f"[red]Template not found:[/red] {e}"), console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"))[-1],
-        FileNotFoundError: lambda e: (console.print(f"[red]Template not found:[/red] {e}"), console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"))[-1],
-        ConfigFileExistsError: lambda e: (console.print(f"[red]Error:[/red] {e}"), console.print("[dim]Remove existing config or choose a different directory[/dim]"))[-1],
-        FileExistsError: lambda e: (console.print("[red]Error:[/red] .claudefig.toml already exists"), console.print("[dim]Remove existing config or choose a different directory[/dim]"))[-1],
+        TemplateNotFoundError: lambda e: (
+            console.print(f"[red]Template not found:[/red] {e}"),  # type: ignore[func-returns-value]
+            console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"),  # type: ignore[func-returns-value]
+        )[-1],
+        FileNotFoundError: lambda e: (
+            console.print(f"[red]Template not found:[/red] {e}"),  # type: ignore[func-returns-value]
+            console.print("\n[dim]Use 'claudefig templates list' to see available templates[/dim]"),  # type: ignore[func-returns-value]
+        )[-1],
+        ConfigFileExistsError: lambda e: (
+            console.print(f"[red]Error:[/red] {e}"),  # type: ignore[func-returns-value]
+            console.print("[dim]Remove existing config or choose a different directory[/dim]"),  # type: ignore[func-returns-value]
+        )[-1],
+        FileExistsError: lambda e: (
+            console.print("[red]Error:[/red] .claudefig.toml already exists"),  # type: ignore[func-returns-value]
+            console.print("[dim]Remove existing config or choose a different directory[/dim]"),  # type: ignore[func-returns-value]
+        )[-1],
     },
 )
 def templates_apply(template_name, path):
@@ -1508,9 +1506,13 @@ def templates_apply(template_name, path):
 @handle_errors(
     "deleting template",
     extra_handlers={
-        TemplateNotFoundError: lambda e: console.print(f"[yellow]Template not found:[/yellow] {e}"),
+        TemplateNotFoundError: lambda e: console.print(
+            f"[yellow]Template not found:[/yellow] {e}"
+        ),
         ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
-        FileNotFoundError: lambda e: console.print("[yellow]Template not found[/yellow]"),
+        FileNotFoundError: lambda e: console.print(
+            "[yellow]Template not found[/yellow]"
+        ),
     },
 )
 def templates_delete(template_name):
@@ -1524,9 +1526,7 @@ def templates_delete(template_name):
 
     manager.delete_global_preset(template_name)
 
-    console.print(
-        f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]"
-    )
+    console.print(f"[green]+[/green] Deleted template: [cyan]{template_name}[/cyan]")
 
 
 @templates.command("edit")
@@ -1534,7 +1534,9 @@ def templates_delete(template_name):
 @handle_errors(
     "editing template",
     extra_handlers={
-        subprocess.CalledProcessError: lambda e: console.print(f"[red]Error opening editor:[/red] {e}"),
+        subprocess.CalledProcessError: lambda e: console.print(
+            f"[red]Error opening editor:[/red] {e}"
+        ),
     },
 )
 def templates_edit(template_name):
@@ -1581,9 +1583,7 @@ def templates_edit(template_name):
             "[yellow]Warning: Editing default template - changes will affect new projects[/yellow]\n"
         )
 
-    console.print(
-        f"[bold blue]Opening template file:[/bold blue] {template_file}\n"
-    )
+    console.print(f"[bold blue]Opening template file:[/bold blue] {template_file}\n")
 
     # Determine editor based on environment and platform
     editor = os.environ.get("EDITOR")
@@ -1664,9 +1664,7 @@ def templates_save(template_name, description, path):
     finally:
         os.chdir(original_cwd)
 
-    console.print(
-        f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]"
-    )
+    console.print(f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]")
     console.print(
         f"[dim]Location: {manager.global_presets_dir / template_name / '.claudefig.toml'}[/dim]"
     )

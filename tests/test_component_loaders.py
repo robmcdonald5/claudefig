@@ -3,8 +3,6 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
-
 from claudefig.component_loaders import (
     ComponentLoader,
     GlobalComponentLoader,
@@ -61,12 +59,14 @@ class TestPresetComponentLoader:
 
         loader = PresetComponentLoader()
 
-        with patch.object(Path, "exists", return_value=True):
-            with patch("claudefig.component_loaders.Path") as mock_path_class:
-                mock_path_class.return_value = mock_path_obj
-                result = loader.try_load("default", "claude_md", "test")
+        with (
+            patch.object(Path, "exists", return_value=True),
+            patch("claudefig.component_loaders.Path") as mock_path_class,
+        ):
+            mock_path_class.return_value = mock_path_obj
+            result = loader.try_load("default", "claude_md", "test")
 
-                assert result == mock_path_obj
+            assert result == mock_path_obj
 
     @patch("claudefig.component_loaders.files")
     def test_returns_none_when_preset_path_not_found(self, mock_files):
@@ -143,12 +143,14 @@ class TestComponentLoaderChain:
 
         chain = create_component_loader_chain()
 
-        with patch.object(Path, "exists", return_value=True):
-            with patch("claudefig.component_loaders.Path") as mock_path_class:
-                mock_path_class.return_value = mock_path_obj
-                result = chain.load("default", "claude_md", "test")
+        with (
+            patch.object(Path, "exists", return_value=True),
+            patch("claudefig.component_loaders.Path") as mock_path_class,
+        ):
+            mock_path_class.return_value = mock_path_obj
+            result = chain.load("default", "claude_md", "test")
 
-                assert result == mock_path_obj
+            assert result == mock_path_obj
 
     @patch("claudefig.user_config.get_components_dir")
     @patch("claudefig.component_loaders.files")

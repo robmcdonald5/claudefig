@@ -171,30 +171,39 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
 
                             if global_type_dir.exists():
                                 # All component types are folder-based (directories with files inside)
-                                components.extend([
-                                    (f"{item.name} (g)", item, "global")
-                                    for item in global_type_dir.iterdir()
-                                    if item.is_dir()
-                                ])
+                                components.extend(
+                                    [
+                                        (f"{item.name} (g)", item, "global")
+                                        for item in global_type_dir.iterdir()
+                                        if item.is_dir()
+                                    ]
+                                )
 
                             # Scan preset components: ~/.claudefig/presets/default/components/{type}/
                             user_config_dir = get_user_config_dir()
                             default_preset_dir = user_config_dir / "presets" / "default"
-                            preset_type_dir = default_preset_dir / "components" / type_dir_name
+                            preset_type_dir = (
+                                default_preset_dir / "components" / type_dir_name
+                            )
 
                             if preset_type_dir.exists():
                                 # All component types are folder-based
-                                components.extend([
-                                    (f"{item.name} (p)", item, "preset")
-                                    for item in preset_type_dir.iterdir()
-                                    if item.is_dir()
-                                ])
+                                components.extend(
+                                    [
+                                        (f"{item.name} (p)", item, "preset")
+                                        for item in preset_type_dir.iterdir()
+                                        if item.is_dir()
+                                    ]
+                                )
 
                             if components:
                                 # Build options: (display_name, component_data)
                                 # Store component data as JSON string: "name|source"
                                 component_options = [
-                                    (f"+ Add {display_name}", f"{path.stem if not path.is_dir() else path.name}|{source}")
+                                    (
+                                        f"+ Add {display_name}",
+                                        f"{path.stem if not path.is_dir() else path.name}|{source}",
+                                    )
                                     for display_name, path, source in components
                                 ]
 
@@ -308,7 +317,9 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             instance_id = button_id.replace("toggle-", "")
             self._toggle_instance(instance_id)
 
-    def _add_component_instance(self, file_type: FileType, component_name: str, source: str = "global") -> None:
+    def _add_component_instance(
+        self, file_type: FileType, component_name: str, source: str = "global"
+    ) -> None:
         """Load a component/template and add it as a file instance.
 
         For single-instance types, auto-replaces any existing instance.
@@ -366,8 +377,11 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             # Determine base components directory based on source
             if source == "preset":
                 from claudefig.user_config import get_user_config_dir
+
                 user_config_dir = get_user_config_dir()
-                base_components_dir = user_config_dir / "presets" / "default" / "components"
+                base_components_dir = (
+                    user_config_dir / "presets" / "default" / "components"
+                )
             else:
                 base_components_dir = get_components_dir()
 

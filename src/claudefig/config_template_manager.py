@@ -233,10 +233,14 @@ class ConfigTemplateManager:
         preset_file = preset_dir / ".claudefig.toml"
 
         if not preset_dir.exists():
-            raise FileNotFoundError(f"Preset directory '{name}' not found at {preset_dir}")
+            raise FileNotFoundError(
+                f"Preset directory '{name}' not found at {preset_dir}"
+            )
 
         if not preset_file.exists():
-            raise FileNotFoundError(f"Preset '{name}' missing .claudefig.toml at {preset_file}")
+            raise FileNotFoundError(
+                f"Preset '{name}' missing .claudefig.toml at {preset_file}"
+            )
 
         return Config(config_path=preset_file)
 
@@ -318,7 +322,9 @@ class ConfigTemplateManager:
         preset_file = preset_dir / ".claudefig.toml"
 
         if not preset_dir.exists():
-            raise FileNotFoundError(f"Preset directory '{preset_name}' not found at {preset_dir}")
+            raise FileNotFoundError(
+                f"Preset directory '{preset_name}' not found at {preset_dir}"
+            )
 
         if not preset_file.exists():
             raise FileNotFoundError(f"Preset '{preset_name}' missing .claudefig.toml")

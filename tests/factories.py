@@ -36,10 +36,16 @@ import factory
 from factory.declarations import Dict, LazyAttribute, List, Sequence
 from factory.faker import Faker
 
-from claudefig.models import FileInstance, FileType, Preset, PresetDefinition, PresetSource
+from claudefig.models import (
+    FileInstance,
+    FileType,
+    Preset,
+    PresetDefinition,
+    PresetSource,
+)
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    pass
 
 
 class FileInstanceFactory(factory.Factory):  # type: ignore[misc]
@@ -63,7 +69,7 @@ class FileInstanceFactory(factory.Factory):  # type: ignore[misc]
     variables = Dict({})
 
     @LazyAttribute  # type: ignore[misc]
-    def path(obj: Any) -> str:
+    def path(obj: Any) -> str:  # noqa: N805
         """Generate path based on file type.
 
         Args:
@@ -163,7 +169,7 @@ class PresetFactory(factory.Factory):  # type: ignore[misc]
     tags = List([])
 
     @LazyAttribute  # type: ignore[misc]
-    def id(obj: Any) -> str:
+    def id(obj: Any) -> str:  # noqa: N805
         """Generate ID from type and name.
 
         Args:

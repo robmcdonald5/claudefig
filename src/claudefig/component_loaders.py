@@ -10,7 +10,6 @@ import logging
 from abc import ABC, abstractmethod
 from importlib.resources import files
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class ComponentLoader(ABC):
     to the next loader in the chain.
     """
 
-    def __init__(self, next_loader: Optional[ComponentLoader] = None):
+    def __init__(self, next_loader: ComponentLoader | None = None):
         """Initialize loader with optional next loader in chain.
 
         Args:
@@ -30,7 +29,7 @@ class ComponentLoader(ABC):
         """
         self.next_loader = next_loader
 
-    def load(self, preset: str, type: str, name: str) -> Optional[Path]:
+    def load(self, preset: str, type: str, name: str) -> Path | None:
         """Attempt to load component, delegating to next loader if not found.
 
         Args:
@@ -44,7 +43,9 @@ class ComponentLoader(ABC):
         # Try this loader
         path = self.try_load(preset, type, name)
         if path is not None:
-            logger.debug(f"Component {type}/{name} loaded from {self.__class__.__name__}")
+            logger.debug(
+                f"Component {type}/{name} loaded from {self.__class__.__name__}"
+            )
             return path
 
         # Delegate to next loader
@@ -54,7 +55,7 @@ class ComponentLoader(ABC):
         return None
 
     @abstractmethod
-    def try_load(self, preset: str, type: str, name: str) -> Optional[Path]:
+    def try_load(self, preset: str, type: str, name: str) -> Path | None:
         """Attempt to load component from this loader's source.
 
         Args:
@@ -74,7 +75,7 @@ class PresetComponentLoader(ComponentLoader):
     Checks: src/presets/{preset}/components/{type}/{name}/
     """
 
-    def try_load(self, preset: str, type: str, name: str) -> Optional[Path]:
+    def try_load(self, preset: str, type: str, name: str) -> Path | None:
         """Try to load component from preset-specific directory.
 
         Args:
@@ -91,9 +92,7 @@ class PresetComponentLoader(ComponentLoader):
             if preset_path_obj.exists():
                 return preset_path_obj
         except (TypeError, FileNotFoundError, AttributeError, OSError) as e:
-            logger.debug(
-                f"Component {type}/{name} not found in preset '{preset}': {e}"
-            )
+            logger.debug(f"Component {type}/{name} not found in preset '{preset}': {e}")
 
         return None
 
@@ -104,7 +103,7 @@ class GlobalComponentLoader(ComponentLoader):
     Checks: ~/.claudefig/components/{type}/{name}/
     """
 
-    def try_load(self, preset: str, type: str, name: str) -> Optional[Path]:
+    def try_load(self, preset: str, type: str, name: str) -> Path | None:
         """Try to load component from global component pool.
 
         Args:

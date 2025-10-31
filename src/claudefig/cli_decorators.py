@@ -97,7 +97,9 @@ def with_config(
     return decorator
 
 
-def handle_errors(operation_name: str, extra_handlers: dict[type, Callable] | None = None):
+def handle_errors(
+    operation_name: str, extra_handlers: dict[type, Callable] | None = None
+):
     """Decorator that wraps command in standardized error handling.
 
     This eliminates the repeated pattern of:
@@ -162,7 +164,9 @@ def handle_errors(operation_name: str, extra_handlers: dict[type, Callable] | No
                 # Default error handling
                 logger.error(f"{operation_name} failed: {e}", exc_info=True)
                 console.print(
-                    format_cli_error(ErrorMessages.operation_failed(operation_name, str(e)))
+                    format_cli_error(
+                        ErrorMessages.operation_failed(operation_name, str(e))
+                    )
                 )
                 raise click.Abort() from e
 

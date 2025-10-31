@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from claudefig.services.structure_validator import (
     StructureValidationResult,
     check_initialization_marker,
@@ -252,7 +250,7 @@ class TestRepairPresetDirectory:
             "[claudefig]\nversion = '2.0'\n[components]", encoding="utf-8"
         )
 
-        result = repair_preset_directory(preset_dir, builtin_source, verbose=False)
+        repair_preset_directory(preset_dir, builtin_source, verbose=False)
 
         # Check backup was created
         backup_dir = tmp_path / "preset.backup"

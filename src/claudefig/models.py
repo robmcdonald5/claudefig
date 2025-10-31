@@ -94,7 +94,6 @@ class FileType(Enum):
         return self in customizable_types
 
 
-
 class PresetSource(Enum):
     """Source of a preset."""
 
@@ -377,7 +376,7 @@ class PresetDefinition:
         try:
             import tomllib
         except ImportError:
-            import tomli as tomllib  # type: ignore
+            import tomli as tomllib
 
         data = tomllib.loads(path.read_text(encoding="utf-8"))
 

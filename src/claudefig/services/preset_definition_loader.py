@@ -36,6 +36,7 @@ class PresetDefinitionLoader:
             project_presets_path: Path to project presets (.claudefig/presets/)
         """
         # Set library path (from package)
+        self.library_presets_path: Path | None
         if library_presets_path:
             self.library_presets_path = library_presets_path
         else:
