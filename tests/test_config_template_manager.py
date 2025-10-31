@@ -180,11 +180,9 @@ class TestApplyPresetToProject:
 
     def test_apply_preset_to_project(self, tmp_path):
         """Test applying a global preset converts PresetDefinition to project config format."""
-        import sys
-
-        import tomllib
-
-        if sys.version_info < (3, 11):
+        try:
+            import tomllib
+        except ModuleNotFoundError:
             import tomli as tomllib
 
         global_dir = tmp_path / "global"
@@ -269,11 +267,9 @@ class TestApplyPresetToProject:
 
     def test_apply_preset_to_existing_config(self, tmp_path):
         """Test that applying to existing config raises error unless overwrite=True."""
-        import sys
-
-        import tomllib
-
-        if sys.version_info < (3, 11):
+        try:
+            import tomllib
+        except ModuleNotFoundError:
             import tomli as tomllib
 
         global_dir = tmp_path / "global"
@@ -375,11 +371,9 @@ class TestSaveGlobalPreset:
 
     def test_save_global_preset_with_components(self, tmp_path, monkeypatch):
         """Test that save_global_preset copies components and creates PresetDefinition."""
-        import sys
-
-        import tomllib
-
-        if sys.version_info < (3, 11):
+        try:
+            import tomllib
+        except ModuleNotFoundError:
             import tomli as tomllib
 
         # Setup directories
