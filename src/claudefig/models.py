@@ -93,36 +93,6 @@ class FileType(Enum):
         }
         return self in customizable_types
 
-    @property
-    def template_directory(self) -> str | None:
-        """Get the template subdirectory name for single-instance file types.
-
-        Returns the subdirectory name within ~/.claudefig/ where templates are stored,
-        or None if this file type doesn't use the template directory system.
-
-        Example: For SETTINGS_JSON, returns "settingsteam" which maps to:
-                 ~/.claudefig/settingsteam/ (or C:\\Users\\{user}\\.claudefig\\settingsteam\\ on Windows)
-        """
-        template_dirs = {
-            self.SETTINGS_JSON: "settingsteam",
-            self.SETTINGS_LOCAL_JSON: "settingslocal",
-            self.STATUSLINE: "statuslines",
-        }
-        return template_dirs.get(self)
-
-    @property
-    def template_file_extension(self) -> str | None:
-        """Get the expected file extension for templates.
-
-        Returns the file extension (with dot) that templates should have,
-        or None if this file type doesn't use the template directory system.
-        """
-        extensions = {
-            self.SETTINGS_JSON: ".json",
-            self.SETTINGS_LOCAL_JSON: ".json",
-            self.STATUSLINE: ".py",
-        }
-        return extensions.get(self)
 
 
 class PresetSource(Enum):
