@@ -1,0 +1,28 @@
+{
+  "name": "example-plugin",
+  "version": "1.0.0",
+  "description": "Example Claude Code plugin demonstrating component references",
+  "author": "Claudefig",
+  "components": {
+    "commands": [
+      "example"
+    ],
+    "agents": [
+      "example"
+    ],
+    "hooks": [
+      "example"
+    ],
+    "skills": [
+      "example"
+    ],
+    "mcp": [
+      "example-github",
+      "example-memory"
+    ]
+  },
+  "metadata": {
+    "tags": ["example", "demo"],
+    "category": "development"
+  }
+}
