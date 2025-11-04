@@ -334,6 +334,8 @@ class OverviewScreen(BaseScreen):
             FileType.MCP: 7,
             FileType.OUTPUT_STYLES: 8,
             FileType.STATUSLINE: 9,
+            FileType.PLUGINS: 10,
+            FileType.SKILLS: 11,
         }
 
         return (
