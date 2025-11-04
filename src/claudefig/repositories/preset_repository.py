@@ -314,6 +314,8 @@ class TomlPresetRepository(AbstractPresetRepository):
             FileType.HOOKS: "example.py",
             FileType.OUTPUT_STYLES: "example.md",
             FileType.MCP: "config.json",  # MCP servers use config.json
+            FileType.PLUGINS: "plugin.json",
+            FileType.SKILLS: "skill.md",
         }
         return filename_map.get(file_type, "template.txt")
 
@@ -587,6 +589,24 @@ class TomlPresetRepository(AbstractPresetRepository):
                 type=FileType.MCP,
                 name="Default",
                 description="Standard MCP server examples",
+                source=PresetSource.BUILT_IN,
+                tags=["standard", "examples"],
+            ),
+            # Plugins preset
+            Preset(
+                id="plugins:default",
+                type=FileType.PLUGINS,
+                name="Default",
+                description="Standard plugin examples",
+                source=PresetSource.BUILT_IN,
+                tags=["standard", "examples"],
+            ),
+            # Skills preset
+            Preset(
+                id="skills:default",
+                type=FileType.SKILLS,
+                name="Default",
+                description="Standard skill examples",
                 source=PresetSource.BUILT_IN,
                 tags=["standard", "examples"],
             ),
