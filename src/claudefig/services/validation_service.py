@@ -4,6 +4,7 @@ This module provides reusable validation functions that can be shared across
 different services and modules.
 """
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -307,5 +308,110 @@ def validate_no_conflicts(
 
     if compare_value in compare_existing:
         result.add_error(f"{field_name} '{value}' already exists")
+
+    return result
+
+
+def validate_plugin_components(
+    plugin_path: Path, components_dirs: list[Path], preset_name: str = "default"
+) -> ValidationResult:
+    """Validate that all components referenced by a plugin exist.
+
+    Plugins are JSON files that reference other components (commands, agents,
+    hooks, skills, MCP servers). This validates that all referenced components
+    can be found in either the global components directory or the preset's
+    components directory.
+
+    Args:
+        plugin_path: Path to the plugin JSON file.
+        components_dirs: List of component directories to search (e.g., global, preset).
+        preset_name: Name of the preset being used (for error messages).
+
+    Returns:
+        ValidationResult with warnings for missing components.
+        Note: Missing components are warnings, not errors, since plugins
+        might reference optional components.
+
+    Example plugin JSON structure:
+        {
+            "name": "my-plugin",
+            "version": "1.0.0",
+            "description": "My plugin",
+            "components": {
+                "commands": ["my-command", "another-command"],
+                "agents": ["my-agent"],
+                "hooks": ["my-hook"],
+                "skills": ["my-skill"],
+                "mcp": ["my-mcp-server"]
+            }
+        }
+    """
+    result = ValidationResult(valid=True)
+
+    # Try to read and parse the plugin JSON
+    try:
+        with open(plugin_path, "r", encoding="utf-8") as f:
+            plugin_data = json.load(f)
+    except FileNotFoundError:
+        result.add_error(f"Plugin file not found: {plugin_path}")
+        return result
+    except json.JSONDecodeError as e:
+        result.add_error(f"Invalid JSON in plugin file: {e}")
+        return result
+    except Exception as e:
+        result.add_error(f"Error reading plugin file: {e}")
+        return result
+
+    # Extract plugin name for better error messages
+    plugin_name = plugin_data.get("name", plugin_path.stem)
+
+    # Get components section
+    components = plugin_data.get("components", {})
+    if not isinstance(components, dict):
+        result.add_warning(
+            f"Plugin '{plugin_name}' has invalid 'components' section (should be a dict)"
+        )
+        return result
+
+    # Component type mapping to directory names
+    component_type_dirs = {
+        "commands": "commands",
+        "agents": "agents",
+        "hooks": "hooks",
+        "skills": "skills",
+        "mcp": "mcp",
+    }
+
+    # Check each component type
+    for component_type, dir_name in component_type_dirs.items():
+        component_list = components.get(component_type, [])
+
+        if not isinstance(component_list, list):
+            result.add_warning(
+                f"Plugin '{plugin_name}' has invalid '{component_type}' list (should be an array)"
+            )
+            continue
+
+        # Check each component in the list
+        for component_name in component_list:
+            if not isinstance(component_name, str):
+                result.add_warning(
+                    f"Plugin '{plugin_name}' has invalid component name in '{component_type}' (should be string)"
+                )
+                continue
+
+            # Check if component exists in any of the component directories
+            found = False
+            for components_dir in components_dirs:
+                component_path = components_dir / dir_name / component_name
+                if component_path.exists() and component_path.is_dir():
+                    found = True
+                    break
+
+            if not found:
+                result.add_warning(
+                    f"Plugin '{plugin_name}' references missing {component_type} "
+                    f"component '{component_name}' - plugin may not work correctly"
+                )
 
     return result

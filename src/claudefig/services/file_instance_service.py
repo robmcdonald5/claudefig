@@ -8,6 +8,7 @@ from pathlib import Path
 
 from claudefig.models import FileInstance, FileType, ValidationResult
 from claudefig.repositories import AbstractPresetRepository
+from claudefig.services.validation_service import validate_plugin_components
 
 
 def list_instances(
@@ -243,6 +244,42 @@ def validate_instance(
                 f"File type '{instance.type.value}' does not support multiple instances. "
                 f"An instance already exists."
             )
+
+    # Special validation for plugins: check component references
+    if instance.type == FileType.PLUGINS:
+        # Get component directories to search
+        from claudefig.user_config import get_components_dir, get_user_config_dir
+
+        components_dirs = []
+
+        # Add global components directory
+        global_components = get_components_dir()
+        if global_components.exists():
+            components_dirs.append(global_components)
+
+        # Add preset components directory (if available)
+        # Extract preset name from instance.preset (format: "plugins:preset-name")
+        preset_name = "default"
+        if ":" in instance.preset:
+            preset_name = instance.preset.split(":", 1)[1]
+
+        user_config_dir = get_user_config_dir()
+        preset_components = user_config_dir / "presets" / preset_name / "components"
+        if preset_components.exists():
+            components_dirs.append(preset_components)
+
+        # Validate plugin if path points to an actual file (not just directory)
+        plugin_file_path = repo_path / instance.path
+        if plugin_file_path.is_file():
+            plugin_result = validate_plugin_components(
+                plugin_file_path, components_dirs, preset_name
+            )
+            # Merge warnings from plugin validation
+            if plugin_result.has_warnings:
+                for warning in plugin_result.warnings:
+                    result.add_warning(warning)
+            # Note: We don't fail validation even if plugin has errors,
+            # just add warnings so user is informed
 
     return result
 
