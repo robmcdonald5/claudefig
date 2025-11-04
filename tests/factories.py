@@ -86,6 +86,8 @@ class FileInstanceFactory(factory.Factory):  # type: ignore[misc]
             FileType.HOOKS: ".claude/hooks/example.py",
             FileType.OUTPUT_STYLES: ".claude/output-styles/example.md",
             FileType.MCP: ".claude/mcp/example.json",
+            FileType.PLUGINS: ".claude/plugins/example-plugin.json",
+            FileType.SKILLS: ".claude/skills/example-skill.md",
             FileType.SETTINGS_JSON: ".claude/settings.json",
             FileType.SETTINGS_LOCAL_JSON: ".claude/settings.local.json",
             FileType.STATUSLINE: ".claude/statusline.sh",
