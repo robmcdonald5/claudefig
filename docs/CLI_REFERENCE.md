@@ -412,6 +412,8 @@ claudefig files add FILE_TYPE [OPTIONS]
 - `output_styles` - Output styles
 - `statusline` - Status line script
 - `mcp` - MCP server configs
+- `plugins` - Claude Code Plugins
+- `skills` - Claude Code Skills
 
 **Examples:**
 
