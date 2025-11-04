@@ -199,6 +199,8 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
             "hooks",
             "output_styles",
             "mcp",
+            "plugins",
+            "skills",
             "settings_json",
             "settings_local_json",
             "statusline",

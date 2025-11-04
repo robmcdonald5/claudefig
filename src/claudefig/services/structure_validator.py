@@ -82,6 +82,8 @@ def validate_user_directory(
         "components/hooks",
         "components/output_styles",
         "components/mcp",
+        "components/plugins",
+        "components/skills",
         "components/settings_json",
         "components/settings_local_json",
         "components/statusline",
