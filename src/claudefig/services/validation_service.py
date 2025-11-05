@@ -350,7 +350,7 @@ def validate_plugin_components(
 
     # Try to read and parse the plugin JSON
     try:
-        with open(plugin_path, "r", encoding="utf-8") as f:
+        with open(plugin_path, encoding="utf-8") as f:
             plugin_data = json.load(f)
     except FileNotFoundError:
         result.add_error(f"Plugin file not found: {plugin_path}")

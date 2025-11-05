@@ -445,10 +445,7 @@ class Initializer:
                 source_path = Path(str(builtin_source))
 
             component_folder = (
-                source_path
-                / "components"
-                / instance.type.value
-                / component_name
+                source_path / "components" / instance.type.value / component_name
             )
 
             if not component_folder.exists() or not component_folder.is_dir():
