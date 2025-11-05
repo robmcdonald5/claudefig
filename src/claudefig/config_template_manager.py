@@ -61,7 +61,7 @@ class ConfigTemplateManager:
         """Build a config file from a PresetDefinition.
 
         Args:
-            preset_def: PresetDefinition loaded from .claudefig.toml
+            preset_def: PresetDefinition loaded from claudefig.toml
 
         Returns:
             Complete config structure dict suitable for saving as .toml
@@ -102,7 +102,7 @@ class ConfigTemplateManager:
     def list_global_presets(self, include_validation: bool = False) -> list[dict]:
         """List all global config preset templates.
 
-        Looks for directory-based presets with .claudefig.toml files inside.
+        Looks for directory-based presets with claudefig.toml files inside.
 
         Args:
             include_validation: If True, include validation status for each preset
@@ -114,12 +114,12 @@ class ConfigTemplateManager:
         if not self.global_presets_dir.exists():
             return presets
 
-        # Look for directories with .claudefig.toml inside them
+        # Look for directories with claudefig.toml inside them
         for preset_dir in self.global_presets_dir.iterdir():
             if not preset_dir.is_dir():
                 continue
 
-            preset_file = preset_dir / ".claudefig.toml"
+            preset_file = preset_dir / "claudefig.toml"
             if not preset_file.exists():
                 continue
 
@@ -228,7 +228,7 @@ class ConfigTemplateManager:
         from claudefig.config import Config
 
         preset_dir = self.global_presets_dir / name
-        preset_file = preset_dir / ".claudefig.toml"
+        preset_file = preset_dir / "claudefig.toml"
 
         if not preset_dir.exists():
             raise FileNotFoundError(
@@ -237,7 +237,7 @@ class ConfigTemplateManager:
 
         if not preset_file.exists():
             raise FileNotFoundError(
-                f"Preset '{name}' missing .claudefig.toml at {preset_file}"
+                f"Preset '{name}' missing claudefig.toml at {preset_file}"
             )
 
         return Config(config_path=preset_file)
@@ -417,14 +417,14 @@ class ConfigTemplateManager:
     def save_global_preset(self, name: str, description: str = "") -> None:
         """Save current project config as a new global preset directory.
 
-        Creates a preset directory with .claudefig.toml file and component files.
+        Creates a preset directory with claudefig.toml file and component files.
 
         This method:
         1. Validates preset name
         2. Loads current project config
         3. Discovers all components used in the project
         4. Copies component files to new preset directory structure
-        5. Generates PresetDefinition format .claudefig.toml
+        5. Generates PresetDefinition format claudefig.toml
 
         Args:
             name: Preset name
@@ -432,7 +432,7 @@ class ConfigTemplateManager:
 
         Raises:
             ValueError: If preset name already exists or is invalid
-            FileNotFoundError: If no .claudefig.toml in current directory
+            FileNotFoundError: If no claudefig.toml in current directory
             FileOperationError: If component copying fails
         """
         import tomli_w
@@ -452,7 +452,7 @@ class ConfigTemplateManager:
         # Load current project config
         config = Config()
         if not config.config_path or not config.config_path.exists():
-            raise FileNotFoundError("No .claudefig.toml found in current directory")
+            raise FileNotFoundError("No claudefig.toml found in current directory")
 
         try:
             # Collect components from current config
@@ -473,7 +473,7 @@ class ConfigTemplateManager:
 
             # Build and save PresetDefinition
             preset_data = self._build_preset_definition(name, description, components)
-            preset_file = preset_dir / ".claudefig.toml"
+            preset_file = preset_dir / "claudefig.toml"
 
             with open(preset_file, "wb") as f:
                 tomli_w.dump(preset_data, f)
@@ -525,16 +525,16 @@ class ConfigTemplateManager:
         Args:
             preset_name: Name of preset to apply
             target_path: Target directory (default: current directory)
-            overwrite: If True, overwrite existing .claudefig.toml (default: False)
+            overwrite: If True, overwrite existing claudefig.toml (default: False)
 
         Raises:
             FileNotFoundError: If preset not found
-            FileExistsError: If .claudefig.toml already exists and overwrite=False
+            FileExistsError: If claudefig.toml already exists and overwrite=False
         """
         import tomli_w
 
         preset_dir = self.global_presets_dir / preset_name
-        preset_file = preset_dir / ".claudefig.toml"
+        preset_file = preset_dir / "claudefig.toml"
 
         if not preset_dir.exists():
             raise FileNotFoundError(
@@ -542,13 +542,13 @@ class ConfigTemplateManager:
             )
 
         if not preset_file.exists():
-            raise FileNotFoundError(f"Preset '{preset_name}' missing .claudefig.toml")
+            raise FileNotFoundError(f"Preset '{preset_name}' missing claudefig.toml")
 
         target_dir = target_path or Path.cwd()
-        target_config = target_dir / ".claudefig.toml"
+        target_config = target_dir / "claudefig.toml"
 
         if target_config.exists() and not overwrite:
-            raise FileExistsError(f".claudefig.toml already exists at {target_dir}")
+            raise FileExistsError(f"claudefig.toml already exists at {target_dir}")
 
         # Load the preset definition
         preset_def = self.preset_loader.load_preset(preset_name)

@@ -38,7 +38,7 @@ class ErrorMessages:
 
     @staticmethod
     def config_file_not_found(path: str) -> str:
-        """Format error for missing .claudefig.toml file.
+        """Format error for missing configuration file.
 
         Args:
             path: Path where config was expected
@@ -46,7 +46,7 @@ class ErrorMessages:
         Returns:
             Formatted error message
         """
-        return f"No .claudefig.toml found in {path}"
+        return f"No configuration file found in {path}"
 
     # --- Validation Errors ---
 
@@ -122,7 +122,7 @@ class ErrorMessages:
         Returns:
             Formatted error message
         """
-        return f".claudefig.toml already exists in {path}"
+        return f"Configuration file already exists in {path}"
 
     @staticmethod
     def failed_to_perform(action: str, resource_type: str, identifier: str) -> str:

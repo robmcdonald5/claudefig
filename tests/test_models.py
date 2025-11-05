@@ -28,6 +28,8 @@ class TestFileTypeEnum:
             "OUTPUT_STYLES",
             "STATUSLINE",
             "MCP",
+            "PLUGINS",
+            "SKILLS",
         ]
         for type_name in expected_types:
             assert hasattr(FileType, type_name), f"Missing FileType.{type_name}"
@@ -44,6 +46,8 @@ class TestFileTypeEnum:
         assert FileType.OUTPUT_STYLES.value == "output_styles"
         assert FileType.STATUSLINE.value == "statusline"
         assert FileType.MCP.value == "mcp"
+        assert FileType.PLUGINS.value == "plugins"
+        assert FileType.SKILLS.value == "skills"
 
     def test_display_name_property(self):
         """Test display_name property returns human-readable names."""
@@ -57,6 +61,8 @@ class TestFileTypeEnum:
         assert FileType.OUTPUT_STYLES.display_name == "Output Styles"
         assert FileType.STATUSLINE.display_name == "Status Line"
         assert FileType.MCP.display_name == "MCP Servers"
+        assert FileType.PLUGINS.display_name == "Plugins"
+        assert FileType.SKILLS.display_name == "Skills"
 
     def test_default_path_property(self):
         """Test default_path property returns correct paths."""
@@ -72,6 +78,8 @@ class TestFileTypeEnum:
         assert FileType.OUTPUT_STYLES.default_path == ".claude/output-styles/"
         assert FileType.STATUSLINE.default_path == ".claude/statusline.sh"
         assert FileType.MCP.default_path == ".claude/mcp/"
+        assert FileType.PLUGINS.default_path == ".claude/plugins/"
+        assert FileType.SKILLS.default_path == ".claude/skills/"
 
     def test_supports_multiple_property(self):
         """Test supports_multiple property identifies single-instance types."""
@@ -88,6 +96,8 @@ class TestFileTypeEnum:
         assert FileType.HOOKS.supports_multiple
         assert FileType.OUTPUT_STYLES.supports_multiple
         assert FileType.MCP.supports_multiple
+        assert FileType.PLUGINS.supports_multiple
+        assert FileType.SKILLS.supports_multiple
 
     def test_is_directory_property(self):
         """Test is_directory property identifies directory types."""
@@ -97,6 +107,8 @@ class TestFileTypeEnum:
         assert FileType.HOOKS.is_directory
         assert FileType.OUTPUT_STYLES.is_directory
         assert FileType.MCP.is_directory
+        assert FileType.PLUGINS.is_directory
+        assert FileType.SKILLS.is_directory
 
         # File types
         assert not FileType.CLAUDE_MD.is_directory

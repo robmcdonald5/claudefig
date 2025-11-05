@@ -200,7 +200,7 @@ class InstanceNotFoundError(ResourceNotFoundError):
 
 
 class ConfigFileNotFoundError(ResourceNotFoundError):
-    """Raised when a config file (.claudefig.toml) cannot be found."""
+    """Raised when a config file cannot be found."""
 
     def __init__(self, path: Optional[str] = None):
         """Initialize exception.
@@ -208,7 +208,7 @@ class ConfigFileNotFoundError(ResourceNotFoundError):
         Args:
             path: Optional path where config was expected
         """
-        message = "No .claudefig.toml found"
+        message = "No configuration file found"
         if path:
             message += f" in '{path}'"
         super().__init__(
@@ -269,7 +269,7 @@ class ConfigFileExistsError(ResourceConflictError):
             path: Path where config file already exists
         """
         super().__init__(
-            f".claudefig.toml already exists at '{path}'",
+            f"Configuration file already exists at '{path}'",
             error_code="CONFIG_EXISTS",
             details={"path": path},
         )

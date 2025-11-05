@@ -15,7 +15,7 @@ def cli_runner():
 @pytest.fixture
 def config_file(tmp_path):
     """Create a test config file."""
-    config_path = tmp_path / ".claudefig.toml"
+    config_path = tmp_path / "claudefig.toml"
     config_path.write_text(
         """
 [claudefig]

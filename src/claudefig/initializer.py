@@ -30,7 +30,7 @@ class Initializer:
         # Initialize repositories
         if config_path is None:
             found_path = config_service.find_config_path()
-            config_path = found_path or (Path.cwd() / ".claudefig.toml")
+            config_path = found_path or (Path.cwd() / "claudefig.toml")
 
         self.config_path = config_path
         self.config_repo = TomlConfigRepository(config_path)
@@ -207,7 +207,7 @@ class Initializer:
                     success &= result
 
             # Create config file if it doesn't exist
-            config_path = repo_path / ".claudefig.toml"
+            config_path = repo_path / "claudefig.toml"
             if not config_path.exists():
                 # Create default config
                 default_config = config_service.DEFAULT_CONFIG.copy()
@@ -387,7 +387,7 @@ class Initializer:
                 # Check if claudefig section already exists
                 if (
                     "# claudefig" in existing_content
-                    or ".claudefig.toml" in existing_content
+                    or "claudefig.toml" in existing_content
                 ):
                     console.print(
                         f"[blue]i[/blue] Already contains entries: {dest_path}"
@@ -426,30 +426,64 @@ class Initializer:
         Returns:
             True if successful
         """
-        template_name = config_service.get_value(
-            self.config_data, "claudefig.template_source", "default"
-        )
+        # Use component system to get source folder
+        # Extract component name from preset (e.g., "commands:default" -> "default")
+        component_name = preset.id.split(":")[-1] if ":" in preset.id else preset.name
 
-        # Map file types to template paths
-        template_dir_map = {
-            FileType.COMMANDS: "claude/commands",
-            FileType.AGENTS: "claude/agents",
-            FileType.HOOKS: "claude/hooks",
-            FileType.OUTPUT_STYLES: "claude/output-styles",
-            FileType.MCP: "claude/mcp",
-        }
+        # Get component folder from preset repository
+        from importlib.resources import files
 
-        source_dir = template_dir_map.get(instance.type)
-        if not source_dir:
-            console.print(
-                f"[yellow]![/yellow] No template directory for {instance.type.value}"
+        try:
+            # Path: src/presets/default/components/{file_type}/{component_name}/
+            builtin_source = files("presets").joinpath("default")
+
+            # Get the actual path
+            if hasattr(builtin_source, "__fspath__"):
+                source_path = Path(builtin_source)  # type: ignore[arg-type]
+            else:
+                # For Python 3.10+, extract path as string
+                source_path = Path(str(builtin_source))
+
+            component_folder = (
+                source_path / "components" / instance.type.value / component_name
             )
-            return False
 
-        # Copy directory
-        return self._copy_template_directory(
-            template_name, source_dir, dest_path, force
-        )
+            if not component_folder.exists() or not component_folder.is_dir():
+                console.print(
+                    f"[yellow]![/yellow] Component folder not found: {component_folder}"
+                )
+                return False
+
+            # Create destination directory
+            if not dest_path.exists():
+                dest_path.mkdir(parents=True, exist_ok=True)
+                self._track_directory(dest_path)
+
+            # Copy all files from component folder to destination
+            copied_count = 0
+            for item in component_folder.iterdir():
+                if item.is_file():
+                    dest_file = dest_path / item.name
+                    if dest_file.exists() and not force:
+                        console.print(
+                            f"[blue]i[/blue] Already exists (skipped): {dest_file}"
+                        )
+                        continue
+
+                    shutil.copy2(str(item), dest_file)
+                    self._track_file(dest_file)
+                    copied_count += 1
+                    console.print(f"[green]+[/green] Created: {dest_file}")
+
+            if copied_count > 0:
+                console.print(
+                    f"[green]+[/green] Created directory: {dest_path} ({copied_count} files)"
+                )
+            return True
+
+        except Exception as e:
+            console.print(f"[red]x[/red] Error generating directory: {e}")
+            return False
 
     def _copy_template_file(
         self, template_name: str, filename: str, dest_dir: Path, force: bool
@@ -514,7 +548,7 @@ class Initializer:
                 # Check if claudefig section already exists
                 if (
                     "# claudefig" in existing_content
-                    or ".claudefig.toml" in existing_content
+                    or "claudefig.toml" in existing_content
                 ):
                     console.print(
                         "[blue]i[/blue] .gitignore already contains claudefig entries"

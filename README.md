@@ -23,7 +23,7 @@ Universal configuration manager for Claude Code projects with preset templates a
 - **File Instances** - Fine-grained control over which files to generate
 - **CLI & TUI Parity** - Every feature available in both interfaces
 - **Validation** - Automatic validation with helpful error messages
-- **Flexible Configuration** - Stored in `.claudefig.toml` with full TOML support
+- **Flexible Configuration** - Stored in `claudefig.toml` (project) or `~/.claudefig/config.toml` (user home) with full TOML support
 
 ### Supported File Types
 

@@ -19,7 +19,7 @@ class TestResourceNotFoundErrors:
     def test_config_file_not_found(self):
         """Test config_file_not_found message."""
         result = ErrorMessages.config_file_not_found("/path/to/project")
-        assert result == "No .claudefig.toml found in /path/to/project"
+        assert result == "No configuration file found in /path/to/project"
 
 
 class TestValidationErrors:
@@ -75,7 +75,7 @@ class TestOperationErrors:
     def test_file_exists(self):
         """Test file_exists error message."""
         result = ErrorMessages.file_exists("/path/to/project")
-        assert result == ".claudefig.toml already exists in /path/to/project"
+        assert result == "Configuration file already exists in /path/to/project"
 
     def test_failed_to_perform(self):
         """Test failed_to_perform error message."""

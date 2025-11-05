@@ -167,13 +167,13 @@ class TestValidateAllPresets:
         # Create directory-based presets
         valid_preset_dir = global_dir / "valid"
         valid_preset_dir.mkdir()
-        valid_file = valid_preset_dir / ".claudefig.toml"
+        valid_file = valid_preset_dir / "claudefig.toml"
         with open(valid_file, "wb") as f:
             tomli_w.dump(valid_data, f)
 
         invalid_preset_dir = global_dir / "invalid"
         invalid_preset_dir.mkdir()
-        invalid_file = invalid_preset_dir / ".claudefig.toml"
+        invalid_file = invalid_preset_dir / "claudefig.toml"
         with open(invalid_file, "wb") as f:
             tomli_w.dump(invalid_data, f)
 
@@ -199,14 +199,14 @@ class TestGetValidationSummary:
         valid_data = {"claudefig": {"version": "2.0"}, "files": []}
         valid_preset_dir = global_dir / "valid"
         valid_preset_dir.mkdir()
-        valid_file = valid_preset_dir / ".claudefig.toml"
+        valid_file = valid_preset_dir / "claudefig.toml"
         with open(valid_file, "wb") as f:
             tomli_w.dump(valid_data, f)
 
         invalid_data = {}
         invalid_preset_dir = global_dir / "invalid"
         invalid_preset_dir.mkdir()
-        invalid_file = invalid_preset_dir / ".claudefig.toml"
+        invalid_file = invalid_preset_dir / "claudefig.toml"
         with open(invalid_file, "wb") as f:
             tomli_w.dump(invalid_data, f)
 

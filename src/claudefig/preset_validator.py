@@ -113,12 +113,12 @@ class PresetValidator:
         if not self.global_presets_dir.exists():
             return results
 
-        # Look for directory-based presets with .claudefig.toml files inside
+        # Look for directory-based presets with claudefig.toml files inside
         for preset_dir in self.global_presets_dir.iterdir():
             if not preset_dir.is_dir():
                 continue
 
-            preset_file = preset_dir / ".claudefig.toml"
+            preset_file = preset_dir / "claudefig.toml"
             if not preset_file.exists():
                 continue
 

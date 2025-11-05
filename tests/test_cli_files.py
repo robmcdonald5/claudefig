@@ -19,7 +19,7 @@ def cli_runner():
 @pytest.fixture
 def mock_config_file(tmp_path):
     """Create a mock config file."""
-    config_path = tmp_path / ".claudefig.toml"
+    config_path = tmp_path / "claudefig.toml"
     config_path.write_text(
         """
 [claudefig]

@@ -2,14 +2,14 @@
 
 ## Configuration File Structure
 
-claudefig stores its configuration in `.claudefig.toml` using the TOML format. This file defines which files to generate and how to generate them.
+claudefig stores its configuration in `claudefig.toml` using the TOML format. This file defines which files to generate and how to generate them.
 
 ### Location
 
 Configuration files are searched in this order:
 
-1. **Project config**: `.claudefig.toml` in current directory (highest priority)
-2. **User config**: `~/.claudefig.toml` in home directory (fallback)
+1. **Project config**: `claudefig.toml` in current directory (highest priority)
+2. **User config**: `~/.claudefig/config.toml` in home directory (fallback)
 
 Most projects should use a project config checked into git.
 
@@ -520,11 +520,11 @@ claudefig files disable statusline-extra
 
 ### Recovery from Corruption
 
-If `.claudefig.toml` becomes corrupted:
+If `claudefig.toml` becomes corrupted:
 
 ```bash
 # Backup corrupted file
-mv .claudefig.toml .claudefig.toml.backup
+mv claudefig.toml claudefig.toml.backup
 
 # Create fresh config
 claudefig init --reset
@@ -576,7 +576,7 @@ enabled = true
 1. **Backup old config:**
 
 ```bash
-cp .claudefig.toml .claudefig.toml.v1.backup
+cp claudefig.toml claudefig.toml.v1.backup
 ```
 
 2. **Run migration tool:**
@@ -623,7 +623,7 @@ claudefig init --force
 ### 1. Version Control
 
 **Do commit:**
-- `.claudefig.toml` - Project configuration
+- `claudefig.toml` - Project configuration
 - `.claudefig/presets/` - Project-specific presets
 
 **Don't commit:**
@@ -636,7 +636,7 @@ Share configurations with your team:
 
 ```bash
 # Add to version control
-git add .claudefig.toml
+git add claudefig.toml
 git commit -m "Add claudefig configuration"
 git push
 
@@ -651,11 +651,11 @@ Use different configs for different environments:
 
 ```bash
 # Development
-cp .claudefig.dev.toml .claudefig.toml
+cp claudefig.dev.toml claudefig.toml
 claudefig init
 
 # Production
-cp .claudefig.prod.toml .claudefig.toml
+cp claudefig.prod.toml claudefig.toml
 claudefig init
 ```
 
@@ -695,14 +695,14 @@ claudefig presets update
 
 **Issue:** claudefig doesn't find your config
 
-**Solution:** Ensure `.claudefig.toml` is in current directory or home directory
+**Solution:** Ensure `claudefig.toml` is in current directory or home directory
 
 ```bash
 # Check current directory
-ls -la .claudefig.toml
+ls -la claudefig.toml
 
 # Check home directory
-ls -la ~/.claudefig.toml
+ls -la ~/.claudefig/config.toml
 ```
 
 ### Changes Not Applying
@@ -724,7 +724,7 @@ claudefig init --force
 ```bash
 # Use online validator: https://www.toml-lint.com/
 # Or use a TOML validator tool
-toml-validator .claudefig.toml
+toml-validator claudefig.toml
 ```
 
 ### Preset Variables Not Working

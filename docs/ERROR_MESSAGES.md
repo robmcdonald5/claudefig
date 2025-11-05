@@ -27,7 +27,7 @@ Static methods that return standardized error message strings:
 - `operation_failed(operation, details)` - For operation failures
 - `empty_value(field_name)` - For required fields left empty
 - `file_exists(path)` - For file already exists errors
-- `config_file_not_found(path)` - For missing .claudefig.toml
+- `config_file_not_found(path)` - For missing claudefig.toml
 - `failed_to_perform(action, resource_type, identifier)` - For action failures
 - `success(action, resource_type, identifier)` - For success messages
 - `no_changes_made()` - Warning for no-op operations
@@ -119,7 +119,7 @@ Use these consistent terms throughout error messages:
 | Preset object | "preset" |
 | Global template | "template" |
 | File type enum | "file type" |
-| Configuration file | ".claudefig.toml" or "config file" |
+| Configuration file | "claudefig.toml" or "config file" |
 | Initialize operation | "initialization" |
 | Synchronize operation | "synchronizing files" |
 | Validate operation | "validation" |

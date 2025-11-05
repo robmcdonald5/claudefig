@@ -1,9 +1,15 @@
 """Core data models for claudefig file instance and preset system."""
 
+import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 
 class FileType(Enum):
@@ -19,6 +25,8 @@ class FileType(Enum):
     OUTPUT_STYLES = "output_styles"
     STATUSLINE = "statusline"
     MCP = "mcp"
+    PLUGINS = "plugins"
+    SKILLS = "skills"
 
     @property
     def display_name(self) -> str:
@@ -34,6 +42,8 @@ class FileType(Enum):
             self.OUTPUT_STYLES: "Output Styles",
             self.STATUSLINE: "Status Line",
             self.MCP: "MCP Servers",
+            self.PLUGINS: "Plugins",
+            self.SKILLS: "Skills",
         }
         return display_names.get(self, self.value)
 
@@ -51,6 +61,8 @@ class FileType(Enum):
             self.OUTPUT_STYLES: ".claude/output-styles/",
             self.STATUSLINE: ".claude/statusline.sh",
             self.MCP: ".claude/mcp/",
+            self.PLUGINS: ".claude/plugins/",
+            self.SKILLS: ".claude/skills/",
         }
         return default_paths.get(self, "")
 
@@ -74,6 +86,8 @@ class FileType(Enum):
             self.HOOKS,
             self.OUTPUT_STYLES,
             self.MCP,
+            self.PLUGINS,
+            self.SKILLS,
         }
         return self in directory_types
 
@@ -345,7 +359,7 @@ class ValidationResult:
 
 @dataclass
 class PresetDefinition:
-    """Preset definition from .claudefig.toml file.
+    """Preset definition from claudefig.toml file.
 
     Represents a complete preset configuration including metadata
     and component references.
@@ -358,10 +372,10 @@ class PresetDefinition:
 
     @classmethod
     def from_toml(cls, path: Path) -> "PresetDefinition":
-        """Load preset definition from .claudefig.toml file.
+        """Load preset definition from claudefig.toml file.
 
         Args:
-            path: Path to .claudefig.toml file
+            path: Path to claudefig.toml file
 
         Returns:
             PresetDefinition instance
@@ -372,11 +386,6 @@ class PresetDefinition:
         """
         if not path.exists():
             raise FileNotFoundError(f"Preset definition not found: {path}")
-
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib
 
         data = tomllib.loads(path.read_text(encoding="utf-8"))
 
@@ -393,7 +402,7 @@ class PresetDefinition:
         )
 
     def to_toml(self, path: Path) -> None:
-        """Save preset definition to .claudefig.toml file.
+        """Save preset definition to claudefig.toml file.
 
         Args:
             path: Path where to save the file

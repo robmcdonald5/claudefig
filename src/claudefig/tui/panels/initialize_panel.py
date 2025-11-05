@@ -51,8 +51,8 @@ class InitializePanel(BaseHorizontalNavigablePanel):
         with VerticalScroll(can_focus=False):
             yield Label("Initialize Claude Code Files", classes="panel-title")
 
-            # Check if .claudefig.toml already exists
-            config_path = Path.cwd() / ".claudefig.toml"
+            # Check if claudefig.toml already exists
+            config_path = Path.cwd() / "claudefig.toml"
 
             # IMPORTANT: Each Label must be ≤35 chars to avoid Textual layout bug
             # that causes menu-buttons border to stretch beyond bounds.
@@ -156,7 +156,7 @@ class InitializePanel(BaseHorizontalNavigablePanel):
         from claudefig.tui.app import MainScreen
         from claudefig.tui.panels.content_panel import ContentPanel
 
-        config_path = Path.cwd() / ".claudefig.toml"
+        config_path = Path.cwd() / "claudefig.toml"
 
         try:
             # Step 1: If no config exists, apply default preset first
@@ -214,7 +214,7 @@ class InitializePanel(BaseHorizontalNavigablePanel):
             self.app.notify(str(e), severity="error")
         except FileExistsError:
             self.app.notify(
-                ".claudefig.toml already exists! Go to Presets panel to overwrite.",
+                "claudefig.toml already exists! Go to Presets panel to overwrite.",
                 severity="error",
             )
         except Exception as e:

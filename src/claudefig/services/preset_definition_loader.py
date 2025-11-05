@@ -1,6 +1,6 @@
 """Preset definition loader service.
 
-Handles loading preset definitions from .claudefig.toml files
+Handles loading preset definitions from claudefig.toml files
 across different locations (library, user, project).
 """
 
@@ -14,7 +14,7 @@ from claudefig.user_config import get_user_config_dir
 
 
 class PresetDefinitionLoader:
-    """Load preset definitions from .claudefig.toml files.
+    """Load preset definitions from claudefig.toml files.
 
     Supports loading from three locations with priority:
     1. Project (.claudefig/presets/)
@@ -78,7 +78,7 @@ class PresetDefinitionLoader:
         if not base_path or not base_path.exists():
             raise FileNotFoundError(f"{location_name} presets path not found")
 
-        preset_path = base_path / preset_name / ".claudefig.toml"
+        preset_path = base_path / preset_name / "claudefig.toml"
         if not preset_path.exists():
             raise FileNotFoundError(
                 f"Preset '{preset_name}' not found in {location_name.lower()} presets"
@@ -87,7 +87,7 @@ class PresetDefinitionLoader:
         return PresetDefinition.from_toml(preset_path)
 
     def load_from_library(self, preset_name: str) -> PresetDefinition:
-        """Load preset definition from library (src/presets/{name}/.claudefig.toml).
+        """Load preset definition from library (src/presets/{name}/claudefig.toml).
 
         Args:
             preset_name: Name of preset to load
@@ -101,7 +101,7 @@ class PresetDefinitionLoader:
         return self._load_from_path(preset_name, self.library_presets_path, "Library")
 
     def load_from_user(self, preset_name: str) -> PresetDefinition:
-        """Load preset from user directory (~/.claudefig/presets/{name}/.claudefig.toml).
+        """Load preset from user directory (~/.claudefig/presets/{name}/claudefig.toml).
 
         Args:
             preset_name: Name of preset to load
@@ -115,7 +115,7 @@ class PresetDefinitionLoader:
         return self._load_from_path(preset_name, self.user_presets_path, "User")
 
     def load_from_project(self, preset_name: str) -> PresetDefinition:
-        """Load preset from project (.claudefig/presets/{name}/.claudefig.toml).
+        """Load preset from project (.claudefig/presets/{name}/claudefig.toml).
 
         Args:
             preset_name: Name of preset to load
@@ -186,7 +186,7 @@ class PresetDefinitionLoader:
         presets = set()
         try:
             for item in path.iterdir():
-                if item.is_dir() and (item / ".claudefig.toml").exists():
+                if item.is_dir() and (item / "claudefig.toml").exists():
                     presets.add(item.name)
         except (OSError, PermissionError):
             pass

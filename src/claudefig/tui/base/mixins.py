@@ -84,7 +84,7 @@ class BackButtonMixin:
         class MyScreen(Screen, BackButtonMixin):
             def compose(self) -> ComposeResult:
                 # ... main content
-                yield from self.compose_back_button()
+                yield from self.compose_back_button()  # type: ignore[misc]
 
             def on_button_pressed(self, event: Button.Pressed) -> None:
                 if self.handle_back_button(event):

@@ -82,6 +82,8 @@ def validate_user_directory(
         "components/hooks",
         "components/output_styles",
         "components/mcp",
+        "components/plugins",
+        "components/skills",
         "components/settings_json",
         "components/settings_local_json",
         "components/statusline",
@@ -128,7 +130,7 @@ def validate_preset_integrity(
 ) -> StructureValidationResult:
     """Validate that a preset directory has all expected component files.
 
-    Checks if preset's .claudefig.toml exists and all referenced components
+    Checks if preset's claudefig.toml exists and all referenced components
     are present in the components/ directory.
 
     Args:
@@ -145,8 +147,8 @@ def validate_preset_integrity(
         result.add_error(f"Preset directory does not exist: {preset_dir}")
         return result
 
-    # Check for .claudefig.toml
-    toml_path = preset_dir / ".claudefig.toml"
+    # Check for claudefig.toml
+    toml_path = preset_dir / "claudefig.toml"
     if not toml_path.exists():
         result.add_error(f"Preset config not found: {toml_path}")
         return result

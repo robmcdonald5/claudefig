@@ -51,7 +51,7 @@ class TestConfigTemplateManagerInit:
         preset_files = list(global_dir.glob("*.toml"))
         assert len(preset_files) == 0
 
-        # No directories with .claudefig.toml should be created either
+        # No directories with claudefig.toml should be created either
         # (that's handled by user_config.py)
         preset_dirs = [d for d in global_dir.iterdir() if d.is_dir()]
         assert len(preset_dirs) == 0
@@ -86,7 +86,7 @@ class TestListGlobalPresets:
             },
         }
 
-        preset_file = preset_dir / ".claudefig.toml"
+        preset_file = preset_dir / "claudefig.toml"
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
@@ -112,14 +112,14 @@ class TestListGlobalPresets:
             "preset": {"name": "valid", "description": "Valid preset"},
             "components": {},
         }
-        valid_file = valid_dir / ".claudefig.toml"
+        valid_file = valid_dir / "claudefig.toml"
         with open(valid_file, "wb") as f:
             tomli_w.dump(valid_data, f)
 
         # Create an invalid preset directory (missing required fields)
         invalid_dir = global_dir / "invalid"
         invalid_dir.mkdir()
-        invalid_file = invalid_dir / ".claudefig.toml"
+        invalid_file = invalid_dir / "claudefig.toml"
         with open(invalid_file, "wb") as f:
             tomli_w.dump({"incomplete": "data"}, f)
 
@@ -148,7 +148,7 @@ class TestDeleteGlobalPreset:
         # Create a preset directory to delete
         preset_dir = global_dir / "to_delete"
         preset_dir.mkdir()
-        preset_file = preset_dir / ".claudefig.toml"
+        preset_file = preset_dir / "claudefig.toml"
         with open(preset_file, "wb") as f:
             tomli_w.dump({"claudefig": {}, "preset": {}, "components": {}}, f)
 
@@ -183,7 +183,7 @@ class TestApplyPresetToProject:
         try:
             import tomllib
         except ModuleNotFoundError:
-            import tomli as tomllib
+            import tomli as tomllib  # type: ignore[import-not-found]
 
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
@@ -214,7 +214,7 @@ class TestApplyPresetToProject:
                 },
             ],
         }
-        preset_file = preset_dir / ".claudefig.toml"
+        preset_file = preset_dir / "claudefig.toml"
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
@@ -223,7 +223,7 @@ class TestApplyPresetToProject:
         manager.apply_preset_to_project("test", target_path=project_dir)
 
         # Verify config was created
-        config_file = project_dir / ".claudefig.toml"
+        config_file = project_dir / "claudefig.toml"
         assert config_file.exists()
 
         # Load and verify it's in project config format (not PresetDefinition format)
@@ -270,7 +270,7 @@ class TestApplyPresetToProject:
         try:
             import tomllib
         except ModuleNotFoundError:
-            import tomli as tomllib
+            import tomli as tomllib  # type: ignore[import-not-found]
 
         global_dir = tmp_path / "global"
         global_dir.mkdir(parents=True)
@@ -278,7 +278,7 @@ class TestApplyPresetToProject:
         project_dir.mkdir(parents=True)
 
         # Create existing config
-        existing_config = project_dir / ".claudefig.toml"
+        existing_config = project_dir / "claudefig.toml"
         existing_config.write_text("existing", encoding="utf-8")
 
         # Create a preset directory with valid PresetDefinition
@@ -299,7 +299,7 @@ class TestApplyPresetToProject:
                 }
             ],
         }
-        preset_file = preset_dir / ".claudefig.toml"
+        preset_file = preset_dir / "claudefig.toml"
         with open(preset_file, "wb") as f:
             tomli_w.dump(preset_data, f)
 
@@ -374,7 +374,7 @@ class TestSaveGlobalPreset:
         try:
             import tomllib
         except ModuleNotFoundError:
-            import tomli as tomllib
+            import tomli as tomllib  # type: ignore[import-not-found]
 
         # Setup directories
         project_dir = tmp_path / "project"
@@ -391,10 +391,10 @@ class TestSaveGlobalPreset:
 
         gitignore_component = components_dir / "gitignore" / "default"
         gitignore_component.mkdir(parents=True)
-        (gitignore_component / ".gitignore").write_text(".claudefig.toml\n.claude/")
+        (gitignore_component / ".gitignore").write_text("claudefig.toml\n.claude/")
 
         # Create project config with file instances
-        config_file = project_dir / ".claudefig.toml"
+        config_file = project_dir / "claudefig.toml"
         config_content = """
 [claudefig]
 version = "2.0"
@@ -446,8 +446,8 @@ enabled = false
         assert preset_dir.exists()
         assert preset_dir.is_dir()
 
-        # Verify .claudefig.toml was created in PresetDefinition format
-        preset_file = preset_dir / ".claudefig.toml"
+        # Verify claudefig.toml was created in PresetDefinition format
+        preset_file = preset_dir / "claudefig.toml"
         assert preset_file.exists()
 
         # Load and verify preset definition
@@ -510,7 +510,7 @@ enabled = false
         )
         assert copied_gitignore.exists()
         assert (
-            ".claudefig.toml" in copied_gitignore.read_text()
+            "claudefig.toml" in copied_gitignore.read_text()
         )  # Verify it has gitignore content
 
         # Verify disabled component was ALSO copied (settings_json)

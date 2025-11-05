@@ -38,18 +38,18 @@ DEFAULT_CONFIG = {
 
 
 def find_config_path() -> Path | None:
-    """Search for .claudefig.toml in current directory and home directory.
+    """Search for claudefig.toml in current directory and home directory.
 
     Search order:
-    1. Current working directory (.claudefig.toml)
-    2. User home directory (~/.claudefig.toml)
+    1. Current working directory (claudefig.toml)
+    2. User home directory (~/.claudefig/config.toml)
 
     Returns:
         Path to config file if found, None otherwise.
     """
     search_paths = [
-        Path.cwd() / ".claudefig.toml",
-        Path.home() / ".claudefig.toml",
+        Path.cwd() / "claudefig.toml",
+        Path.home() / ".claudefig" / "config.toml",
     ]
 
     for path in search_paths:
@@ -341,7 +341,7 @@ def _get_config_singleton_cached(config_path: Path | None = None) -> dict[str, A
     """
     from claudefig.repositories import TomlConfigRepository
 
-    path = config_path or find_config_path() or Path.cwd() / ".claudefig.toml"
+    path = config_path or find_config_path() or Path.cwd() / "claudefig.toml"
     repo = TomlConfigRepository(path)
     return load_config(repo)
 

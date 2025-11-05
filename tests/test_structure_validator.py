@@ -126,6 +126,8 @@ class TestValidateUserDirectory:
         (config_dir / "components" / "settings_json").mkdir()
         (config_dir / "components" / "settings_local_json").mkdir()
         (config_dir / "components" / "statusline").mkdir()
+        (config_dir / "components" / "plugins").mkdir()
+        (config_dir / "components" / "skills").mkdir()
 
         # Create config file
         (config_dir / "config.toml").write_text("# config", encoding="utf-8")
@@ -149,14 +151,14 @@ class TestValidatePresetIntegrity:
         assert len(result.errors) > 0
 
     def test_validate_preset_without_toml(self, tmp_path):
-        """Test validation fails when .claudefig.toml missing."""
+        """Test validation fails when claudefig.toml missing."""
         preset_dir = tmp_path / "preset"
         preset_dir.mkdir()
 
         result = validate_preset_integrity(preset_dir, verbose=False)
 
         assert result.is_valid is False
-        assert any(".claudefig.toml" in error for error in result.errors)
+        assert any("claudefig.toml" in error for error in result.errors)
 
     def test_validate_preset_with_empty_components_section(self, tmp_path):
         """Test validation passes with empty components section."""
@@ -169,7 +171,7 @@ version = "2.0"
 
 [components]
 """
-        (preset_dir / ".claudefig.toml").write_text(toml_content, encoding="utf-8")
+        (preset_dir / "claudefig.toml").write_text(toml_content, encoding="utf-8")
 
         result = validate_preset_integrity(preset_dir, verbose=False)
 
@@ -189,7 +191,7 @@ version = "2.0"
 variants = ["default"]
 required_files = ["CLAUDE.md"]
 """
-        (preset_dir / ".claudefig.toml").write_text(toml_content, encoding="utf-8")
+        (preset_dir / "claudefig.toml").write_text(toml_content, encoding="utf-8")
 
         result = validate_preset_integrity(preset_dir, verbose=False)
 
@@ -213,7 +215,7 @@ version = "2.0"
 variants = ["default"]
 required_files = ["CLAUDE.md"]
 """
-        (preset_dir / ".claudefig.toml").write_text(toml_content, encoding="utf-8")
+        (preset_dir / "claudefig.toml").write_text(toml_content, encoding="utf-8")
         (preset_dir / "components" / "claude_md" / "default" / "CLAUDE.md").write_text(
             "# CLAUDE.md", encoding="utf-8"
         )
@@ -246,7 +248,7 @@ class TestRepairPresetDirectory:
 
         builtin_source = tmp_path / "source"
         builtin_source.mkdir()
-        (builtin_source / ".claudefig.toml").write_text(
+        (builtin_source / "claudefig.toml").write_text(
             "[claudefig]\nversion = '2.0'\n[components]", encoding="utf-8"
         )
 
@@ -264,7 +266,7 @@ class TestRepairPresetDirectory:
         builtin_source.mkdir()
 
         # Create source preset structure
-        (builtin_source / ".claudefig.toml").write_text(
+        (builtin_source / "claudefig.toml").write_text(
             "[claudefig]\nversion = '2.0'\n[components]", encoding="utf-8"
         )
         (builtin_source / "components").mkdir()
@@ -274,7 +276,7 @@ class TestRepairPresetDirectory:
 
         # Check content was copied
         assert preset_dir.exists()
-        assert (preset_dir / ".claudefig.toml").exists()
+        assert (preset_dir / "claudefig.toml").exists()
         assert (preset_dir / "components").exists()
         assert (preset_dir / "README.md").read_text(encoding="utf-8") == "source readme"
         assert result.was_repaired is True

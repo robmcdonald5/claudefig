@@ -109,7 +109,7 @@ def init(path, force):
     - .claude/ directory
     - CLAUDE.md configuration file
     - Optional settings.json
-    - .claudefig.toml configuration
+    - claudefig.toml configuration
     """
     repo_path = Path(path).resolve()
 
@@ -163,7 +163,7 @@ def show():
             repo = TomlConfigRepository(config_path)
         else:
             console.print("[yellow]No config file found (using defaults)[/yellow]\n")
-            repo = TomlConfigRepository(Path.cwd() / ".claudefig.toml")
+            repo = TomlConfigRepository(Path.cwd() / "claudefig.toml")
 
         config_data = config_service.load_config(repo)
 
@@ -1478,7 +1478,7 @@ def templates_show(template_name):
             ),  # type: ignore[func-returns-value]
         )[-1],
         FileExistsError: lambda e: (
-            console.print("[red]Error:[/red] .claudefig.toml already exists"),  # type: ignore[func-returns-value]
+            console.print("[red]Error:[/red] claudefig.toml already exists"),  # type: ignore[func-returns-value]
             console.print(
                 "[dim]Remove existing config or choose a different directory[/dim]"
             ),  # type: ignore[func-returns-value]
@@ -1505,7 +1505,7 @@ def templates_apply(template_name, path):
     console.print(
         f"\n[green]+[/green] Template '{template_name}' applied successfully!"
     )
-    console.print(f"[dim]Created: {repo_path / '.claudefig.toml'}[/dim]")
+    console.print(f"[dim]Created: {repo_path / 'claudefig.toml'}[/dim]")
 
 
 @templates.command("delete")
@@ -1574,7 +1574,7 @@ def templates_edit(template_name):
 
     # Check if template exists (directory-based structure)
     template_dir = manager.global_presets_dir / template_name
-    template_file = template_dir / ".claudefig.toml"
+    template_file = template_dir / "claudefig.toml"
 
     if not template_dir.exists() or not template_file.exists():
         console.print(
@@ -1652,7 +1652,7 @@ def templates_save(template_name, description, path):
     repo_path = Path(path).resolve()
 
     # Ensure a config exists in the project
-    config_path = repo_path / ".claudefig.toml"
+    config_path = repo_path / "claudefig.toml"
     if not config_path.exists():
         console.print(
             format_cli_error(ErrorMessages.config_file_not_found(str(repo_path)))
@@ -1674,7 +1674,7 @@ def templates_save(template_name, description, path):
 
     console.print(f"\n[green]+[/green] Saved template: [cyan]{template_name}[/cyan]")
     console.print(
-        f"[dim]Location: {manager.global_presets_dir / template_name / '.claudefig.toml'}[/dim]"
+        f"[dim]Location: {manager.global_presets_dir / template_name / 'claudefig.toml'}[/dim]"
     )
 
 
@@ -1721,11 +1721,11 @@ def setup_mcp(path):
 def sync(path, force):
     """Regenerate files from current configuration.
 
-    Reads .claudefig.toml and regenerates all enabled file instances.
+    Reads claudefig.toml and regenerates all enabled file instances.
     This is useful after modifying configuration or updating presets.
     """
     repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    config_path = repo_path / "claudefig.toml"
 
     logger.info(f"Synchronizing files in: {repo_path}")
     logger.debug(f"Force mode: {force}")
@@ -1794,7 +1794,7 @@ def validate(path):
     Shows health status similar to the TUI Overview screen.
     """
     repo_path = Path(path).resolve()
-    config_path = repo_path / ".claudefig.toml"
+    config_path = repo_path / "claudefig.toml"
 
     logger.info(f"Validating configuration in: {repo_path}")
 

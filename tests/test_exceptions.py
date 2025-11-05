@@ -136,7 +136,7 @@ class TestResourceNotFoundErrors:
         """Test ConfigFileNotFoundError without path."""
         error = exceptions.ConfigFileNotFoundError()
 
-        assert "No .claudefig.toml found" in str(error)
+        assert "No configuration file found" in str(error)
         assert error.error_code == "CONFIG_NOT_FOUND"
         assert error.details == {}
 
@@ -144,7 +144,7 @@ class TestResourceNotFoundErrors:
         """Test ConfigFileNotFoundError with path."""
         error = exceptions.ConfigFileNotFoundError(path="/project/dir")
 
-        assert "No .claudefig.toml found in '/project/dir'" in str(error)
+        assert "No configuration file found in '/project/dir'" in str(error)
         assert error.details["path"] == "/project/dir"
 
 
@@ -169,11 +169,11 @@ class TestResourceConflictErrors:
 
     def test_config_file_exists(self):
         """Test ConfigFileExistsError."""
-        error = exceptions.ConfigFileExistsError("/project/.claudefig.toml")
+        error = exceptions.ConfigFileExistsError("/project/claudefig.toml")
 
-        assert ".claudefig.toml already exists" in str(error)
+        assert "Configuration file already exists" in str(error)
         assert error.error_code == "CONFIG_EXISTS"
-        assert error.details["path"] == "/project/.claudefig.toml"
+        assert error.details["path"] == "/project/claudefig.toml"
 
 
 class TestPermissionErrors:

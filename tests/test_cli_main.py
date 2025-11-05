@@ -137,7 +137,7 @@ class TestShow:
         """Test show command when config file exists."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             # Create a config file in the isolated filesystem
-            config_path = Path.cwd() / ".claudefig.toml"
+            config_path = Path.cwd() / "claudefig.toml"
             config_path.write_text(
                 """
 [claudefig]
@@ -159,10 +159,14 @@ enabled = true
 
             assert result.exit_code == 0
             assert "Current Configuration" in result.output
-            assert ".claudefig.toml" in result.output or "Config file" in result.output
+            assert "claudefig.toml" in result.output or "Config file" in result.output
 
-    def test_show_without_config_file(self, cli_runner, tmp_path):
+    @patch("claudefig.services.config_service.find_config_path")
+    def test_show_without_config_file(self, mock_find_config, cli_runner, tmp_path):
         """Test show command when no config file exists."""
+        # Mock find_config_path to return None, preventing fallback to user home config
+        mock_find_config.return_value = None
+
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             result = cli_runner.invoke(main, ["show"])
 
@@ -172,7 +176,7 @@ enabled = true
 
     def test_show_displays_file_instances(self, cli_runner, tmp_path):
         """Test that show command displays file instance summary."""
-        config_path = tmp_path / ".claudefig.toml"
+        config_path = tmp_path / "claudefig.toml"
         config_path.write_text(
             """
 [claudefig]
@@ -206,7 +210,7 @@ enabled = false
         """Test show command error handling with invalid TOML."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             # Create invalid TOML config
-            config_path = Path.cwd() / ".claudefig.toml"
+            config_path = Path.cwd() / "claudefig.toml"
             config_path.write_text("invalid toml {", encoding="utf-8")
 
             result = cli_runner.invoke(main, ["show"])
@@ -250,7 +254,7 @@ class TestListTemplates:
         custom_dir.mkdir()
 
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            config_path = Path.cwd() / ".claudefig.toml"
+            config_path = Path.cwd() / "claudefig.toml"
             config_path.write_text(
                 f"""
 [claudefig]
@@ -274,7 +278,7 @@ template_dir = "{custom_dir}"
         custom_dir.mkdir()
 
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            config_path = Path.cwd() / ".claudefig.toml"
+            config_path = Path.cwd() / "claudefig.toml"
             config_path.write_text(
                 f"""
 [claudefig]
