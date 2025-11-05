@@ -186,7 +186,7 @@ class PresetFactory(factory.Factory):  # type: ignore[misc]
 class PresetDefinitionFactory(factory.Factory):  # type: ignore[misc]
     """Factory for creating PresetDefinition test objects.
 
-    Used for .claudefig.toml preset definition testing.
+    Used for claudefig.toml preset definition testing.
 
     Note:
         Factory class attributes are descriptors, not typed attributes.

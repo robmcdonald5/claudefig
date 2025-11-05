@@ -82,7 +82,7 @@ class GeneralConfigScreen(BaseScreen):
                 yield Button("Refresh Display", id="btn-refresh")
 
             # Back button
-            yield from self.compose_back_button()  # type: ignore[misc]
+            yield from self.compose_back_button()
 
     def _format_config(self) -> str:
         """Format config data for display.

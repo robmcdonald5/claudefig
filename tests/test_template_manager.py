@@ -287,8 +287,8 @@ class TestReadTemplateFile:
         """Test reading an existing template file."""
         manager = FileTemplateManager()
 
-        # Read a file from default template (.claudefig.toml should exist)
-        content = manager.read_template_file("default", ".claudefig.toml")
+        # Read a file from default template (claudefig.toml should exist)
+        content = manager.read_template_file("default", "claudefig.toml")
 
         # Should return string content
         assert isinstance(content, str)

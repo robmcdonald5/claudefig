@@ -142,7 +142,7 @@ src/presets/default/components/new_type/default/
 - Filename must match what's in `filename_map`
 
 #### Update preset definition file:
-**`src/presets/default/.claudefig.toml`**
+**`src/presets/default/claudefig.toml`**
 ```toml
 [[components]]
 type = "new_type"
@@ -247,7 +247,7 @@ After implementing, verify:
 - [ ] TUI file_instances.py includes type (2 locations)
 - [ ] TUI overview.py includes type priority
 - [ ] Component folder created with default variant
-- [ ] Preset .claudefig.toml includes component entry
+- [ ] Preset claudefig.toml includes component entry
 - [ ] All tests updated and passing
 - [ ] CLI documentation updated
 - [ ] Clean up: Delete `~/.claudefig/` and test end-to-end
@@ -268,7 +268,7 @@ After implementing, verify:
 ```bash
 # 1. Clean slate
 rm -rf ~/.claudefig
-rm -rf sandbox/.claudefig.toml sandbox/.claude
+rm -rf sandbox/claudefig.toml sandbox/.claude
 
 # 2. Reinstall
 pip install -e .

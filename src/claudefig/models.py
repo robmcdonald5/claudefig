@@ -359,7 +359,7 @@ class ValidationResult:
 
 @dataclass
 class PresetDefinition:
-    """Preset definition from .claudefig.toml file.
+    """Preset definition from claudefig.toml file.
 
     Represents a complete preset configuration including metadata
     and component references.
@@ -372,10 +372,10 @@ class PresetDefinition:
 
     @classmethod
     def from_toml(cls, path: Path) -> "PresetDefinition":
-        """Load preset definition from .claudefig.toml file.
+        """Load preset definition from claudefig.toml file.
 
         Args:
-            path: Path to .claudefig.toml file
+            path: Path to claudefig.toml file
 
         Returns:
             PresetDefinition instance
@@ -402,7 +402,7 @@ class PresetDefinition:
         )
 
     def to_toml(self, path: Path) -> None:
-        """Save preset definition to .claudefig.toml file.
+        """Save preset definition to claudefig.toml file.
 
         Args:
             path: Path where to save the file

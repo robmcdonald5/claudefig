@@ -31,11 +31,11 @@ class ApplyPresetScreen(BaseModalScreen):
             classes="dialog-text",
         )
 
-        # Check if .claudefig.toml already exists
-        config_path = Path.cwd() / ".claudefig.toml"
+        # Check if claudefig.toml already exists
+        config_path = Path.cwd() / "claudefig.toml"
         if config_path.exists():
             yield Label(
-                "\nWARNING: .claudefig.toml already exists in this directory!",
+                "\nWARNING: claudefig.toml already exists in this directory!",
                 classes="dialog-warning",
             )
             yield Label(

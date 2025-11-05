@@ -11,7 +11,7 @@ class TestFindConfigPath:
 
     def test_finds_config_in_current_directory(self, monkeypatch, tmp_path):
         """Test finding config in current directory."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text("[claudefig]\nversion = '2.0'\n")
 
         monkeypatch.chdir(tmp_path)
@@ -24,7 +24,8 @@ class TestFindConfigPath:
         """Test finding config in home directory when not in current."""
         home_dir = tmp_path / "home"
         home_dir.mkdir()
-        config_file = home_dir / ".claudefig.toml"
+        (home_dir / ".claudefig").mkdir()
+        config_file = home_dir / ".claudefig" / "config.toml"
         config_file.write_text("[claudefig]\nversion = '2.0'\n")
 
         work_dir = tmp_path / "work"
@@ -56,12 +57,13 @@ class TestFindConfigPath:
         """Test current directory config has priority over home."""
         home_dir = tmp_path / "home"
         home_dir.mkdir()
-        home_config = home_dir / ".claudefig.toml"
+        (home_dir / ".claudefig").mkdir()
+        home_config = home_dir / ".claudefig" / "config.toml"
         home_config.write_text("[claudefig]\nversion = '1.0'\n")
 
         work_dir = tmp_path / "work"
         work_dir.mkdir()
-        work_config = work_dir / ".claudefig.toml"
+        work_config = work_dir / "claudefig.toml"
         work_config.write_text("[claudefig]\nversion = '2.0'\n")
 
         monkeypatch.setattr(Path, "home", lambda: home_dir)

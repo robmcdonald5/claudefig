@@ -58,7 +58,7 @@ Creates the necessary files and directory structure for Claude Code integration 
 - `.claude/` directory
 - `CLAUDE.md` configuration file
 - `CONTRIBUTING.md` template
-- `.claudefig.toml` configuration file
+- `claudefig.toml` configuration file
 
 **Usage:**
 ```bash
@@ -109,7 +109,7 @@ claudefig init --path /path/to/repo --force
 - Creates `.claude/` directory if it doesn't exist
 - Copies template files based on configuration settings
 - Skips existing files unless `--force` is specified
-- Creates `.claudefig.toml` if it doesn't exist (never overwrites)
+- Creates `claudefig.toml` if it doesn't exist (never overwrites)
 
 **Exit Codes:**
 - `0` - Success
@@ -122,7 +122,7 @@ claudefig init --path /path/to/repo --force
 Display the current Claude Code configuration settings.
 
 **Description:**
-Shows the active configuration, including settings from `.claudefig.toml` or default values if no config file exists.
+Shows the active configuration, including settings from `claudefig.toml` or default values if no config file exists.
 
 **Usage:**
 ```bash
@@ -136,7 +136,7 @@ None
 ```
 Current Configuration:
 
-Config file: /path/to/repo/.claudefig.toml
+Config file: /path/to/repo/claudefig.toml
 
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ Setting                      ┃ Value   ┃
@@ -183,7 +183,7 @@ Available Templates:
 
 **Notes:**
 - Built-in templates are always available
-- Custom templates are loaded from the directory specified in `.claudefig.toml` under `custom.template_dir`
+- Custom templates are loaded from the directory specified in `claudefig.toml` under `custom.template_dir`
 - If no templates are found, displays: "No templates found"
 
 ---
@@ -224,9 +224,9 @@ Displays "Implementation in progress..." message.
 
 ## Configuration File
 
-Commands respect settings in `.claudefig.toml`. See the config file documentation for available options.
+Commands respect settings in `claudefig.toml`. See the config file documentation for available options.
 
-**Example `.claudefig.toml`:**
+**Example `claudefig.toml`:**
 ```toml
 [claudefig]
 template_source = "default"

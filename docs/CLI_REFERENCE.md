@@ -79,7 +79,7 @@ claudefig init --path ../my-project --force
 
 **What it does:**
 
-1. Loads configuration from `.claudefig.toml`
+1. Loads configuration from `claudefig.toml`
 2. Generates all enabled file instances
 3. Creates `.claude/` directory structure
 4. Applies presets to generate files
@@ -130,7 +130,7 @@ claudefig show
 ```
 Current Configuration:
 
-Config file: /path/to/project/.claudefig.toml
+Config file: /path/to/project/claudefig.toml
 
 ┌────────────────────────────┬────────────┐
 │ Setting                    │ Value      │
@@ -208,7 +208,7 @@ claudefig config list
 **Example Output:**
 
 ```
-Configuration from: /path/to/.claudefig.toml
+Configuration from: /path/to/claudefig.toml
 
 ┌─────────────────────────────┬─────────┐
 │ Setting                     │ Value   │
@@ -308,7 +308,7 @@ claudefig config set custom.max_files 100
 
 ```
 ✓ Set init.overwrite_existing = True
-Config saved to: /path/to/.claudefig.toml
+Config saved to: /path/to/claudefig.toml
 ```
 
 ## Files Commands
@@ -446,7 +446,7 @@ claudefig files add claude_md \
   Path: backend/CLAUDE.md
   Enabled: True
 
-Config saved to: /path/to/.claudefig.toml
+Config saved to: /path/to/claudefig.toml
 ```
 
 ### `claudefig files remove`
@@ -485,7 +485,7 @@ claudefig files remove claude_md-backend --path /path/to/repo
 
 ```
 ✓ Removed file instance: claude_md-backend
-Config saved to: /path/to/.claudefig.toml
+Config saved to: /path/to/claudefig.toml
 ```
 
 ### `claudefig files enable`
@@ -524,7 +524,7 @@ claudefig files enable claude_md-backend --path /path/to/repo
 
 ```
 ✓ Enabled file instance: claude_md-backend
-Config saved to: /path/to/.claudefig.toml
+Config saved to: /path/to/claudefig.toml
 ```
 
 ### `claudefig files disable`
@@ -563,7 +563,7 @@ claudefig files disable claude_md-experimental --path /path/to/repo
 
 ```
 ✓ Disabled file instance: claude_md-experimental
-Config saved to: /path/to/.claudefig.toml
+Config saved to: /path/to/claudefig.toml
 ```
 
 ## Presets Commands
@@ -817,7 +817,7 @@ claudefig files add settings_json --preset default
 claudefig files add commands --preset default
 
 # Commit configuration
-git add .claudefig.toml
+git add claudefig.toml
 git commit -m "Add claudefig configuration"
 git push
 
@@ -923,10 +923,10 @@ Save your configuration:
 
 ```bash
 # Backup
-cp .claudefig.toml .claudefig.toml.backup
+cp claudefig.toml claudefig.toml.backup
 
 # Restore if needed
-cp .claudefig.toml.backup .claudefig.toml
+cp claudefig.toml.backup claudefig.toml
 ```
 
 ### Tip 5: Quick Instance Listing
@@ -1002,7 +1002,7 @@ which claudefig
 
 ```bash
 # Check for config file
-ls -la .claudefig.toml
+ls -la claudefig.toml
 
 # Create if missing
 claudefig init

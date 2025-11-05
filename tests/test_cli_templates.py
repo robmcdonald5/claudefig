@@ -69,7 +69,7 @@ class TestTemplatesApply:
 
             assert result.exit_code == 0
             assert "applied successfully" in result.output
-            assert (project_dir / ".claudefig.toml").exists()
+            assert (project_dir / "claudefig.toml").exists()
 
     def test_apply_template_existing_config(self, cli_runner):
         """Test applying template when config already exists."""
@@ -78,7 +78,7 @@ class TestTemplatesApply:
             project_dir.mkdir()
 
             # Create existing config
-            config_file = project_dir / ".claudefig.toml"
+            config_file = project_dir / "claudefig.toml"
             config_file.write_text("existing", encoding="utf-8")
 
             result = cli_runner.invoke(
@@ -145,4 +145,4 @@ class TestTemplatesSave:
             )
 
             assert result.exit_code == 1
-            assert "No .claudefig.toml found" in result.output
+            assert "No claudefig.toml found" in result.output

@@ -97,7 +97,7 @@ preset = PresetFactory(
 
 ### PresetDefinitionFactory
 
-Creates `PresetDefinition` objects for `.claudefig.toml` testing.
+Creates `PresetDefinition` objects for `claudefig.toml` (preset definition) testing.
 
 **Defaults:**
 - `id`: Sequential (`preset-def-0`, `preset-def-1`, ...)

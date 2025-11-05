@@ -19,7 +19,7 @@ class TestConfigCorruption:
 
     def test_load_malformed_toml_syntax(self, tmp_path):
         """Test loading config with TOML syntax errors falls back to defaults."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         # Write invalid TOML with syntax error
         config_file.write_text("[incomplete", encoding="utf-8")
 
@@ -32,7 +32,7 @@ class TestConfigCorruption:
 
     def test_load_malformed_toml_unclosed_table(self, tmp_path):
         """Test loading config with unclosed table falls back to defaults."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         # Unclosed table
         config_file.write_text(
             """[claudefig
@@ -49,7 +49,7 @@ class TestConfigCorruption:
 
     def test_load_malformed_toml_invalid_value(self, tmp_path):
         """Test loading config with invalid value syntax falls back to defaults."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         # Invalid value (unquoted string)
         config_file.write_text(
             """[claudefig]
@@ -71,7 +71,7 @@ class TestConfigCorruption:
         CURRENT: Empty file loads as empty dict, no defaults merged
         IDEAL: Should merge with DEFAULT_CONFIG
         """
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text("", encoding="utf-8")
 
         config = Config(config_path=config_file)
@@ -86,7 +86,7 @@ class TestConfigCorruption:
         CURRENT: Only loads what's in file, doesn't merge defaults
         IDEAL: Should merge missing sections from DEFAULT_CONFIG
         """
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[custom]
             some_key = "value"
@@ -103,7 +103,7 @@ class TestConfigCorruption:
 
     def test_load_wrong_data_types(self, tmp_path):
         """Test loading config with wrong data types."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = ["2.0"]  # Should be string, not array
@@ -131,7 +131,7 @@ class TestConfigSaveErrors:
         """Test saving config when write permission is denied."""
         from claudefig.exceptions import FileWriteError
 
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config = Config()
 
         # Create a read-only file
@@ -151,7 +151,7 @@ class TestConfigSaveErrors:
         New architecture automatically creates parent directories.
         """
         config = Config()
-        config_file = tmp_path / "nonexistent" / "subdir" / ".claudefig.toml"
+        config_file = tmp_path / "nonexistent" / "subdir" / "claudefig.toml"
 
         # Should automatically create parent directories and save successfully
         config.save(config_file)
@@ -165,7 +165,7 @@ class TestConfigSaveErrors:
         from claudefig.exceptions import FileWriteError
 
         config = Config()
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
 
         # Mock at the repository level since new architecture uses atomic writes
         with (
@@ -186,7 +186,7 @@ class TestConfigGet:
 
     def test_get_nested_missing_key(self, tmp_path):
         """Test getting nested key that doesn't exist."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = "2.0"
@@ -398,7 +398,7 @@ class TestConfigFileInstances:
 
     def test_get_file_instances_corrupted_array(self, tmp_path):
         """Test getting file instances when [[files]] is corrupted."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = "2.0"
@@ -421,7 +421,7 @@ class TestConfigFileInstances:
         New architecture gracefully falls back to defaults when TOML is malformed,
         so we can add instances to the recovered config.
         """
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text("[incomplete", encoding="utf-8")
 
         # Config should load with default values (graceful fallback)
@@ -447,7 +447,7 @@ class TestConfigFileInstances:
 
     def test_add_file_instance_to_valid_config(self, tmp_path):
         """Test adding file instance to a valid (but minimal) config."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         # Valid but minimal TOML
         config_file.write_text(
             """[claudefig]
@@ -479,7 +479,7 @@ class TestConfigValidation:
 
     def test_validate_schema_valid_config(self, tmp_path):
         """Test validation passes for valid configuration."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = "2.0"
@@ -510,7 +510,7 @@ class TestConfigValidation:
 
     def test_validate_schema_missing_required_section(self, tmp_path):
         """Test validation catches missing required [claudefig] section."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[custom]
             some_key = "value"
@@ -538,7 +538,7 @@ class TestConfigValidation:
 
     def test_validate_schema_missing_schema_version(self, tmp_path):
         """Test validation warns about missing schema_version."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = "2.0"
@@ -555,7 +555,7 @@ class TestConfigValidation:
 
     def test_validate_schema_version_mismatch(self, tmp_path):
         """Test validation warns about schema version mismatch."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = "2.0"
@@ -688,7 +688,7 @@ class TestConfigValidation:
 
     def test_get_validation_result_caches_result(self, tmp_path):
         """Test that get_validation_result caches the validation result."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
             version = "2.0"

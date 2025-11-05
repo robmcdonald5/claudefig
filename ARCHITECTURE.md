@@ -40,7 +40,7 @@ claudefig v2.0 uses a **preset-based architecture** with **file instances** as t
 │                           ▼                                │
 │              ┌────────────────────────┐                    │
 │              │    Configuration       │                    │
-│              │   (.claudefig.toml)    │                    │
+│              │   (claudefig.toml)     │                    │
 │              └────────────────────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -121,7 +121,7 @@ FileInstance(
 
 #### 3. Configuration System (`config.py`)
 
-**Purpose:** Store and manage .claudefig.toml configuration.
+**Purpose:** Store and manage claudefig.toml configuration.
 
 **Schema Version:** 2.0 (breaking change from 1.x)
 
@@ -153,8 +153,8 @@ presets_dir = ""
 - `add_file_instance(instance)` - Add instance to config
 
 **Search Path:**
-1. `.claudefig.toml` in current directory (project config)
-2. `~/.claudefig.toml` in home directory (user defaults)
+1. `claudefig.toml` in current directory (project config)
+2. `~/.claudefig/config.toml` in home directory (user defaults)
 3. Default config (hardcoded fallback)
 
 #### 4. TUI Interface (`tui/`)
@@ -498,7 +498,7 @@ TUI refreshes FilesPanel
 ```
 $ claudefig init --force
     ↓
-Config.load() from .claudefig.toml
+Config.load() from claudefig.toml
     ↓
 Initializer.initialize(repo_path, force=True)
     ↓
@@ -520,7 +520,7 @@ Success/Failure
 **Problem:** The system maintains state in THREE places that must stay synchronized:
 1. `FileInstanceManager` (in-memory instances)
 2. `Config` (in-memory TOML data)
-3. `.claudefig.toml` file (on disk)
+3. `claudefig.toml` file (on disk)
 
 **Critical Rule:** Whenever `FileInstanceManager` is modified, you **MUST** sync all three layers.
 
@@ -586,7 +586,7 @@ The three-layer architecture exists because each layer has a distinct purpose:
 - Dot-notation key access (`config.get("init.overwrite")`)
 - File I/O with atomic writes
 
-**Disk (.claudefig.toml)** provides:
+**Disk (claudefig.toml)** provides:
 - Persistent storage across sessions
 - Human-readable configuration
 - Version control friendly format
@@ -970,7 +970,7 @@ The TUI architecture has evolved through several refactoring phases:
 2. **Three-Layer State Management**
    - FileInstanceManager (in-memory CRUD with validation)
    - Config (TOML serialization and dot-notation access)
-   - .claudefig.toml (persistent disk storage)
+   - claudefig.toml (persistent disk storage)
    - Explicit synchronization ensures data integrity
 
 3. **Dual Interface Design**

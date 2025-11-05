@@ -15,7 +15,7 @@ def config_with_defaults(tmp_path):
 
     New architecture: Initializer takes config_path, not Config object.
     """
-    config_file = tmp_path / ".claudefig.toml"
+    config_file = tmp_path / "claudefig.toml"
     config_file.write_text(
         """[claudefig]
 version = "2.0"
@@ -73,7 +73,7 @@ class TestInitializerInit:
     @patch("claudefig.initializer.FileTemplateManager")
     def test_init_with_custom_template_dir(self, mock_tm_class, tmp_path):
         """Test initialization with custom template directory."""
-        config_file = tmp_path / ".claudefig.toml"
+        config_file = tmp_path / "claudefig.toml"
         config_file.write_text(
             """[claudefig]
 version = "2.0"
@@ -182,8 +182,8 @@ class TestInitializeMethod:
         claude_md = git_repo / "CLAUDE.md"
         assert claude_md.exists()
 
-        # Verify .claudefig.toml config was created
-        config_file = git_repo / ".claudefig.toml"
+        # Verify claudefig.toml config was created
+        config_file = git_repo / "claudefig.toml"
         assert config_file.exists()
 
     @patch("claudefig.initializer.is_git_repository")
@@ -217,12 +217,12 @@ class TestInitializeMethod:
     def test_initialize_skips_existing_config(
         self, mock_ensure_dir, mock_is_git, git_repo
     ):
-        """Test that existing .claudefig.toml is not overwritten."""
+        """Test that existing claudefig.toml is not overwritten."""
         mock_is_git.return_value = True
         initializer = Initializer()
 
         # Create existing config file
-        config_path = git_repo / ".claudefig.toml"
+        config_path = git_repo / "claudefig.toml"
         existing_content = "[claudefig]\ntemplate_source = 'existing'"
         config_path.write_text(existing_content, encoding="utf-8")
 

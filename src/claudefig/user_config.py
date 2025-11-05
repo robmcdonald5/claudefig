@@ -297,7 +297,7 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
 
     # Check if preset already exists and is complete
     if dest_dir.exists():
-        # Validate integrity instead of just checking for .claudefig.toml
+        # Validate integrity instead of just checking for claudefig.toml
         validation_result = validate_preset_integrity(dest_dir, verbose=False)
         if validation_result.is_valid:
             if verbose:
@@ -349,7 +349,7 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
                     import tomli as tomllib
 
                 try:
-                    with open(dest_dir / ".claudefig.toml", "rb") as f:
+                    with open(dest_dir / "claudefig.toml", "rb") as f:
                         config = tomllib.load(f)
                     components = config.get("components", {})
                     total_variants = sum(

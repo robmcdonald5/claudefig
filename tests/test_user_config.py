@@ -376,7 +376,7 @@ class TestAutoHealing:
         presets_dir = config_dir / "presets"
         presets_dir.mkdir()
 
-        # Create incomplete default preset (missing .claudefig.toml)
+        # Create incomplete default preset (missing claudefig.toml)
         default_preset = presets_dir / "default"
         default_preset.mkdir()
         (default_preset / "components").mkdir()
@@ -385,8 +385,8 @@ class TestAutoHealing:
         # This test verifies the new validation logic
         _copy_default_preset_to_user(presets_dir, verbose=False)
 
-        # After repair, .claudefig.toml should exist
-        assert (default_preset / ".claudefig.toml").exists()
+        # After repair, claudefig.toml should exist
+        assert (default_preset / "claudefig.toml").exists()
 
     def test_ensure_user_config_restores_deleted_presets(self, mock_user_home):
         """Test auto-healing when entire presets/default folder is deleted."""
@@ -397,7 +397,7 @@ class TestAutoHealing:
         # Verify default preset exists
         default_preset = config_dir / "presets" / "default"
         assert default_preset.exists()
-        assert (default_preset / ".claudefig.toml").exists()
+        assert (default_preset / "claudefig.toml").exists()
 
         # Delete the default preset to simulate user deletion
         import shutil
@@ -410,5 +410,5 @@ class TestAutoHealing:
 
         # Default preset should be restored
         assert default_preset.exists()
-        assert (default_preset / ".claudefig.toml").exists()
+        assert (default_preset / "claudefig.toml").exists()
         assert (default_preset / "components").exists()

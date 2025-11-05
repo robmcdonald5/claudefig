@@ -60,7 +60,7 @@ class ConfigPanel(BaseNavigablePanel):
             # Check if config exists
             if not self.config_repo.exists():
                 yield Label(
-                    "No .claudefig.toml found in current directory.\n\n"
+                    "No claudefig.toml found in current directory.\n\n"
                     "Go to 'Presets' panel and use a preset to create a config.",
                     classes="placeholder",
                 )

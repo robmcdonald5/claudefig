@@ -23,13 +23,13 @@ logger = get_logger("cli.decorators")
 
 
 def _normalize_config_path(path: str | Path | None) -> Path:
-    """Normalize path to absolute .claudefig.toml path.
+    """Normalize path to absolute claudefig.toml path.
 
     Args:
         path: Path to normalize (can be str, Path, or None)
 
     Returns:
-        Absolute path to .claudefig.toml file
+        Absolute path to claudefig.toml file
     """
     if path is None:
         path = Path.cwd()
@@ -37,9 +37,9 @@ def _normalize_config_path(path: str | Path | None) -> Path:
     if isinstance(path, str):
         path = Path(path)
 
-    # If directory, append .claudefig.toml
+    # If directory, append claudefig.toml
     if path.is_dir():
-        path = path / ".claudefig.toml"
+        path = path / "claudefig.toml"
 
     return path.resolve()
 

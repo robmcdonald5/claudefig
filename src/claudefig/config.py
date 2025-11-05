@@ -35,7 +35,7 @@ class Config:
         """Initialize configuration.
 
         Args:
-            config_path: Path to config file. If None, searches for .claudefig.toml
+            config_path: Path to config file. If None, searches for claudefig.toml
                         in current directory and user home directory.
         """
         # Find config path
@@ -93,9 +93,9 @@ class Config:
 
         Args:
             path: Path to save config. If None, uses self.config_path or creates
-                  .claudefig.toml in current directory.
+                  claudefig.toml in current directory.
         """
-        save_path = path or self.config_path or Path.cwd() / ".claudefig.toml"
+        save_path = path or self.config_path or Path.cwd() / "claudefig.toml"
 
         # Create repository for save location
         save_repo = TomlConfigRepository(save_path)

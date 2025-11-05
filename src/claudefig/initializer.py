@@ -30,7 +30,7 @@ class Initializer:
         # Initialize repositories
         if config_path is None:
             found_path = config_service.find_config_path()
-            config_path = found_path or (Path.cwd() / ".claudefig.toml")
+            config_path = found_path or (Path.cwd() / "claudefig.toml")
 
         self.config_path = config_path
         self.config_repo = TomlConfigRepository(config_path)
@@ -207,7 +207,7 @@ class Initializer:
                     success &= result
 
             # Create config file if it doesn't exist
-            config_path = repo_path / ".claudefig.toml"
+            config_path = repo_path / "claudefig.toml"
             if not config_path.exists():
                 # Create default config
                 default_config = config_service.DEFAULT_CONFIG.copy()
@@ -387,7 +387,7 @@ class Initializer:
                 # Check if claudefig section already exists
                 if (
                     "# claudefig" in existing_content
-                    or ".claudefig.toml" in existing_content
+                    or "claudefig.toml" in existing_content
                 ):
                     console.print(
                         f"[blue]i[/blue] Already contains entries: {dest_path}"
@@ -551,7 +551,7 @@ class Initializer:
                 # Check if claudefig section already exists
                 if (
                     "# claudefig" in existing_content
-                    or ".claudefig.toml" in existing_content
+                    or "claudefig.toml" in existing_content
                 ):
                     console.print(
                         "[blue]i[/blue] .gitignore already contains claudefig entries"
