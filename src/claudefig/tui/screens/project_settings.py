@@ -84,7 +84,7 @@ class ProjectSettingsScreen(BaseScreen):
                         )
 
             # Action buttons (matching Core Files style)
-            yield from self.compose_back_button()  # type: ignore[misc]
+            yield from self.compose_back_button()
 
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
