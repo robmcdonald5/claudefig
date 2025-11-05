@@ -104,7 +104,7 @@ class OverviewScreen(BaseScreen):
             )
 
             # Back button
-            yield from self.compose_back_button()
+            yield from self.compose_back_button()  # type: ignore[misc]
 
     def on_mount(self) -> None:
         """Called when screen is mounted - populate dropdown content."""

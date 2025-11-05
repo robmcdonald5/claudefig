@@ -248,7 +248,7 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                             )
 
             # Back button
-            yield from self.compose_back_button()
+            yield from self.compose_back_button()  # type: ignore[misc]
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle component selection."""
