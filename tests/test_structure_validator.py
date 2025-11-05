@@ -126,6 +126,8 @@ class TestValidateUserDirectory:
         (config_dir / "components" / "settings_json").mkdir()
         (config_dir / "components" / "settings_local_json").mkdir()
         (config_dir / "components" / "statusline").mkdir()
+        (config_dir / "components" / "plugins").mkdir()
+        (config_dir / "components" / "skills").mkdir()
 
         # Create config file
         (config_dir / "config.toml").write_text("# config", encoding="utf-8")

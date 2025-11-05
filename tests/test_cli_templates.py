@@ -145,4 +145,4 @@ class TestTemplatesSave:
             )
 
             assert result.exit_code == 1
-            assert "No claudefig.toml found" in result.output
+            assert "No configuration file found" in result.output

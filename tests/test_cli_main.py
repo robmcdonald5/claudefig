@@ -161,8 +161,12 @@ enabled = true
             assert "Current Configuration" in result.output
             assert "claudefig.toml" in result.output or "Config file" in result.output
 
-    def test_show_without_config_file(self, cli_runner, tmp_path):
+    @patch("claudefig.services.config_service.find_config_path")
+    def test_show_without_config_file(self, mock_find_config, cli_runner, tmp_path):
         """Test show command when no config file exists."""
+        # Mock find_config_path to return None, preventing fallback to user home config
+        mock_find_config.return_value = None
+
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             result = cli_runner.invoke(main, ["show"])
 

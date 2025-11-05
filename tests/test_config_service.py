@@ -1,6 +1,7 @@
 """Tests for configuration service layer."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 from claudefig.repositories.config_repository import FakeConfigRepository
 from claudefig.services import config_service
@@ -604,9 +605,12 @@ class TestConfigSingleton:
         cache_info = config_service._get_config_singleton_cached.cache_info()
         assert cache_info.hits >= 1  # At least one cache hit
 
-    def test_reload_config_singleton_clears_cache(self, tmp_path):
+    @patch("claudefig.services.config_service.find_config_path")
+    def test_reload_config_singleton_clears_cache(self, mock_find_config, tmp_path):
         """Test reload clears cache and returns fresh config."""
         config_file = tmp_path / "test.toml"
+        # Mock find_config_path to return our test file path
+        mock_find_config.return_value = config_file
 
         config_service._get_config_singleton_cached.cache_clear()
 
