@@ -68,7 +68,7 @@ class TestOpenFileInEditor:
     """Tests for open_file_in_editor function."""
 
     @patch("claudefig.utils.platform._get_system", return_value="Windows")
-    @patch("os.startfile")
+    @patch("claudefig.utils.platform.os.startfile", create=True)
     def test_open_file_windows(self, mock_startfile, mock_system, tmp_path):
         """Test opening file on Windows uses os.startfile() (secure)."""
         test_file = tmp_path / "test.txt"
@@ -166,7 +166,7 @@ class TestOpenFileInEditor:
             open_file_in_editor(test_file)
 
     @patch("claudefig.utils.platform._get_system", return_value="Windows")
-    @patch("os.startfile")
+    @patch("claudefig.utils.platform.os.startfile", create=True)
     def test_open_file_windows_error(self, mock_startfile, mock_system, tmp_path):
         """Test error handling when os.startfile fails."""
         test_file = tmp_path / "test.txt"
