@@ -11,7 +11,7 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
 
 
 def _get_system() -> str:
@@ -35,6 +35,7 @@ def _command_exists(command: str) -> bool:
         True if command is available in PATH, False otherwise
     """
     from shutil import which
+
     return which(command) is not None
 
 

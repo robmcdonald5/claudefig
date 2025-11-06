@@ -4,16 +4,14 @@ This module contains commands for managing file instances
 (list, show, add, update, remove, reset).
 """
 
-import click
 from pathlib import Path
-from rich.table import Table
+
+import click
 
 from claudefig.cli.decorators import handle_errors, with_config
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_warning
-from claudefig.exceptions import InstanceNotFoundError, InstanceValidationError
 from claudefig.logging_config import get_logger
 from claudefig.models import FileType
-from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
 
@@ -50,7 +48,6 @@ def files_group():
 @handle_errors("listing file instances")
 def files_list(path, file_type, enabled_only, config_data, config_repo):
     """List all configured file instances."""
-    from claudefig.models import FileType
 
     # Load instances from config
     instances_data = config_service.get_file_instances(config_data)
@@ -137,7 +134,7 @@ def files_add(
 
     FILE_TYPE: Type of file (e.g., claude_md, settings_json)
     """
-    from claudefig.models import FileInstance, FileType
+    from claudefig.models import FileInstance
 
     # Parse file type
     try:
@@ -433,5 +430,3 @@ def files_edit(
     for change in changes:
         console.print(f"  {change}")
     console.print(f"\n[dim]Config saved to: {config_repo.get_path()}[/dim]")
-
-

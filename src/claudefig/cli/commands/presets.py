@@ -5,9 +5,9 @@ This module contains commands for managing project presets
 """
 
 import os
+from pathlib import Path
 
 import click
-from pathlib import Path
 from rich.table import Table
 
 from claudefig.cli.decorators import handle_errors
@@ -15,7 +15,6 @@ from claudefig.config_template_manager import ConfigTemplateManager
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_warning
 from claudefig.exceptions import (
     ConfigFileExistsError,
-    FileOperationError,
     TemplateNotFoundError,
 )
 from claudefig.logging_config import get_logger
@@ -59,9 +58,7 @@ def presets_list(validate):
         console.print(f"\n[dim]Presets location: {manager.global_presets_dir}[/dim]")
         return
 
-    console.print(
-        f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n"
-    )
+    console.print(f"\n[bold blue]Available Presets[/bold blue] ({len(presets_list)})\n")
     console.print(f"[dim]Location: {manager.global_presets_dir}[/dim]\n")
 
     table = Table(show_header=True, header_style="bold magenta")
@@ -113,9 +110,7 @@ def presets_show(preset_name):
 
     # Get preset metadata
     presets_list = manager.list_global_presets()
-    preset_info = next(
-        (p for p in presets_list if p["name"] == preset_name), None
-    )
+    preset_info = next((p for p in presets_list if p["name"] == preset_name), None)
 
     console.print(f"\n[bold blue]Preset: {preset_name}[/bold blue]\n")
 
@@ -193,9 +188,7 @@ def presets_apply(preset_name, path):
 
     manager.apply_preset_to_project(preset_name, target_path=repo_path)
 
-    console.print(
-        f"\n[green]+[/green] Preset '{preset_name}' applied successfully!"
-    )
+    console.print(f"\n[green]+[/green] Preset '{preset_name}' applied successfully!")
     console.print(f"[dim]Created: {repo_path / 'claudefig.toml'}[/dim]")
 
 
@@ -261,9 +254,7 @@ def presets_create(preset_name, description, path):
             f"[yellow]Preset not found:[/yellow] {e}"
         ),
         ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
-        FileNotFoundError: lambda e: console.print(
-            "[yellow]Preset not found[/yellow]"
-        ),
+        FileNotFoundError: lambda e: console.print("[yellow]Preset not found[/yellow]"),
     },
 )
 def presets_delete(preset_name):
@@ -283,9 +274,7 @@ def presets_delete(preset_name):
 @handle_errors(
     "editing preset",
     extra_handlers={
-        RuntimeError: lambda e: console.print(
-            f"[red]Error opening editor:[/red] {e}"
-        ),
+        RuntimeError: lambda e: console.print(f"[red]Error opening editor:[/red] {e}"),
     },
 )
 def presets_edit(preset_name):
@@ -353,8 +342,6 @@ def presets_open():
     try:
         open_folder_in_explorer(presets_dir)
         console.print("[green]+[/green] Opened in file manager")
-    except RuntimeError as e:
-        console.print(
-            "[yellow]Could not open file manager automatically[/yellow]"
-        )
+    except RuntimeError:
+        console.print("[yellow]Could not open file manager automatically[/yellow]")
         console.print(f"\n[dim]Navigate to: {presets_dir}[/dim]")

@@ -1,20 +1,19 @@
 """Tests for platform detection and system operation utilities."""
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock, call
 import subprocess
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from claudefig.utils.platform import (
-    _get_system,
     _command_exists,
+    get_editor_command,
     get_platform,
-    is_windows,
-    is_macos,
     is_linux,
+    is_macos,
+    is_windows,
     open_file_in_editor,
     open_folder_in_explorer,
-    get_editor_command,
     run_platform_command,
 )
 
@@ -99,7 +98,9 @@ class TestOpenFileInEditor:
     @patch("claudefig.utils.platform._get_system", return_value="Linux")
     @patch("claudefig.utils.platform._command_exists", return_value=True)
     @patch("subprocess.run")
-    def test_open_file_linux_xdg_open(self, mock_run, mock_exists, mock_system, tmp_path):
+    def test_open_file_linux_xdg_open(
+        self, mock_run, mock_exists, mock_system, tmp_path
+    ):
         """Test opening file on Linux uses xdg-open."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test content")
@@ -116,7 +117,9 @@ class TestOpenFileInEditor:
     @patch("claudefig.utils.platform._get_system", return_value="Linux")
     @patch("claudefig.utils.platform._command_exists")
     @patch("subprocess.run")
-    def test_open_file_linux_fallback(self, mock_run, mock_exists, mock_system, tmp_path):
+    def test_open_file_linux_fallback(
+        self, mock_run, mock_exists, mock_system, tmp_path
+    ):
         """Test Linux fallback commands when xdg-open not available."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test content")
@@ -309,7 +312,7 @@ class TestRunPlatformCommand:
         """Test that Windows command is run on Windows platform."""
         mock_run.return_value = MagicMock(returncode=0)
 
-        result = run_platform_command(
+        run_platform_command(
             windows_cmd=["cmd", "/c", "dir"],
             macos_cmd=["ls", "-la"],
             linux_cmd=["ls", "-la"],
@@ -325,7 +328,7 @@ class TestRunPlatformCommand:
         """Test that macOS command is run on macOS platform."""
         mock_run.return_value = MagicMock(returncode=0)
 
-        result = run_platform_command(
+        run_platform_command(
             windows_cmd=["dir"],
             macos_cmd=["ls", "-la"],
             linux_cmd=["ls", "-l"],
@@ -341,7 +344,7 @@ class TestRunPlatformCommand:
         """Test that Linux command is run on Linux platform."""
         mock_run.return_value = MagicMock(returncode=0)
 
-        result = run_platform_command(
+        run_platform_command(
             windows_cmd=["dir"],
             macos_cmd=["ls"],
             linux_cmd=["ls", "-la"],

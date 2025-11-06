@@ -5,14 +5,12 @@ specific command groups (init, show, sync, validate, interactive, etc.).
 """
 
 import logging
-import subprocess
 from pathlib import Path
 
 import click
 from rich.table import Table
 
 from claudefig import __version__
-from claudefig.cli.decorators import handle_errors
 from claudefig.error_messages import (
     ErrorMessages,
     format_cli_error,
@@ -27,12 +25,12 @@ from claudefig.logging_config import get_logger, setup_logging
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
-from claudefig.template_manager import FileTemplateManager
 
 # Import shared console from parent
 from . import console
 
 logger = get_logger("cli.main")
+
 
 @click.group(invoke_without_command=True)
 @click.version_option(version=__version__, prog_name="claudefig")
@@ -47,7 +45,6 @@ def main(ctx, verbose, quiet):
 
     Run without arguments to launch interactive mode.
     """
-    import logging
 
     from claudefig.user_config import ensure_user_config
 

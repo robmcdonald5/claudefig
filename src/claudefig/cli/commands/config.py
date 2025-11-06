@@ -5,14 +5,10 @@ This module contains commands for managing claudefig configuration settings
 """
 
 import click
-from pathlib import Path
 from rich.table import Table
 
 from claudefig.cli.decorators import handle_errors, with_config
-from claudefig.error_messages import ErrorMessages, format_cli_error
-from claudefig.exceptions import ConfigFileExistsError
 from claudefig.logging_config import get_logger
-from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service, file_instance_service
 
 # Import shared console from parent
@@ -236,5 +232,3 @@ def config_list(path, config_data, config_repo):
         console.print("[yellow]No file instances configured[/yellow]")
 
     console.print("\n[dim]Use 'claudefig files list' for more details[/dim]")
-
-
