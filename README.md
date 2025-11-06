@@ -197,29 +197,29 @@ claudefig files disable <instance-id>
 claudefig files remove <instance-id>
 ```
 
-#### Template Management
+#### Preset Management
 
 ```bash
-# List all global templates
-claudefig templates list
+# List all available presets
+claudefig presets list
 
 # List with validation status
-claudefig templates list --validate
+claudefig presets list --validate
 
-# Show template details
-claudefig templates show default
+# Show preset details
+claudefig presets show default
 
-# Save current project as a template
-claudefig templates save my_template --description "My project template"
+# Save current project as a preset
+claudefig presets create my_preset --description "My project preset"
 
-# Apply a template to current project
-claudefig templates apply default
+# Apply a preset to current project
+claudefig presets apply default
 
-# Edit a template in your default editor
-claudefig templates edit my_template
+# Edit a preset in your default editor
+claudefig presets edit my_preset
 
-# Delete a template (with confirmation)
-claudefig templates delete my_template
+# Delete a preset (with confirmation)
+claudefig presets delete my_preset
 ```
 
 #### Configuration
@@ -284,21 +284,21 @@ claudefig files add --type claude_md --preset claude_md:my_backend --path CLAUDE
 claudefig init
 ```
 
-#### Example 4: Managing Global Templates
+#### Example 4: Managing Global Presets
 
 ```bash
-# Save current project configuration as a reusable template
-claudefig templates save my_fastapi_project --description "FastAPI backend template"
+# Save current project configuration as a reusable preset
+claudefig presets create my_fastapi_project --description "FastAPI backend preset"
 
-# List all templates
-claudefig templates list
+# List all presets
+claudefig presets list
 
-# Apply template to a new project
+# Apply preset to a new project
 cd /path/to/new/project
-claudefig templates apply my_fastapi_project
+claudefig presets apply my_fastapi_project
 
-# Edit template to update it
-claudefig templates edit my_fastapi_project
+# Edit preset to update it
+claudefig presets edit my_fastapi_project
 ```
 
 For detailed usage instructions, run:
