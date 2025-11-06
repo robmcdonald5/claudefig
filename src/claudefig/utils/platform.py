@@ -7,10 +7,35 @@ This module provides cross-platform utilities for:
 - Getting platform-specific paths and commands
 """
 
+import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
+
+
+def _get_system() -> str:
+    """Get the current platform name (wrapper for testing).
+
+    This wrapper function enables mocking platform.system() in unit tests.
+
+    Returns:
+        Platform name: 'Windows', 'Darwin' (macOS), or 'Linux'
+    """
+    return platform.system()
+
+
+def _command_exists(command: str) -> bool:
+    """Check if a command exists in PATH.
+
+    Args:
+        command: Command name to check (e.g., 'xdg-open', 'gnome-open')
+
+    Returns:
+        True if command is available in PATH, False otherwise
+    """
+    from shutil import which
+    return which(command) is not None
 
 
 def get_platform() -> str:
@@ -19,7 +44,7 @@ def get_platform() -> str:
     Returns:
         Platform name: 'Windows', 'Darwin' (macOS), or 'Linux'
     """
-    return platform.system()
+    return _get_system()
 
 
 def is_windows() -> bool:
@@ -28,7 +53,7 @@ def is_windows() -> bool:
     Returns:
         True if Windows, False otherwise
     """
-    return platform.system() == "Windows"
+    return _get_system() == "Windows"
 
 
 def is_macos() -> bool:
@@ -37,7 +62,7 @@ def is_macos() -> bool:
     Returns:
         True if macOS (Darwin), False otherwise
     """
-    return platform.system() == "Darwin"
+    return _get_system() == "Darwin"
 
 
 def is_linux() -> bool:
@@ -46,7 +71,7 @@ def is_linux() -> bool:
     Returns:
         True if Linux, False otherwise
     """
-    return platform.system() == "Linux"
+    return _get_system() == "Linux"
 
 
 def open_file_in_editor(file_path: Union[Path, str]) -> bool:
@@ -56,19 +81,14 @@ def open_file_in_editor(file_path: Union[Path, str]) -> bool:
         file_path: Path to the file to open
 
     Returns:
-        True if successful, False if failed
+        True if successful
 
     Raises:
         FileNotFoundError: If file doesn't exist
         ValueError: If path is not a file
-
-    Note:
-        Uses platform-specific commands:
-        - Windows: start (via cmd)
-        - macOS: open
-        - Linux: xdg-open
+        RuntimeError: If failed to open file or timeout occurred
     """
-    file_path = Path(file_path)
+    file_path = Path(file_path).resolve()
 
     if not file_path.exists():
         raise FileNotFoundError(f"File does not exist: {file_path}")
@@ -77,16 +97,34 @@ def open_file_in_editor(file_path: Union[Path, str]) -> bool:
         raise ValueError(f"Path is not a file: {file_path}")
 
     try:
-        system = platform.system()
+        system = _get_system()
+
         if system == "Windows":
-            subprocess.run(["start", "", str(file_path)], shell=True, check=False)
-        elif system == "Darwin":  # macOS
-            subprocess.run(["open", str(file_path)], check=False)
-        else:  # Linux
-            subprocess.run(["xdg-open", str(file_path)], check=False)
+            os.startfile(str(file_path))
+
+        elif system == "Darwin":
+            subprocess.run(
+                ["open", str(file_path)],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+
+        else:
+            for cmd in ["xdg-open", "gnome-open", "kde-open"]:
+                if _command_exists(cmd):
+                    subprocess.run(
+                        [cmd, str(file_path)],
+                        check=False,
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    break
 
         return True
 
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Timeout opening file (exceeded 5 seconds): {e}") from e
     except (OSError, subprocess.SubprocessError) as e:
         raise RuntimeError(f"Failed to open file: {e}") from e
 
@@ -101,21 +139,15 @@ def open_folder_in_explorer(
         create_if_missing: If True, create folder if it doesn't exist
 
     Returns:
-        True if successful, False if failed
+        True if successful
 
     Raises:
         FileNotFoundError: If folder doesn't exist and create_if_missing=False
-        OSError: If failed to create or open folder
-
-    Note:
-        Uses platform-specific commands:
-        - Windows: explorer
-        - macOS: open
-        - Linux: xdg-open
+        OSError: If failed to create folder
+        RuntimeError: If failed to open folder or timeout occurred
     """
-    folder_path = Path(folder_path)
+    folder_path = Path(folder_path).resolve()
 
-    # Ensure directory exists
     if not folder_path.exists():
         if create_if_missing:
             try:
@@ -126,50 +158,76 @@ def open_folder_in_explorer(
             raise FileNotFoundError(f"Folder does not exist: {folder_path}")
 
     try:
-        system = platform.system()
+        system = _get_system()
+
         if system == "Windows":
-            subprocess.run(["explorer", str(folder_path)], check=False)
-        elif system == "Darwin":  # macOS
-            subprocess.run(["open", str(folder_path)], check=False)
-        else:  # Linux
-            subprocess.run(["xdg-open", str(folder_path)], check=False)
+            subprocess.run(
+                ["explorer", str(folder_path)],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+
+        elif system == "Darwin":
+            subprocess.run(
+                ["open", str(folder_path)],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+
+        else:
+            for cmd in ["xdg-open", "gnome-open", "kde-open"]:
+                if _command_exists(cmd):
+                    subprocess.run(
+                        [cmd, str(folder_path)],
+                        check=False,
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    break
 
         return True
 
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Timeout opening folder (exceeded 5 seconds): {e}") from e
     except (OSError, subprocess.SubprocessError) as e:
         raise RuntimeError(f"Failed to open folder: {e}") from e
 
 
-def get_editor_command() -> str | None:
+def get_editor_command() -> str:
     """Get the system's default text editor command.
 
-    Checks $EDITOR environment variable first, then falls back to
-    platform-specific defaults.
+    Checks environment variables in order:
+    1. $VISUAL (preferred by POSIX)
+    2. $EDITOR (standard fallback)
+    3. Platform-specific defaults
 
     Returns:
-        Editor command string, or None if no suitable editor found
+        Editor command string
 
     Note:
         Default editors by platform:
-        - Windows: notepad
-        - macOS: open -e (TextEdit)
-        - Linux: nano (or $EDITOR if set)
+        - Windows: notepad.exe
+        - macOS: nano
+        - Linux: nano
     """
-    import os
+    visual = os.environ.get("VISUAL")
+    if visual:
+        return visual
 
-    # Check environment variable first
     editor = os.environ.get("EDITOR")
     if editor:
         return editor
 
     # Platform-specific defaults
-    system = platform.system()
+    system = _get_system()
     if system == "Windows":
-        return "notepad"
+        return "notepad.exe"
     elif system == "Darwin":
-        return "open -e"  # TextEdit on macOS
-    else:  # Linux
-        return "nano"  # Safe fallback
+        return "nano"
+    else:
+        return "nano"
 
 
 def run_platform_command(
@@ -177,6 +235,7 @@ def run_platform_command(
     macos_cmd: list[str],
     linux_cmd: list[str],
     shell: bool = False,
+    timeout: Optional[int] = 5,
 ) -> subprocess.CompletedProcess:
     """Run a platform-specific command.
 
@@ -184,22 +243,25 @@ def run_platform_command(
         windows_cmd: Command to run on Windows
         macos_cmd: Command to run on macOS
         linux_cmd: Command to run on Linux
-        shell: Whether to run command through shell
+        shell: Whether to run command through shell (default: False)
+        timeout: Timeout in seconds (default: 5, None for no timeout)
 
     Returns:
         CompletedProcess object from subprocess.run
 
     Raises:
-        RuntimeError: If platform is unknown
+        RuntimeError: If platform is unsupported
 
     Example:
         >>> run_platform_command(
-        ...     windows_cmd=["dir"],
+        ...     windows_cmd=["cmd", "/c", "dir"],
         ...     macos_cmd=["ls", "-la"],
-        ...     linux_cmd=["ls", "-la"]
+        ...     linux_cmd=["ls", "-la"],
+        ...     timeout=10
         ... )
     """
-    system = platform.system()
+    system = _get_system()
+
     if system == "Windows":
         cmd = windows_cmd
     elif system == "Darwin":
@@ -209,4 +271,10 @@ def run_platform_command(
     else:
         raise RuntimeError(f"Unsupported platform: {system}")
 
-    return subprocess.run(cmd, shell=shell, check=False, capture_output=True)
+    return subprocess.run(
+        cmd,
+        shell=shell,
+        check=False,
+        capture_output=True,
+        timeout=timeout,
+    )
