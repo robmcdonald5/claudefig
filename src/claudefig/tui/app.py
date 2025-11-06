@@ -46,10 +46,7 @@ class MainScreen(App):
         """Initialize the app."""
         super().__init__(**kwargs)
 
-        # Load config using new architecture
-        config_path = config_service.find_config_path()
-        if not config_path:
-            config_path = Path.cwd() / "claudefig.toml"
+        config_path = Path.cwd() / "claudefig.toml"
 
         self.config_repo = TomlConfigRepository(config_path)
         if config_path.exists():
