@@ -285,7 +285,7 @@ VerticalScroll Horizontal {
 
 .placeholder {
     color: $text-muted;
-    text-align: center;
+    text-align: left;
     margin-top: 4;
 }
 

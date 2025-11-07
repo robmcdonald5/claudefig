@@ -8,7 +8,6 @@ from textual.containers import Grid, VerticalScroll
 from textual.events import Key
 from textual.widgets import Button, Label
 
-from claudefig.preset_manager import PresetManager
 from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.services import config_service
 from claudefig.tui.base import BaseNavigablePanel
@@ -51,7 +50,6 @@ class ConfigPanel(BaseNavigablePanel):
         super().__init__(**kwargs)
         self.config_data = config_data
         self.config_repo = config_repo
-        self.preset_manager = PresetManager()
 
     def compose(self) -> ComposeResult:
         """Compose the config menu panel."""

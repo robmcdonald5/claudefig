@@ -38,17 +38,16 @@ class TestSystemUtilityMixin:
 
         return TestWidget()
 
-    @patch("claudefig.utils.platform.subprocess.run")
+    @patch("claudefig.utils.platform.os.startfile", create=True)
     @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_windows(
-        self, mock_platform, mock_subprocess, mixin_instance, tmp_path
+        self, mock_platform, mock_startfile, mixin_instance, tmp_path
     ):
         """Test opening file in editor on Windows."""
         # Setup
         test_file = tmp_path / "test.txt"
         test_file.write_text("test content")
         mock_platform.return_value = "Windows"
-        mock_subprocess.return_value = Mock(returncode=0)
 
         # Execute
         result = mixin_instance.open_file_in_editor(test_file)
@@ -56,9 +55,7 @@ class TestSystemUtilityMixin:
         # Verify
         assert result is True
         mock_platform.assert_called_once()
-        mock_subprocess.assert_called_once_with(
-            ["start", "", str(test_file)], shell=True, check=False
-        )
+        mock_startfile.assert_called_once_with(str(test_file.resolve()))
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
         assert "Opened file" in mixin_instance.notifications[0]["message"]
@@ -81,14 +78,20 @@ class TestSystemUtilityMixin:
         # Verify
         assert result is True
         mock_platform.assert_called_once()
-        mock_subprocess.assert_called_once_with(["open", str(test_file)], check=False)
+        mock_subprocess.assert_called_once_with(
+            ["open", str(test_file.resolve())],
+            check=False,
+            capture_output=True,
+            timeout=5,
+        )
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
 
+    @patch("claudefig.utils.platform._command_exists", return_value=True)
     @patch("claudefig.utils.platform.subprocess.run")
     @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_linux(
-        self, mock_platform, mock_subprocess, mixin_instance, tmp_path
+        self, mock_platform, mock_subprocess, mock_cmd_exists, mixin_instance, tmp_path
     ):
         """Test opening file in editor on Linux."""
         # Setup
@@ -104,7 +107,10 @@ class TestSystemUtilityMixin:
         assert result is True
         mock_platform.assert_called_once()
         mock_subprocess.assert_called_once_with(
-            ["xdg-open", str(test_file)], check=False
+            ["xdg-open", str(test_file.resolve())],
+            check=False,
+            capture_output=True,
+            timeout=5,
         )
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
@@ -138,17 +144,18 @@ class TestSystemUtilityMixin:
         assert mixin_instance.notifications[0]["severity"] == "error"
         assert "not a file" in mixin_instance.notifications[0]["message"]
 
+    @patch("claudefig.utils.platform._command_exists", return_value=True)
     @patch("claudefig.utils.platform.subprocess.run")
     @patch("claudefig.utils.platform.platform.system")
     def test_open_file_in_editor_subprocess_error(
-        self, mock_platform, mock_subprocess, mixin_instance, tmp_path
+        self, mock_platform, mock_subprocess, mock_cmd_exists, mixin_instance, tmp_path
     ):
         """Test handling subprocess errors when opening file."""
         # Setup
         test_file = tmp_path / "test.txt"
         test_file.write_text("test content")
         mock_platform.return_value = "Linux"
-        mock_subprocess.side_effect = Exception("Subprocess failed")
+        mock_subprocess.side_effect = RuntimeError("Subprocess failed")
 
         # Execute
         result = mixin_instance.open_file_in_editor(test_file)
@@ -178,7 +185,10 @@ class TestSystemUtilityMixin:
         assert result is True
         mock_platform.assert_called_once()
         mock_subprocess.assert_called_once_with(
-            ["explorer", str(test_dir)], check=False
+            ["explorer", str(test_dir.resolve())],
+            check=False,
+            capture_output=True,
+            timeout=5,
         )
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
@@ -202,14 +212,20 @@ class TestSystemUtilityMixin:
         # Verify
         assert result is True
         mock_platform.assert_called_once()
-        mock_subprocess.assert_called_once_with(["open", str(test_dir)], check=False)
+        mock_subprocess.assert_called_once_with(
+            ["open", str(test_dir.resolve())],
+            check=False,
+            capture_output=True,
+            timeout=5,
+        )
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
 
+    @patch("claudefig.utils.platform._command_exists", return_value=True)
     @patch("claudefig.utils.platform.subprocess.run")
     @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_in_explorer_linux(
-        self, mock_platform, mock_subprocess, mixin_instance, tmp_path
+        self, mock_platform, mock_subprocess, mock_cmd_exists, mixin_instance, tmp_path
     ):
         """Test opening folder in explorer on Linux."""
         # Setup
@@ -225,15 +241,19 @@ class TestSystemUtilityMixin:
         assert result is True
         mock_platform.assert_called_once()
         mock_subprocess.assert_called_once_with(
-            ["xdg-open", str(test_dir)], check=False
+            ["xdg-open", str(test_dir.resolve())],
+            check=False,
+            capture_output=True,
+            timeout=5,
         )
         assert len(mixin_instance.notifications) == 1
         assert mixin_instance.notifications[0]["severity"] == "information"
 
+    @patch("claudefig.utils.platform._command_exists", return_value=True)
     @patch("claudefig.utils.platform.subprocess.run")
     @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_creates_missing_directory(
-        self, mock_platform, mock_subprocess, mixin_instance, tmp_path
+        self, mock_platform, mock_subprocess, mock_cmd_exists, mixin_instance, tmp_path
     ):
         """Test that open_folder_in_explorer creates directory if it doesn't exist."""
         # Setup
@@ -253,17 +273,18 @@ class TestSystemUtilityMixin:
         assert test_dir.is_dir()
         mock_subprocess.assert_called_once()
 
+    @patch("claudefig.utils.platform._command_exists", return_value=True)
     @patch("claudefig.utils.platform.subprocess.run")
     @patch("claudefig.utils.platform.platform.system")
     def test_open_folder_error_handling(
-        self, mock_platform, mock_subprocess, mixin_instance, tmp_path
+        self, mock_platform, mock_subprocess, mock_cmd_exists, mixin_instance, tmp_path
     ):
         """Test handling errors when opening folder."""
         # Setup
         test_dir = tmp_path / "test_folder"
         test_dir.mkdir()
         mock_platform.return_value = "Linux"
-        mock_subprocess.side_effect = Exception("Explorer failed")
+        mock_subprocess.side_effect = RuntimeError("Explorer failed")
 
         # Execute
         result = mixin_instance.open_folder_in_explorer(test_dir)

@@ -2,7 +2,7 @@
 
 **Purpose:** Track feature parity between TUI and CLI interfaces as required by CLAUDE.md.
 
-**Last Updated:** 2025-01-30
+**Last Updated:** 2025-11-07
 
 ## Parity Requirement
 

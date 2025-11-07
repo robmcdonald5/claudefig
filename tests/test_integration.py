@@ -94,13 +94,6 @@ class TestCLICommands:
         assert result.exit_code == 0
         assert "Configuration" in result.output or "Config" in result.output
 
-    def test_list_templates_command(self, cli_runner, mock_user_home):
-        """Test 'claudefig list-templates' command."""
-        result = cli_runner.invoke(main, ["list-templates"])
-
-        # Should succeed even if no templates found
-        assert result.exit_code == 0
-
     def test_version_option(self, cli_runner):
         """Test --version option."""
         result = cli_runner.invoke(main, ["--version"])

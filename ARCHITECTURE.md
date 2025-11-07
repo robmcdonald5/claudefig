@@ -2,7 +2,7 @@
 
 ### System Overview
 
-claudefig v2.0 uses a **preset-based architecture** with **file instances** as the core abstraction:
+claudefig uses a **preset-based architecture** with **file instances** as the core abstraction:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -58,8 +58,7 @@ claudefig v2.0 uses a **preset-based architecture** with **file instances** as t
 
 **Location Hierarchy:**
 1. Built-in presets (internal to package)
-2. User presets (`~/.claudefig/presets/`)
-3. Project presets (`.claudefig/presets/`)
+2. Presets location (`~/.claudefig/presets/`)
 
 **Preset ID Format:** `{file_type}:{preset_name}`
 - Example: `claude_md:backend`, `settings_json:default`
@@ -69,6 +68,12 @@ claudefig v2.0 uses a **preset-based architecture** with **file instances** as t
 - Template inheritance (extends)
 - Tags for discovery
 - Multi-file presets (for directories)
+
+**Architecture Note (2025):**
+- Preset system migrated from JSON metadata files to directory-based structure
+- Each preset is now a directory containing component files directly
+- No separate `.json` metadata required - structure is self-describing
+- Improved component discovery with dual-source support (global + preset-specific)
 
 #### 2. File Instance System (`file_instance_manager.py`, `models.py`)
 
@@ -97,17 +102,19 @@ FileInstance(
 )
 ```
 
-**Supported File Types (10 total):**
-- `claude_md` - CLAUDE.md project instructions
-- `settings_json` - Team settings (.claude/settings.json)
-- `settings_local_json` - Personal settings (.claude/settings.local.json)
-- `gitignore` - Git ignore entries
-- `commands` - Slash commands directory
-- `agents` - Custom agents directory
-- `hooks` - Hook scripts directory
-- `output_styles` - Output styles directory
-- `statusline` - Status line script
-- `mcp` - MCP server configs directory
+**Supported File Types (12 total):**
+- `claude_md`
+- `settings_json`
+- `settings_local_json`
+- `gitignore`
+- `commands`
+- `agents`
+- `hooks`
+- `skills`
+- `output_styles`
+- `statusline`
+- `plugins`
+- `mcp`
 
 **Features:**
 - Multiple instances per file type (except single-instance types)
@@ -122,8 +129,6 @@ FileInstance(
 #### 3. Configuration System (`config.py`)
 
 **Purpose:** Store and manage claudefig.toml configuration.
-
-**Schema Version:** 2.0 (breaking change from 1.x)
 
 **Config Structure:**
 ```toml
@@ -187,6 +192,12 @@ tui/
     ├── file_instance_item.py       # File instance display card
     └── overlay_dropdown.py         # Collapsible overlay sections
 ```
+
+**Architecture Note (2025):**
+- The previously separate "Core Files" screen has been merged into the unified "File Instances" screen
+- This consolidation provides a single location for managing all file types with a tabbed interface
+- Both multi-instance types (CLAUDE.md, commands, etc.) and single-instance types (settings.json, statusline) are now managed in one screen
+- Improved UX with consistent navigation and reduced cognitive load
 
 **Architecture Layers:**
 
@@ -264,7 +275,7 @@ Screens use Textual's built-in `refresh(recompose=True)` instead of manual scree
 # After modifying data
 self.instance_manager.update_instance(instance)
 self.sync_instances_to_config()
-self.refresh(recompose=True)  # Triggers compose() to re-render with new data
+self.refresh(recompose=True)
 ```
 
 **Main Application Flow:**
@@ -284,15 +295,15 @@ self.refresh(recompose=True)  # Triggers compose() to re-render with new data
                     │
                     │ push_screen()
                     ▼
-┌─────────────────────────────────────────────────┐
-│         Config Panel Grid (4 buttons)           │
-│  ┌───────────────┐  ┌───────────────────────┐  │
-│  │   Overview    │  │   Init Settings       │  │
-│  └───────────────┘  └───────────────────────┘  │
-│  ┌───────────────┐  ┌───────────────────────┐  │
-│  │  Core Files   │  │   File Instances      │  │
-│  └───────────────┘  └───────────────────────┘  │
-└─────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│         Config Panel Grid                         │
+│  ┌──────────────────────┐  ┌───────────────────┐  │
+│  │   Project Overview   │  │   Init Settings   │  │
+│  └──────────────────────┘  └───────────────────┘  │
+│  ┌──────────────────────┐                         │
+│  │   File Instances     │                         │
+│  └──────────────────────┘                         │
+└───────────────────────────────────────────────────┘
                     │
                     │ push_screen()
                     ▼
@@ -358,64 +369,6 @@ State synchronization follows the three-layer pattern (see State Synchronization
    - Write to target path
 3. Handle special cases (gitignore append, directory creation)
 
-### Design Decisions
-
-#### Why Presets + File Instances?
-
-**Problem:** v1.x used feature flags (e.g., `create_settings=true`). This was:
-- Inflexible (one size fits all)
-- Limited to one file per type
-- No customization without editing templates
-- Hard to share configurations
-
-**Solution:** Two-level system:
-1. **Presets** = Reusable templates (what content)
-2. **File Instances** = Specific files (where and with what values)
-
-**Benefits:**
-- Multiple files of same type (multiple CLAUDE.md files)
-- Choose different templates per instance
-- Override variables per instance
-- Share presets independently of instances
-
-#### Why Schema Version 2.0?
-
-**Breaking Changes:**
-- Removed feature flags (`claude.create_*`)
-- Introduced `[[files]]` array
-- Changed config structure significantly
-
-**Migration Path:**
-- Users can run `claudefig migrate v1-to-v2` (planned)
-- Old configs won't break (fallback to defaults)
-- Clear error messages
-
-#### Why Textual for TUI?
-
-**Alternatives Considered:**
-- curses - Too low-level
-- urwid - Less modern
-- Rich (CLI only) - No interactivity
-
-**Textual Chosen:**
-- Modern Python async/await
-- Rich integration (styling)
-- Widget system
-- Active development
-- Good documentation
-
-#### Why Click for CLI?
-
-**Alternatives Considered:**
-- argparse - Too verbose
-- typer - Opinionated
-
-**Click Chosen:**
-- Industry standard
-- Great documentation
-- Nested command groups
-- Easy option/argument handling
-
 #### File Type Enum vs Strings?
 
 **Choice:** Use `FileType` enum
@@ -438,40 +391,6 @@ State synchronization follows the three-layer pattern (see State Synchronization
 5. **Conflict Level** - No duplicate paths
 
 **Returns:** `ValidationResult` with errors/warnings
-
-**Benefits:**
-- Fail early with clear messages
-- Warnings don't block (e.g., path conflicts)
-- User can fix issues before generation
-
-### Key Files Reference
-
-**Core System Files:**
-
-| File | Purpose | LOC | Key Classes |
-|------|---------|-----|-------------|
-| `models.py` | Data models and enums | ~280 | FileType, Preset, FileInstance, ValidationResult |
-| `config.py` | TOML config management | ~190 | Config |
-| `preset_manager.py` | Preset CRUD operations | ~300 | PresetManager |
-| `file_instance_manager.py` | Instance CRUD operations | ~350 | FileInstanceManager |
-| `initializer.py` | File generation engine | ~250 | Initializer |
-| `cli.py` | Command-line interface | ~750 | Click command groups |
-
-**TUI Files:**
-
-| File | Purpose | LOC | Key Classes |
-|------|---------|-----|-------------|
-| `tui/app.py` | Main application | ~300 | MainScreen |
-| `tui/base/modal_screen.py` | Modal dialog base class | ~108 | BaseModalScreen |
-| `tui/base/mixins.py` | Reusable functionality | ~115 | BackButtonMixin, FileInstanceMixin |
-| `tui/panels/config_panel.py` | Config menu | ~208 | ConfigPanel |
-| `tui/panels/presets_panel.py` | Preset browser | ~290 | PresetsPanel |
-| `tui/panels/initialize_panel.py` | Project initialization | ~233 | InitializePanel |
-| `tui/screens/overview.py` | Project overview | ~250 | OverviewScreen |
-| `tui/screens/file_instances.py` | All file instances | ~800 | FileInstancesScreen |
-| `tui/screens/project_settings.py` | Init settings | ~97 | ProjectSettingsScreen |
-| `tui/widgets/file_instance_item.py` | File instance card | ~120 | FileInstanceItem |
-| `tui/widgets/overlay_dropdown.py` | Collapsible section | ~213 | OverlayDropdown |
 
 ### Data Flow
 
@@ -593,33 +512,16 @@ The three-layer architecture exists because each layer has a distinct purpose:
 
 These layers serve different purposes and must be explicitly synchronized. This design provides flexibility (in-memory operations are fast) while maintaining data integrity (changes are persisted).
 
-**Modern TUI Implementation:**
-
-The TUI now uses `FileInstanceMixin` to simplify this pattern. Instead of three lines of boilerplate, screens can call a single method:
-
-```python
-# Old pattern (still works, but verbose):
-self.instance_manager.add_instance(instance)
-self.config.set_file_instances(self.instance_manager.save_instances())
-self.config.save()
-
-# New pattern with mixin (recommended):
-self.instance_manager.add_instance(instance)
-self.sync_instances_to_config()  # Handles steps 2 and 3 automatically
-```
-
-The mixin ensures developers can't forget the synchronization steps while keeping the code clean and maintainable.
-
 #### Antipatterns (DO NOT DO THIS)
 
-❌ **Only updating manager:**
+**Only updating manager:**
 ```python
 self.instance_manager.add_instance(instance)
 # MISSING: No sync to config!
 # Result: Changes lost on next app launch
 ```
 
-❌ **Only updating config:**
+**Only updating config:**
 ```python
 self.config.add_file_instance(instance.to_dict())
 self.config.save()
@@ -627,10 +529,10 @@ self.config.save()
 # Result: UI shows stale data until refresh
 ```
 
-❌ **Partial sync:**
+**Partial sync:**
 ```python
 self.instance_manager.enable_instance(instance_id)
-self.config.save()  # ❌ Config still has old data!
+self.config.save()  # Config still has old data!
 # MISSING: self.config.set_file_instances(...)
 ```
 
@@ -677,13 +579,11 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         instance.enabled = not instance.enabled
         file_instance_service.update_instance(self.instances_dict, instance, ...)
 
-        # ✅ Sync using mixin helper
         self.sync_instances_to_config()
 
         status = "enabled" if instance.enabled else "disabled"
         self.notify(f"{instance.type.display_name} instance {status}")
 
-        # ✅ Modern refresh pattern
         self.refresh(recompose=True)
 ```
 
@@ -694,7 +594,7 @@ The CLI doesn't use mixins, so it follows the manual three-step pattern:
 ```python
 def enable_instance(instance_id: str):
     if instance_manager.enable_instance(instance_id):
-        # ✅ Manual sync in CLI code
+        # Manual sync in CLI code
         cfg.set_file_instances(instance_manager.save_instances())
         cfg.save(config_path)
         console.print("[green]Enabled file instance[/green]")
@@ -734,17 +634,10 @@ The TUI uses a layered base class approach:
 
 #### Screen Lifecycle and Refresh Pattern
 
-**Traditional Approach (Antipattern):**
-```python
-def _refresh_screen(self):
-    self.app.pop_screen()  # ❌ Destroys screen, loses focus
-    self.app.push_screen(NewScreenInstance(...))  # ❌ Creates new instance
-```
-
 **Modern Approach (Recommended):**
 ```python
 def after_data_change(self):
-    self.refresh(recompose=True)  # ✅ Textual built-in, maintains state
+    self.refresh(recompose=True)
 ```
 
 **Benefits:**
@@ -869,59 +762,6 @@ User Action → Screen Handler → Manager Update → Config Sync → Disk Save
 - Panel-level: `panel-*` (e.g., `panel-title`, `panel-subtitle`)
 - Component-level: Component-specific (e.g., `instance-enabled`, `preset-name`)
 
-#### Architecture Evolution
-
-The TUI architecture has evolved through several refactoring phases:
-
-**Phase 1 - Initial Implementation:**
-- Monolithic screen classes
-- Duplicated modal code
-- Manual state synchronization everywhere
-- ~3,500 LOC
-
-**Phase 2 - Component Extraction:**
-- Split screens into panels
-- Created reusable widgets
-- Improved CSS organization
-- ~3,200 LOC
-
-**Phase 3 - Base Classes (Current):**
-- Introduced `BaseModalScreen`
-- Created mixins for common patterns
-- Removed dead code (3 unused widgets)
-- Standardized refresh pattern
-- ~2,900 LOC with better architecture
-
-**Metrics:**
-- 17% code reduction from peak
-- 4 modal screens now consistent
-- 7 state sync locations simplified
-- 0 instances of forgotten state sync
-
-#### Future Architecture Considerations
-
-**Potential Improvements:**
-
-1. **Reactive State Management**
-   - Consider `reactive` attributes for auto-refresh
-   - Would reduce manual `refresh(recompose=True)` calls
-   - More Textual-idiomatic approach
-
-2. **Screen Factory Pattern**
-   - Centralize screen creation logic
-   - Ensure managers are always passed correctly
-   - Reduce duplicate initialization code
-
-3. **Command Pattern for Actions**
-   - Encapsulate user actions (Add, Edit, Remove)
-   - Easier undo/redo implementation
-   - Better testing and logging
-
-4. **Screen Caching**
-   - Cache frequently visited screens
-   - Faster navigation
-   - Preserve scroll position
-
 **Non-Goals:**
 
 - **Over-abstraction:** Don't create base classes for 1-2 users
@@ -931,84 +771,7 @@ The TUI architecture has evolved through several refactoring phases:
 
 ---
 
-### Testing Strategy
-
-**Unit Tests:**
-- Config get/set operations
-- Preset manager CRUD
-- File instance manager CRUD
-- Validation logic
-- Path safety checks
-
-**Integration Tests:**
-- Full init workflow
-- TUI interactions (Textual testing)
-- CLI command execution
-- Config migration
-
-**Test Files:**
-- `tests/test_config.py`
-- `tests/test_preset_manager.py`
-- `tests/test_file_instance_manager.py`
-- `tests/test_initializer.py`
-- `tests/test_tui.py`
-- `tests/test_cli.py`
-
----
-
 ## Summary
-
-### Architecture Highlights
-
-**claudefig v2.0** is built on a clean, modular architecture with clear separation of concerns:
-
-1. **Two-Level Configuration System**
-   - Presets define templates (what content)
-   - File Instances define specific files (where and with what values)
-   - Enables flexibility and reusability
-
-2. **Three-Layer State Management**
-   - FileInstanceManager (in-memory CRUD with validation)
-   - Config (TOML serialization and dot-notation access)
-   - claudefig.toml (persistent disk storage)
-   - Explicit synchronization ensures data integrity
-
-3. **Dual Interface Design**
-   - **TUI:** Interactive Textual-based interface with panels, screens, and modals
-   - **CLI:** Command-line interface with Click for scripting and automation
-   - Both interfaces share core managers for consistency
-
-4. **Modern TUI Architecture**
-   - Base classes reduce boilerplate and enforce consistency
-   - Mixins provide composable functionality
-   - Widget composition enables reusability
-   - Hierarchical navigation with clear patterns
-
-### Key Strengths
-
-**Maintainability:**
-- Clear file organization (base/, panels/, screens/, widgets/)
-- Consistent naming conventions
-- Well-documented patterns and antipatterns
-- DRY principle applied through base classes
-
-**Extensibility:**
-- New file types easy to add (enum + templates)
-- New presets require no code changes
-- New screens follow established patterns
-- Mixin pattern allows functionality composition
-
-**User Experience:**
-- TUI and CLI feature parity
-- Real-time validation feedback
-- Consistent keyboard navigation
-- Helpful error messages
-
-**Developer Experience:**
-- Type safety with enums and dataclasses
-- Template method pattern guides development
-- Mixins prevent common mistakes
-- Clear state flow
 
 ### Design Philosophy
 
@@ -1020,14 +783,8 @@ The architecture prioritizes:
 4. **Progressive Enhancement** - Start simple, add complexity only when needed
 5. **Developer Empathy** - Make the right thing easy, wrong thing hard
 
-### Version History
-
-- **v1.x:** Feature flag-based configuration, single file per type
-- **v2.0:** Preset + instance architecture, multiple files per type, TUI interface
-- **v2.1 (current):** Refactored TUI with base classes, mixins, and consistent patterns
-
 ---
 
-**Last Updated:** 2025-01-30
+**Last Updated:** 2025-11-07
 **Schema Version:** 2.0
 **TUI Architecture Version:** 3 (Base Classes + Mixins)

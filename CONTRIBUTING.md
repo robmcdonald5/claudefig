@@ -17,10 +17,7 @@ Thank you for your interest in contributing to claudefig! We welcome contributio
 We welcome many types of contributions:
 
 - **Bug Reports**: Found a bug? Let us know!
-- **Feature Requests**: Have an idea for a new feature?
-- **Documentation**: Help improve our docs
-- **Code**: Fix bugs or implement new features
-- **Testing**: Improve test coverage
+- **Platform Parity**: claudefig not working within your terminal or OS environement? Open an issue or a PR if you have the fix.
 
 ## Getting Started
 
@@ -37,7 +34,7 @@ cd claudefig
 3. Add the upstream repository:
 
 ```bash
-git remote add upstream https://github.com/original-owner/claudefig.git
+git remote add upstream https://github.com/robmcdonald5/claudefig.git
 ```
 
 ### Development Environment Setup
@@ -70,23 +67,15 @@ pytest
 
 ## Development Workflow
 
-### Creating a Feature Branch
-
 ```bash
-git checkout -b feature/your-feature-name
-```
-
-Or for bug fixes:
-
-```bash
-git checkout -b fix/issue-number-description
+git switch -c {change-type}/{change-description}
 ```
 
 ### Making Changes
 
 1. Make your changes in your feature branch
 2. Write or update tests as needed
-3. Update documentation if needed
+3. Do not update any existing documentation, let your PR speak for itself
 4. Run linters and formatters (pre-commit will do this automatically on commit)
 
 ### Running Tests Locally
@@ -216,25 +205,9 @@ def test_help_command():
 
 ### Coverage Requirements
 
-- Aim for **80%+ coverage** on new code
+- Any new code needs to have **100%** coverage of any methods/functions that interact with the TUI or CLI
 - Run coverage reports: `pytest --cov=claudefig --cov-report=html`
 - View report: open `htmlcov/index.html` in a browser
-
-## Commit Message Guidelines
-
-Use clear, descriptive commit messages:
-
-```
-Brief summary of changes (50 chars or less)
-
-More detailed explanatory text, if necessary. Wrap it to about 72
-characters. Explain the problem that this commit is solving and why
-you chose this solution.
-
-- Bullet points are okay
-- Use present tense: "Add feature" not "Added feature"
-- Reference issues: "Fixes #123" or "Closes #456"
-```
 
 ## Pull Request Process
 
@@ -242,9 +215,7 @@ you chose this solution.
 
 - [ ] Code follows style guidelines (formatted with Ruff)
 - [ ] Tests pass locally (`pytest`)
-- [ ] New tests added for new functionality
-- [ ] Documentation updated (README, docstrings)
-- [ ] CHANGELOG.md updated with changes
+- [ ] New tests added for any new methods/functions
 - [ ] Commits are clean and well-described
 
 ### Submitting a Pull Request
@@ -265,12 +236,6 @@ git push origin feature/your-feature-name
 
 4. Wait for review and address feedback
 
-### PR Review Process
-
-- A maintainer will review your PR
-- Address any requested changes
-- Once approved, a maintainer will merge your PR
-
 ## Code of Conduct
 
 This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
@@ -284,11 +249,3 @@ If you experience or witness unacceptable behavior, please report it by contacti
 - **GitHub Discussions**: For questions and general discussion
 - **GitHub Issues**: For bug reports and feature requests
 - **Email**: For private inquiries
-
-## Recognition
-
-Contributors are recognized in:
-- The project's commit history
-- Release notes for significant contributions
-
-Thank you for contributing to claudefig!
