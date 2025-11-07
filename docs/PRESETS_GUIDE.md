@@ -130,36 +130,42 @@ claudefig presets apply claude_md:backend --path docs/BACKEND.md
 
 ## Creating Custom Presets
 
+**Note:** As of 2025, claudefig uses a directory-based preset architecture. Each preset is a complete directory structure containing components and metadata.
+
 ### User Presets (Global)
 
 Create presets that are available across all your projects:
 
-1. **Create preset directory:**
+1. **Create preset directory structure:**
 
 ```bash
-mkdir -p ~/.claudefig/presets/claude_md
+mkdir -p ~/.claudefig/presets/my-preset/components/claude_md/default
 ```
 
-2. **Create preset metadata file:**
+2. **Create preset definition file:**
 
-`~/.claudefig/presets/claude_md/my-preset.toml`
+`~/.claudefig/presets/my-preset/claudefig.toml`
 
 ```toml
 [preset]
-id = "claude_md:my-preset"
-type = "claude_md"
-name = "My Custom Preset"
-description = "My personalized CLAUDE.md template"
-source = "user"
+name = "my-preset"
+description = "My personalized preset with custom configurations"
+version = "1.0.0"
 
-[variables]
+[[components]]
+type = "claude_md"
+name = "default"
+path = "CLAUDE.md"
+enabled = true
+
+[components.variables]
 project_name = "MyProject"
 author = "Your Name"
 ```
 
-3. **Create template file:**
+3. **Create component template file:**
 
-`~/.claudefig/presets/claude_md/my-preset.md`
+`~/.claudefig/presets/my-preset/components/claude_md/default/CLAUDE.md`
 
 ```markdown
 # {project_name}
@@ -186,30 +192,36 @@ claudefig presets apply claude_md:my-preset
 
 Create presets specific to your project that can be shared via git:
 
-1. **Create project preset directory:**
+1. **Create project preset directory structure:**
 
 ```bash
-mkdir -p .claudefig/presets/claude_md
+mkdir -p .claudefig/presets/team-standard/components/claude_md/default
 ```
 
-2. **Create preset files:**
+2. **Create preset definition:**
 
-`.claudefig/presets/claude_md/team-standard.toml`
+`.claudefig/presets/team-standard/claudefig.toml`
 
 ```toml
 [preset]
-id = "claude_md:team-standard"
-type = "claude_md"
-name = "Team Standard"
+name = "team-standard"
 description = "Our team's standard CLAUDE.md template"
-source = "project"
+version = "1.0.0"
 
-[variables]
+[[components]]
+type = "claude_md"
+name = "default"
+path = "CLAUDE.md"
+enabled = true
+
+[components.variables]
 team_name = "Engineering Team"
 repo_url = "https://github.com/yourorg/yourrepo"
 ```
 
-`.claudefig/presets/claude_md/team-standard.md`
+3. **Create component template:**
+
+`.claudefig/presets/team-standard/components/claude_md/default/CLAUDE.md`
 
 ```markdown
 # Project: {team_name}
@@ -219,7 +231,7 @@ Repository: {repo_url}
 [Team-specific content]
 ```
 
-3. **Commit to git:**
+4. **Commit to git:**
 
 ```bash
 git add .claudefig/presets/
