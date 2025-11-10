@@ -45,7 +45,7 @@ class ApplyPresetScreen(BaseModalScreen):
 
     def compose_actions(self) -> ComposeResult:
         """Compose the action buttons."""
-        yield Button("Apply", id="btn-apply", variant="primary")
+        yield Button("Apply", id="btn-apply")
         yield Button("Cancel", id="btn-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
