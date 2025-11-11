@@ -58,5 +58,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration file templates
 - MIT License
 
-[Unreleased]: https://github.com/yourusername/claudefig/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourusername/claudefig/releases/tag/v0.1.0
+[Unreleased]: https://github.com/robmcdonald5/claudefig/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/robmcdonald5/claudefig/releases/tag/v0.1.0
