@@ -2,7 +2,6 @@
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 
@@ -21,7 +20,7 @@ console = Console()
 class Initializer:
     """Handles repository initialization."""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize the Initializer.
 
         Args:

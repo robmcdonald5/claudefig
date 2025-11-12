@@ -1,6 +1,6 @@
 """Content panel for orchestrating dynamic panel display."""
 
-from typing import Any, Optional
+from typing import Any
 
 from textual.containers import Container
 
@@ -24,7 +24,7 @@ class ContentPanel(Container):
         super().__init__(**kwargs)
         self.config_data = config_data
         self.config_repo = config_repo
-        self.current_section: Optional[str] = None
+        self.current_section: str | None = None
 
     def show_section(self, section: str) -> None:
         """Display content for the specified section."""

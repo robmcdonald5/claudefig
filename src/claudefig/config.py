@@ -8,7 +8,7 @@ For new code, prefer using config_service directly with TomlConfigRepository.
 """
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from claudefig.models import ValidationResult
 from claudefig.repositories.config_repository import TomlConfigRepository
@@ -31,7 +31,7 @@ class Config:
     SCHEMA_VERSION = "2.0"
     DEFAULT_CONFIG = config_service.DEFAULT_CONFIG  # Delegate to service
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize configuration.
 
         Args:
@@ -43,7 +43,7 @@ class Config:
             config_path = config_service.find_config_path()
 
         self.config_path = config_path
-        self._repo: Optional[TomlConfigRepository]
+        self._repo: TomlConfigRepository | None
 
         # Load config data using service layer
         if self.config_path and self.config_path.exists():
@@ -56,7 +56,7 @@ class Config:
         self.schema_version = config_service.get_value(
             self.data, "claudefig.schema_version", "2.0"
         )
-        self._validation_result: Optional[ValidationResult] = None
+        self._validation_result: ValidationResult | None = None
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation key.
@@ -85,7 +85,7 @@ class Config:
         """
         config_service.set_value(self.data, key, value)
 
-    def save(self, path: Optional[Path] = None) -> None:
+    def save(self, path: Path | None = None) -> None:
         """Save configuration to file.
 
         Delegates to config_service.save_config() to ensure identical behavior

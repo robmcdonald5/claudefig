@@ -9,7 +9,7 @@ or existing projects.
 import shutil
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -32,7 +32,7 @@ class ConfigTemplateManager:
     that define complete project configurations.
     """
 
-    def __init__(self, global_presets_dir: Optional[Path] = None):
+    def __init__(self, global_presets_dir: Path | None = None):
         """Initialize config template manager.
 
         Args:
@@ -514,7 +514,7 @@ class ConfigTemplateManager:
     def apply_preset_to_project(
         self,
         preset_name: str,
-        target_path: Optional[Path] = None,
+        target_path: Path | None = None,
         overwrite: bool = False,
     ) -> None:
         """Apply a global preset to a project directory.

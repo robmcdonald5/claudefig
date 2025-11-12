@@ -58,7 +58,7 @@ See FileInstancesScreen._remove_instance() for recompose examples.
 
 import contextlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
@@ -97,7 +97,7 @@ class BackButtonMixin:
 
     BACK_BUTTON_LABEL = "← Back to Config Menu"
 
-    def compose_back_button(self, label: Optional[str] = None) -> ComposeResult:
+    def compose_back_button(self, label: str | None = None) -> ComposeResult:
         """Compose a standard back button in a footer container.
 
         Args:
@@ -616,7 +616,7 @@ class SystemUtilityMixin:
 
         app: "App[object]"
 
-    def open_file_in_editor(self, file_path: Union[Path, str]) -> bool:
+    def open_file_in_editor(self, file_path: Path | str) -> bool:
         """Open a file in the system's default editor.
 
         Args:
@@ -662,7 +662,7 @@ class SystemUtilityMixin:
             )
             return False
 
-    def open_folder_in_explorer(self, folder_path: Union[Path, str]) -> bool:
+    def open_folder_in_explorer(self, folder_path: Path | str) -> bool:
         """Open a folder in the system's file explorer.
 
         Args:

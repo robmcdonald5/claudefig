@@ -4,8 +4,6 @@ This module defines a structured exception hierarchy for better error handling
 and programmatic error detection throughout claudefig.
 """
 
-from typing import Optional
-
 
 class ClaudefigError(Exception):
     """Base exception for all claudefig errors.
@@ -21,8 +19,8 @@ class ClaudefigError(Exception):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[dict] = None,
+        error_code: str | None = None,
+        details: dict | None = None,
     ):
         """Initialize exception.
 
@@ -55,7 +53,7 @@ class ValidationError(ClaudefigError):
 class InvalidPresetNameError(ValidationError):
     """Raised when a preset name is invalid."""
 
-    def __init__(self, name: str, reason: Optional[str] = None):
+    def __init__(self, name: str, reason: str | None = None):
         """Initialize exception.
 
         Args:
@@ -89,7 +87,7 @@ class InvalidFileTypeError(ValidationError):
 class InvalidConfigKeyError(ValidationError):
     """Raised when a config key is invalid."""
 
-    def __init__(self, key: str, reason: Optional[str] = None):
+    def __init__(self, key: str, reason: str | None = None):
         """Initialize exception.
 
         Args:
@@ -166,7 +164,7 @@ class PresetNotFoundError(ResourceNotFoundError):
 class TemplateNotFoundError(ResourceNotFoundError):
     """Raised when a template file cannot be found."""
 
-    def __init__(self, template_path: str, preset_id: Optional[str] = None):
+    def __init__(self, template_path: str, preset_id: str | None = None):
         """Initialize exception.
 
         Args:
@@ -202,7 +200,7 @@ class InstanceNotFoundError(ResourceNotFoundError):
 class ConfigFileNotFoundError(ResourceNotFoundError):
     """Raised when a config file cannot be found."""
 
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: str | None = None):
         """Initialize exception.
 
         Args:

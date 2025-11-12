@@ -48,14 +48,14 @@ class ClaudefigLogger:
         self.logger.propagate = False  # Don't propagate to root logger
 
         # Track handlers to avoid duplicates
-        self._file_handler: Optional[RotatingFileHandler] = None
-        self._console_handler: Optional[logging.StreamHandler] = None
+        self._file_handler: RotatingFileHandler | None = None
+        self._console_handler: logging.StreamHandler | None = None
 
         self._initialized = True
 
     def setup(
         self,
-        log_dir: Optional[Path] = None,
+        log_dir: Path | None = None,
         console_level: int = logging.WARNING,
         file_level: int = logging.INFO,
         enable_file_logging: bool = True,
@@ -154,7 +154,7 @@ class ClaudefigLogger:
         if self._file_handler:
             self._file_handler.setLevel(level)
 
-    def get_logger(self, name: Optional[str] = None) -> logging.Logger:
+    def get_logger(self, name: str | None = None) -> logging.Logger:
         """Get a logger instance.
 
         Args:
@@ -234,11 +234,11 @@ class ClaudefigLogger:
 
 
 # Global logger instance
-_logger_instance: Optional[ClaudefigLogger] = None
+_logger_instance: ClaudefigLogger | None = None
 
 
 def setup_logging(
-    log_dir: Optional[Path] = None,
+    log_dir: Path | None = None,
     console_level: int = logging.WARNING,
     file_level: int = logging.INFO,
     enable_file_logging: bool = True,
@@ -268,7 +268,7 @@ def setup_logging(
     return _logger_instance
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """Get a logger instance.
 
     Automatically sets up logging if not already initialized.
