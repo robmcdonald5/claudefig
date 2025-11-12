@@ -41,7 +41,9 @@ dev = [
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21.0",
     "pytest-factoryboy>=2.6.0",
+    "pytest-benchmark>=4.0",
     "factory-boy>=3.3.0",
+    "hypothesis>=6.92",
     "ruff>=0.1.0",
     "mypy>=1.0",
     "pre-commit>=3.0",
@@ -118,6 +120,10 @@ strict_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+warn_unused_ignores = false
 
 # pytest configuration
 [tool.pytest.ini_options]
