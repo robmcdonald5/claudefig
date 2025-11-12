@@ -568,9 +568,12 @@ claudefig files add FILE_TYPE [OPTIONS]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--preset NAME` | Preset name to use | `default` |
+| `--component NAME` | Component name to use (alternative to --preset) | None |
 | `--path-target PATH` | Target path for the file | File type default |
 | `--disabled` | Create instance as disabled | False (enabled) |
 | `--repo-path PATH` | Repository path | Current directory |
+
+**Note:** Use either `--preset` or `--component`, not both. If neither is provided, defaults to `default`.
 
 **Valid File Types:**
 
@@ -596,16 +599,28 @@ claudefig files add claude_md
 # Add with specific preset
 claudefig files add claude_md --preset backend
 
+# Add with specific component
+claudefig files add claude_md --component fastapi-backend
+
 # Add with custom path
 claudefig files add claude_md --preset frontend --path-target docs/FRONTEND.md
+
+# Add component with custom path
+claudefig files add claude_md --component react-frontend --path-target frontend/CLAUDE.md
 
 # Add as disabled
 claudefig files add hooks --disabled
 
-# Full example
+# Full example with preset
 claudefig files add claude_md \
   --preset backend \
   --path-target backend/CLAUDE.md \
+  --repo-path /path/to/repo
+
+# Full example with component
+claudefig files add claude_md \
+  --component fastapi-backend \
+  --path-target api/CLAUDE.md \
   --repo-path /path/to/repo
 ```
 
@@ -803,6 +818,217 @@ Config saved to: /path/to/claudefig.toml
 - At least one option (`--preset`, `--path-target`, or `--enable/--disable`) must be provided
 - Changes are validated before being saved
 - The instance ID cannot be changed (remove and re-add instead)
+
+## Components Commands
+
+Discover and manage components.
+
+Components are reusable content templates that can be added to file instances. Components can be global (available to all projects) or preset-specific.
+
+### `claudefig components list`
+
+List available components.
+
+**Usage:**
+
+```bash
+claudefig components list [FILE_TYPE] [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Optional file type filter (e.g., claude_md, settings_json) |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | Preset to search for components | default |
+
+**Examples:**
+
+```bash
+# List all components
+claudefig components list
+
+# List CLAUDE.md components only
+claudefig components list claude_md
+
+# List components from specific preset
+claudefig components list claude_md --preset my-preset
+```
+
+**Example Output:**
+
+```
+Available Components - claude_md (3)
+
+Claude Md
+
+  • default (preset)
+  • fastapi-backend (global)
+    FastAPI backend with PostgreSQL focus
+  • react-frontend (global)
+    React frontend development focus
+
+Global: ~/.claudefig/components
+
+Use 'claudefig components show <type> <name>' for details
+```
+
+**Component Sources:**
+
+- **(preset)** - Component from preset-specific folder
+- **(global)** - Component from global pool (`~/.claudefig/components/`)
+
+### `claudefig components show`
+
+Show detailed information about a component.
+
+**Usage:**
+
+```bash
+claudefig components show FILE_TYPE COMPONENT_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Component type (e.g., claude_md) |
+| `COMPONENT_NAME` | Name of the component |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | Preset to search for components | default |
+
+**Examples:**
+
+```bash
+# Show default component
+claudefig components show claude_md default
+
+# Show specific component
+claudefig components show claude_md fastapi-backend
+```
+
+**Example Output:**
+
+```
+Component Details
+
+Name:        fastapi-backend
+Type:        claude_md
+Source:      Global
+Path:        ~/.claudefig/components/claude_md/fastapi-backend
+Description: FastAPI backend with PostgreSQL, Redis, and testing best practices
+Version:     1.0.0
+Author:      claudefig
+Tags:        fastapi, backend, api, python
+
+Requires:
+  • languages/python
+
+Recommends:
+  • general/testing-principles
+
+Files:
+  • content.md (8.2 KB)
+  • component.toml (0.7 KB)
+```
+
+### `claudefig components open`
+
+Open the components directory in file explorer.
+
+**Usage:**
+
+```bash
+claudefig components open [FILE_TYPE]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Optional file type to open specific type folder |
+
+**Examples:**
+
+```bash
+# Open global components directory
+claudefig components open
+
+# Open claude_md components folder
+claudefig components open claude_md
+```
+
+**Output:**
+
+```
+Opening components directory: ~/.claudefig/components/claude_md/
+
++ Opened in file manager
+```
+
+**Use cases:**
+
+- Browse available components
+- Manually create or modify components
+- Copy components between machines
+- Inspect component structure
+
+### `claudefig components edit`
+
+Edit a component's primary content file in your default editor.
+
+**Usage:**
+
+```bash
+claudefig components edit FILE_TYPE COMPONENT_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Component type (e.g., claude_md) |
+| `COMPONENT_NAME` | Name of the component |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | Preset to search for components | default |
+
+**Examples:**
+
+```bash
+# Edit a component
+claudefig components edit claude_md fastapi-backend
+
+# Edit preset-specific component
+claudefig components edit claude_md default --preset my-preset
+```
+
+**Output:**
+
+```
+Opening component file: ~/.claudefig/components/claude_md/fastapi-backend/content.md
+
+Opening content.md in editor...
++ Component file edited
+```
+
+**Notes:**
+
+- Opens the primary content file (usually `content.md`)
+- Uses `$EDITOR` environment variable or system default
+- Changes to global components affect all projects
 
 ## Presets Commands
 
