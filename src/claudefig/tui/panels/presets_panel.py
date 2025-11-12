@@ -2,7 +2,7 @@
 
 import contextlib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from textual import work
 from textual.app import ComposeResult
@@ -37,12 +37,12 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
     """
 
     # Class variables for state persistence across panel instances
-    _last_selected_preset: Optional[str] = None
+    _last_selected_preset: str | None = None
     _last_focused_widget_type: str = "select"  # "select" or "button"
     _last_focused_button_index: int = 0  # Which button (0-3) was last focused
 
     # Reactive attribute for tracking selected preset
-    selected_preset: reactive[Optional[str]] = reactive(None)
+    selected_preset: reactive[str | None] = reactive(None)
 
     def __init__(self, **kwargs) -> None:
         """Initialize presets panel."""
@@ -178,7 +178,7 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 pass
 
     def watch_selected_preset(
-        self, _old_value: Optional[str], new_value: Optional[str]
+        self, _old_value: str | None, new_value: str | None
     ) -> None:
         """Watch method called when selected_preset changes.
 

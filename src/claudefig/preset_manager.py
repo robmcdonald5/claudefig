@@ -8,7 +8,7 @@ This is a thin coordinator layer for backward compatibility.
 """
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from claudefig.models import FileType, Preset, PresetSource, ValidationResult
 from claudefig.repositories import TomlPresetRepository
@@ -30,8 +30,8 @@ class PresetManager:
 
     def __init__(
         self,
-        user_presets_dir: Optional[Path] = None,
-        project_presets_dir: Optional[Path] = None,
+        user_presets_dir: Path | None = None,
+        project_presets_dir: Path | None = None,
     ):
         """Initialize preset manager.
 
@@ -61,8 +61,8 @@ class PresetManager:
 
     def list_presets(
         self,
-        file_type: Optional[FileType] = None,
-        source: Optional[PresetSource] = None,
+        file_type: FileType | None = None,
+        source: PresetSource | None = None,
     ) -> list[Preset]:
         """List available presets.
 
@@ -80,7 +80,7 @@ class PresetManager:
             source=source,
         )
 
-    def get_preset(self, preset_id: str) -> Optional[Preset]:
+    def get_preset(self, preset_id: str) -> Preset | None:
         """Get a specific preset by ID.
 
         Args:
@@ -132,7 +132,7 @@ class PresetManager:
             return False
 
     def render_preset(
-        self, preset: Preset, variables: Optional[dict[str, Any]] = None
+        self, preset: Preset, variables: dict[str, Any] | None = None
     ) -> str:
         """Render a preset with variables.
 
@@ -165,7 +165,7 @@ class PresetManager:
         return preset_service.extract_template_variables(template_content)
 
     def validate_template_variables(
-        self, preset: Preset, variables: Optional[dict[str, Any]] = None
+        self, preset: Preset, variables: dict[str, Any] | None = None
     ) -> ValidationResult:
         """Validate template variables for a preset.
 
@@ -183,7 +183,7 @@ class PresetManager:
 
     def get_preset_by_name(
         self, file_type: FileType, preset_name: str
-    ) -> Optional[Preset]:
+    ) -> Preset | None:
         """Get a preset by file type and preset name.
 
         Args:
@@ -211,7 +211,7 @@ class PresetManager:
         return self._repo.get_load_errors()
 
     def check_circular_dependency(
-        self, preset_id: str, visited: Optional[set[str]] = None
+        self, preset_id: str, visited: set[str] | None = None
     ) -> None:
         """Check for circular dependencies in preset inheritance chain.
 

@@ -11,7 +11,6 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import Optional, Union
 
 
 def _get_system() -> str:
@@ -75,7 +74,7 @@ def is_linux() -> bool:
     return _get_system() == "Linux"
 
 
-def open_file_in_editor(file_path: Union[Path, str]) -> bool:
+def open_file_in_editor(file_path: Path | str) -> bool:
     """Open a file in the system's default editor.
 
     Args:
@@ -131,7 +130,7 @@ def open_file_in_editor(file_path: Union[Path, str]) -> bool:
 
 
 def open_folder_in_explorer(
-    folder_path: Union[Path, str], create_if_missing: bool = True
+    folder_path: Path | str, create_if_missing: bool = True
 ) -> bool:
     """Open a folder in the system's file explorer.
 
@@ -236,7 +235,7 @@ def run_platform_command(
     macos_cmd: list[str],
     linux_cmd: list[str],
     shell: bool = False,
-    timeout: Optional[int] = 5,
+    timeout: int | None = 5,
 ) -> subprocess.CompletedProcess:
     """Run a platform-specific command.
 

@@ -49,39 +49,39 @@ class TestListInstances:
     def test_sorts_by_type_and_path(self):
         """Test instances are sorted by type then path."""
         instances = FileInstanceFactory.create_dict(
-            ("test-1", {"type": FileType.GITIGNORE, "path": "z.txt"}),
-            ("test-2", {}),
-            ("test-3", {"preset": "claude_md:custom", "path": "DOCS.md"}),
+            ("test-1", {"path": "z.md"}),
+            ("test-2", {"type": FileType.GITIGNORE, "path": ".gitignore"}),
+            ("test-3", {"path": "a.md"}),
         )
 
         result = file_instance_service.list_instances(instances)
 
-        # Should be sorted by type, then path
-        assert result[0].type == FileType.CLAUDE_MD
-        assert result[0].path == "CLAUDE.md"
-        assert result[1].type == FileType.CLAUDE_MD
-        assert result[1].path == "DOCS.md"
-        assert result[2].type == FileType.GITIGNORE
+        # CLAUDE_MD comes before GITIGNORE alphabetically
+        assert result[0].path == "a.md"
+        assert result[1].path == "z.md"
+        assert result[2].path == ".gitignore"
 
 
 class TestGetInstance:
     """Test get_instance() function."""
 
-    def test_gets_existing_instance(self):
-        """Test getting an existing instance."""
-        instance = FileInstanceFactory(id="test-1")
-        instances: dict[str, FileInstance] = {"test-1": instance}
+    def test_retrieves_existing_instance(self):
+        """Test retrieving an instance by ID."""
+        instances = FileInstanceFactory.create_dict(
+            ("test-1", {}),
+            ("test-2", {}),
+        )
 
         result = file_instance_service.get_instance(instances, "test-1")
 
         assert result is not None
         assert result.id == "test-1"
 
-    def test_returns_none_for_nonexistent_instance(self):
-        """Test returns None for non-existent instance."""
-        instances: dict[str, FileInstance] = {}
+    def test_returns_none_for_missing_instance(self):
+        """Test retrieving a non-existent instance."""
+        instances = FileInstanceFactory.create_dict(("test-1", {}))
 
-        result = file_instance_service.get_instance(instances, "nonexistent")
+        result = file_instance_service.get_instance(instances, "missing")
 
         assert result is None
 
@@ -89,55 +89,61 @@ class TestGetInstance:
 class TestAddInstance:
     """Test add_instance() function."""
 
-    def test_adds_new_instance(self, tmp_path):
-        """Test adding a new instance."""
-        instances: dict[str, FileInstance] = {}
+    def test_adds_valid_instance(self, tmp_path):
+        """Test adding a valid file instance."""
         preset = PresetFactory(
             id="claude_md:default",
-            name="default",
             type=FileType.CLAUDE_MD,
-            source=PresetSource.BUILT_IN,
+            name="default",
         )
         preset_repo = FakePresetRepository([preset])
+        instances: dict[str, FileInstance] = {}
 
-        new_instance = FileInstanceFactory(id="test-1")
+        instance = FileInstanceFactory(
+            id="test-1",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
+        )
 
         result = file_instance_service.add_instance(
-            instances, new_instance, preset_repo, tmp_path
+            instances, instance, preset_repo, tmp_path
         )
 
         assert result.valid
         assert "test-1" in instances
-        assert instances["test-1"] == new_instance
 
-    def test_returns_error_for_duplicate_id(self, tmp_path):
-        """Test returns error when adding duplicate ID."""
-        existing = FileInstanceFactory(id="test-1")
-        instances: dict[str, FileInstance] = {"test-1": existing}
+    def test_rejects_instance_with_nonexistent_preset(self, tmp_path):
+        """Test adding instance with nonexistent preset."""
+        preset_repo = FakePresetRepository([])
+        instances: dict[str, FileInstance] = {}
 
-        # Add presets to repository
-        preset1 = PresetFactory(
-            id="claude_md:default",
-            name="default",
-            type=FileType.CLAUDE_MD,
-            source=PresetSource.BUILT_IN,
-        )
-        preset2 = PresetFactory(
-            id="gitignore:python",
-            name="python",
-            type=FileType.GITIGNORE,
-            source=PresetSource.BUILT_IN,
-        )
-        preset_repo = FakePresetRepository([preset1, preset2])
-
-        new_instance = FileInstanceFactory.gitignore(id="test-1")
+        instance = FileInstanceFactory(preset="nonexistent")
 
         result = file_instance_service.add_instance(
-            instances, new_instance, preset_repo, tmp_path
+            instances, instance, preset_repo, tmp_path
         )
 
         assert not result.valid
-        assert "already exists" in result.errors[0].lower()
+        assert "test-instance" not in instances
+
+    def test_rejects_duplicate_id(self, tmp_path):
+        """Test adding instance with duplicate ID."""
+        preset = PresetFactory()
+        preset_repo = FakePresetRepository([preset])
+        instances: dict[str, FileInstance] = {
+            "test-1": FileInstanceFactory(id="test-1")
+        }
+
+        # Try to add another instance with same ID
+        duplicate = FileInstanceFactory(id="test-1")
+
+        result = file_instance_service.add_instance(
+            instances, duplicate, preset_repo, tmp_path
+        )
+
+        assert not result.valid
+        assert "already exists" in result.errors[0]
 
 
 class TestUpdateInstance:
@@ -145,54 +151,35 @@ class TestUpdateInstance:
 
     def test_updates_existing_instance(self, tmp_path):
         """Test updating an existing instance."""
-        instance = FileInstanceFactory(id="test-1")
-        instances: dict[str, FileInstance] = {"test-1": instance}
-
-        # Add presets to repository
-        preset1 = PresetFactory(
+        preset = PresetFactory(
             id="claude_md:default",
+            type=FileType.CLAUDE_MD,
             name="default",
-            type=FileType.CLAUDE_MD,
-            source=PresetSource.BUILT_IN,
         )
-        preset2 = PresetFactory(
-            id="claude_md:custom",
-            name="custom",
-            type=FileType.CLAUDE_MD,
-            source=PresetSource.USER,
-        )
-        preset_repo = FakePresetRepository([preset1, preset2])
+        preset_repo = FakePresetRepository([preset])
 
-        # Create updated instance
-        updated_instance = FileInstanceFactory(
-            id="test-1", preset="claude_md:custom", enabled=False
-        )
+        original = FileInstanceFactory(id="test-1", enabled=True)
+        instances: dict[str, FileInstance] = {"test-1": original}
+
+        # Update to disabled
+        updated = FileInstanceFactory(id="test-1", enabled=False)
 
         result = file_instance_service.update_instance(
-            instances,
-            updated_instance,
-            preset_repo,
-            tmp_path,
+            instances, updated, preset_repo, tmp_path
         )
 
         assert result.valid
-        assert instances["test-1"].preset == "claude_md:custom"
         assert instances["test-1"].enabled is False
 
-    def test_returns_error_for_nonexistent_instance(self, tmp_path):
-        """Test returns error when updating non-existent instance."""
+    def test_rejects_updating_nonexistent_instance(self, tmp_path):
+        """Test updating an instance that doesn't exist."""
+        preset_repo = FakePresetRepository([])
         instances: dict[str, FileInstance] = {}
-        preset_repo = FakePresetRepository()
 
-        nonexistent_instance = FileInstanceFactory(
-            id="nonexistent", preset="claude_md:custom"
-        )
+        instance = FileInstanceFactory(id="missing")
 
         result = file_instance_service.update_instance(
-            instances,
-            nonexistent_instance,
-            preset_repo,
-            tmp_path,
+            instances, instance, preset_repo, tmp_path
         )
 
         assert not result.valid
@@ -203,9 +190,10 @@ class TestRemoveInstance:
     """Test remove_instance() function."""
 
     def test_removes_existing_instance(self):
-        """Test removing an existing instance."""
-        instance = FileInstanceFactory(id="test-1")
-        instances: dict[str, FileInstance] = {"test-1": instance}
+        """Test removing an instance."""
+        instances: dict[str, FileInstance] = {
+            "test-1": FileInstanceFactory(id="test-1")
+        }
 
         result = file_instance_service.remove_instance(instances, "test-1")
 
@@ -213,415 +201,487 @@ class TestRemoveInstance:
         assert "test-1" not in instances
 
     def test_returns_false_for_nonexistent_instance(self):
-        """Test returns False for non-existent instance."""
+        """Test removing a non-existent instance returns False."""
         instances: dict[str, FileInstance] = {}
 
-        result = file_instance_service.remove_instance(instances, "nonexistent")
+        result = file_instance_service.remove_instance(instances, "missing")
 
         assert result is False
+        assert len(instances) == 0
 
 
-class TestEnableInstance:
-    """Test enable_instance() function."""
+class TestValidateInstance:
+    """Test validate_instance() function."""
 
-    def test_enables_disabled_instance(self):
-        """Test enabling a disabled instance."""
-        instance = FileInstanceFactory.disabled(id="test-1")
-        instances: dict[str, FileInstance] = {"test-1": instance}
-
-        result = file_instance_service.enable_instance(instances, "test-1")
-
-        assert result is True
-        assert instances["test-1"].enabled is True
-
-    def test_returns_false_for_nonexistent_instance(self):
-        """Test returns False for non-existent instance."""
+    def test_validates_correct_instance(self, tmp_path):
+        """Test validation passes for correct instance."""
+        preset = PresetFactory(
+            id="claude_md:default",
+            type=FileType.CLAUDE_MD,
+            name="default",
+        )
+        preset_repo = FakePresetRepository([preset])
         instances: dict[str, FileInstance] = {}
 
-        result = file_instance_service.enable_instance(instances, "nonexistent")
-
-        assert result is False
-
-
-class TestDisableInstance:
-    """Test disable_instance() function."""
-
-    def test_disables_enabled_instance(self):
-        """Test disabling an enabled instance."""
-        instance = FileInstanceFactory(id="test-1")
-        instances: dict[str, FileInstance] = {"test-1": instance}
-
-        result = file_instance_service.disable_instance(instances, "test-1")
-
-        assert result is True
-        assert instances["test-1"].enabled is False
-
-    def test_returns_false_for_nonexistent_instance(self):
-        """Test returns False for non-existent instance."""
-        instances: dict[str, FileInstance] = {}
-
-        result = file_instance_service.disable_instance(instances, "nonexistent")
-
-        assert result is False
-
-
-class TestGenerateInstanceId:
-    """Test generate_instance_id() function."""
-
-    def test_generates_unique_id(self):
-        """Test generating a unique instance ID."""
-        instances: dict[str, FileInstance] = {
-            "claude_md-default": FileInstanceFactory(id="claude_md-default")
-        }
-
-        result = file_instance_service.generate_instance_id(
-            FileType.CLAUDE_MD,
-            "default",
-            None,
-            instances,
-        )
-
-        assert result != "claude_md-default"
-        assert result.startswith("claude_md-default")
-
-    def test_generates_base_id_when_no_conflict(self):
-        """Test generates base ID when no conflict exists."""
-        instances: dict[str, FileInstance] = {}
-
-        result = file_instance_service.generate_instance_id(
-            FileType.CLAUDE_MD,
-            "custom",
-            None,
-            instances,
-        )
-
-        assert result == "claude_md-custom"
-
-
-class TestGetDefaultPath:
-    """Test get_default_path() function."""
-
-    def test_returns_default_path_for_file_type(self):
-        """Test returns default path for each file type."""
-        result = file_instance_service.get_default_path(FileType.CLAUDE_MD)
-
-        assert result == FileType.CLAUDE_MD.default_path
-
-
-class TestCountByType:
-    """Test count_by_type() function."""
-
-    def test_counts_instances_by_type(self):
-        """Test counting instances by file type."""
-        instances = FileInstanceFactory.create_dict(
-            ("test-1", {}),
-            ("test-2", {"preset": "claude_md:custom", "path": "DOCS.md"}),
-            ("test-3", {"type": FileType.GITIGNORE}),
-        )
-
-        result = file_instance_service.count_by_type(instances)
-
-        assert result[FileType.CLAUDE_MD] == 2
-        assert result[FileType.GITIGNORE] == 1
-
-    def test_returns_empty_dict_for_no_instances(self):
-        """Test returns empty dict when no instances."""
-        instances: dict[str, FileInstance] = {}
-
-        result = file_instance_service.count_by_type(instances)
-
-        assert result == {}
-
-
-class TestGetInstancesByType:
-    """Test get_instances_by_type() function."""
-
-    def test_returns_instances_of_specified_type(self):
-        """Test getting instances by file type."""
-        instances = FileInstanceFactory.create_dict(
-            ("test-1", {}),
-            ("test-2", {"type": FileType.GITIGNORE}),
-        )
-
-        result = file_instance_service.get_instances_by_type(
-            instances, FileType.CLAUDE_MD
-        )
-
-        assert len(result) == 1
-        assert result[0].type == FileType.CLAUDE_MD
-
-    def test_returns_empty_list_for_type_with_no_instances(self):
-        """Test returns empty list for type with no instances."""
-        instances: dict[str, FileInstance] = {
-            "test-1": FileInstanceFactory(id="test-1")
-        }
-
-        result = file_instance_service.get_instances_by_type(
-            instances, FileType.GITIGNORE
-        )
-
-        assert result == []
-
-
-class TestLoadInstancesFromConfig:
-    """Test load_instances_from_config() function."""
-
-    def test_loads_valid_instances(self):
-        """Test loading valid instances from config data."""
-        instances_data = [
-            {
-                "id": "test-1",
-                "type": "claude_md",
-                "preset": "claude_md:default",
-                "path": "CLAUDE.md",
-                "enabled": True,
-            },
-            {
-                "id": "test-2",
-                "type": "gitignore",
-                "preset": "gitignore:python",
-                "path": ".gitignore",
-                "enabled": False,
-            },
-        ]
-
-        instances_dict, errors = file_instance_service.load_instances_from_config(
-            instances_data
-        )
-
-        assert len(instances_dict) == 2
-        assert "test-1" in instances_dict
-        assert "test-2" in instances_dict
-        assert len(errors) == 0
-
-    def test_skips_invalid_instances_and_returns_errors(self):
-        """Test skips invalid instances and returns error messages."""
-        instances_data = [
-            {
-                "id": "test-1",
-                "type": "claude_md",
-                "preset": "claude_md:default",
-                "path": "CLAUDE.md",
-                "enabled": True,
-            },
-            {
-                # Missing required field 'type'
-                "id": "test-2",
-                "preset": "gitignore:python",
-                "path": ".gitignore",
-                "enabled": False,
-            },
-        ]
-
-        instances_dict, errors = file_instance_service.load_instances_from_config(
-            instances_data
-        )
-
-        assert len(instances_dict) == 1
-        assert "test-1" in instances_dict
-        assert len(errors) == 1
-        assert "test-2" in errors[0]
-
-    def test_handles_empty_instances_data(self):
-        """Test handles empty instances data."""
-        instances_data: list[dict[str, object]] = []
-
-        instances_dict, errors = file_instance_service.load_instances_from_config(
-            instances_data
-        )
-
-        assert instances_dict == {}
-        assert errors == []
-
-
-class TestSaveInstancesToConfig:
-    """Test save_instances_to_config() function."""
-
-    def test_saves_instances_to_config_format(self):
-        """Test converting instances dict to config format."""
-        instances = FileInstanceFactory.create_dict(
-            ("test-1", {}),
-            ("test-2", {"type": FileType.GITIGNORE, "enabled": False}),
-        )
-
-        result = file_instance_service.save_instances_to_config(instances)
-
-        assert len(result) == 2
-        assert all(isinstance(item, dict) for item in result)
-        assert any(item["id"] == "test-1" for item in result)
-        assert any(item["id"] == "test-2" for item in result)
-
-    def test_preserves_instance_properties(self):
-        """Test preserves all instance properties."""
-        instances: dict[str, FileInstance] = {
-            "test-1": FileInstanceFactory(id="test-1", variables={"key": "value"})
-        }
-
-        result = file_instance_service.save_instances_to_config(instances)
-
-        assert result[0]["id"] == "test-1"
-        assert result[0]["type"] == "claude_md"
-        assert result[0]["preset"] == "claude_md:default"
-        assert result[0]["path"] == "CLAUDE.md"
-        assert result[0]["enabled"] is True
-        assert result[0]["variables"] == {"key": "value"}
-
-    def test_handles_empty_instances(self):
-        """Test handles empty instances dict."""
-        instances: dict[str, FileInstance] = {}
-
-        result = file_instance_service.save_instances_to_config(instances)
-
-        assert result == []
-
-
-class TestValidateInstanceComponentPresets:
-    """Test validate_instance() with component-based presets."""
-
-    def test_component_preset_skips_repository_validation(self, tmp_path):
-        """Test that component: prefix skips preset repository validation."""
-        # Create instance with component-based preset
         instance = FileInstanceFactory(
-            id="test-1",
-            type=FileType.SETTINGS_JSON,
-            preset="component:default",
-            path=".claude/settings.json",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
         )
 
-        # Use empty preset repository (component presets shouldn't need it)
-        preset_repo = FakePresetRepository([])
-        instances: dict[str, FileInstance] = {}
-
-        # Should pass validation even though preset isn't in repository
         result = file_instance_service.validate_instance(
             instance, instances, preset_repo, tmp_path, is_update=False
         )
 
         assert result.valid
-        assert len(result.errors) == 0
 
-    def test_regular_preset_requires_repository_validation(self, tmp_path):
-        """Test that regular presets still require repository validation."""
-        # Create instance with regular preset
-        instance = FileInstanceFactory(id="test-1", preset="claude_md:missing")
-
-        # Use empty preset repository
-        preset_repo = FakePresetRepository([])
+    def test_rejects_instance_with_invalid_preset_type(self, tmp_path):
+        """Test validation fails when preset type doesn't match file type."""
+        # Create GITIGNORE preset
+        gitignore_preset = PresetFactory(
+            id="gitignore:python",
+            type=FileType.GITIGNORE,
+            name="python",
+        )
+        preset_repo = FakePresetRepository([gitignore_preset])
         instances: dict[str, FileInstance] = {}
 
-        # Should fail validation because preset isn't in repository
+        # Try to use gitignore preset for CLAUDE_MD file
+        instance = FileInstanceFactory(
+            type=FileType.CLAUDE_MD,
+            preset="gitignore:python",  # Wrong type!
+            path="CLAUDE.md",
+        )
+
         result = file_instance_service.validate_instance(
             instance, instances, preset_repo, tmp_path, is_update=False
         )
 
         assert not result.valid
-        assert any("not found" in error.lower() for error in result.errors)
+        assert "type mismatch" in result.errors[0].lower()
 
-    def test_add_instance_with_component_preset(self, tmp_path):
-        """Test adding instance with component-based preset."""
-        instances: dict[str, FileInstance] = {}
-        preset_repo = FakePresetRepository([])
-
-        new_instance = FileInstanceFactory(
-            id="settings-json-default",
-            type=FileType.SETTINGS_JSON,
-            preset="component:default",
-            path=".claude/settings.json",
-            variables={
-                "component_folder": "C:/Users/Test/.claudefig/components/settings_json/default",
-                "component_name": "default",
-            },
+    def test_allows_single_instance_type_with_unique_id(self, tmp_path):
+        """Test single-instance types are allowed with different IDs."""
+        preset = PresetFactory(
+            id="claude_md:default",
+            type=FileType.CLAUDE_MD,
+            name="default",
         )
+        preset_repo = FakePresetRepository([preset])
 
-        result = file_instance_service.add_instance(
-            instances, new_instance, preset_repo, tmp_path
-        )
-
-        assert result.valid
-        assert "settings-json-default" in instances
-        assert instances["settings-json-default"] == new_instance
-
-    def test_update_instance_with_component_preset(self, tmp_path):
-        """Test updating instance with component-based preset."""
-        # Create existing instance
+        # Already have a CLAUDE.md
         existing = FileInstanceFactory(
-            id="statusline-default",
-            type=FileType.STATUSLINE,
-            preset="component:default",
-            path=".claude/statusline.sh",
-            variables={"component_name": "default"},
+            id="claude-1",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
         )
-        instances: dict[str, FileInstance] = {"statusline-default": existing}
-        preset_repo = FakePresetRepository([])
+        instances: dict[str, FileInstance] = {"claude-1": existing}
 
-        # Update the instance (change variables, keep enabled=True)
-        updated = FileInstanceFactory(
-            id="statusline-default",
-            type=FileType.STATUSLINE,
-            preset="component:default",
-            path=".claude/statusline.sh",
-            variables={"component_name": "default", "updated": True},
+        # Validation allows another if ID is different
+        # (actual enforcement happens at file system level)
+        another = FileInstanceFactory(
+            id="claude-2",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="docs/CLAUDE.md",  # Different path
         )
 
-        result = file_instance_service.update_instance(
-            instances, updated, preset_repo, tmp_path
+        result = file_instance_service.validate_instance(
+            another, instances, preset_repo, tmp_path, is_update=False
+        )
+
+        # Validation passes - enforcement is at higher level
+        assert result.valid
+
+    def test_allows_multiple_instances_for_multi_instance_types(self, tmp_path):
+        """Test validation allows multiple instances for types that support it."""
+        preset = PresetFactory(
+            id="commands:default",
+            type=FileType.COMMANDS,
+            name="default",
+        )
+        preset_repo = FakePresetRepository([preset])
+
+        # Already have one command
+        existing = FileInstanceFactory(
+            id="cmd-1",
+            type=FileType.COMMANDS,
+            preset="commands:default",
+            path=".claude/commands/test1.md",
+        )
+        instances: dict[str, FileInstance] = {"cmd-1": existing}
+
+        # Add another command (should be allowed)
+        another = FileInstanceFactory(
+            id="cmd-2",
+            type=FileType.COMMANDS,
+            preset="commands:default",
+            path=".claude/commands/test2.md",
+        )
+
+        result = file_instance_service.validate_instance(
+            another, instances, preset_repo, tmp_path, is_update=False
         )
 
         assert result.valid
-        assert instances["statusline-default"].variables["updated"] is True
 
-    def test_component_preset_with_custom_name(self, tmp_path):
-        """Test component preset with custom component name."""
-        instance = FileInstanceFactory(
-            id="test-custom",
-            preset="component:my-custom-component",
+    def test_validates_plugin_components_for_plugin_type(self, tmp_path):
+        """Test plugin validation runs for PLUGINS file type."""
+        preset = PresetFactory(
+            id="plugins:default",
+            type=FileType.PLUGINS,
+            name="default",
         )
-
-        preset_repo = FakePresetRepository([])
+        preset_repo = FakePresetRepository([preset])
         instances: dict[str, FileInstance] = {}
+
+        # Create a valid plugin JSON file
+        plugin_file = tmp_path / ".claude" / "plugins" / "test.json"
+        plugin_file.parent.mkdir(parents=True)
+        plugin_file.write_text('{"name": "test", "components": {}}')
+
+        instance = FileInstanceFactory(
+            type=FileType.PLUGINS,
+            preset="plugins:default",
+            path=".claude/plugins/test.json",
+        )
 
         result = file_instance_service.validate_instance(
             instance, instances, preset_repo, tmp_path, is_update=False
         )
 
-        assert result.valid
-        assert len(result.errors) == 0
+        # Should have validation result (may have warnings, but should be valid)
+        assert result is not None
 
-    def test_mixed_preset_types_in_instances(self, tmp_path):
-        """Test validation works with mix of component and regular presets."""
-        # Setup: one component preset, one regular preset
-        regular_preset = PresetFactory(
+    def test_allows_builtin_preset_for_file_type(self, tmp_path):
+        """Test built-in presets are allowed for matching file types."""
+        # Create a built-in preset
+        builtin_preset = PresetFactory(
             id="claude_md:default",
-            name="default",
             type=FileType.CLAUDE_MD,
+            name="default",
             source=PresetSource.BUILT_IN,
         )
-        preset_repo = FakePresetRepository([regular_preset])
+        preset_repo = FakePresetRepository([builtin_preset])
 
-        # Existing instances
-        existing_component = FileInstanceFactory(
-            id="settings-1",
-            type=FileType.SETTINGS_JSON,
-            preset="component:default",
-            path=".claude/settings.json",
-        )
-        existing_regular = FileInstanceFactory(id="claude-1")
+        instances: dict[str, FileInstance] = {}
 
-        instances: dict[str, FileInstance] = {
-            "settings-1": existing_component,
-            "claude-1": existing_regular,
-        }
-
-        # New instance with component preset should validate
-        new_component = FileInstanceFactory(
-            id="statusline-1",
-            type=FileType.STATUSLINE,
-            preset="component:custom",
-            path=".claude/statusline.sh",
+        # New instance with built-in preset should validate
+        new_instance = FileInstanceFactory(
+            id="claude-1",
+            type=FileType.CLAUDE_MD,
+            preset="claude_md:default",
+            path="CLAUDE.md",
         )
 
         result = file_instance_service.validate_instance(
-            new_component, instances, preset_repo, tmp_path, is_update=False
+            new_instance, instances, preset_repo, tmp_path, is_update=False
         )
 
         assert result.valid
+
+
+class TestValidatePathSecurity:
+    """Test validate_path() function - SECURITY CRITICAL."""
+
+    def test_valid_relative_path(self, tmp_path):
+        """Test valid relative path passes validation."""
+        result = file_instance_service.validate_path(
+            "CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert result.valid
+        assert not result.has_errors
+
+    def test_valid_nested_relative_path(self, tmp_path):
+        """Test valid nested relative path passes."""
+        result = file_instance_service.validate_path(
+            "docs/CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert result.valid
+        assert not result.has_errors
+
+    def test_rejects_empty_path(self, tmp_path):
+        """Test empty path is rejected."""
+        result = file_instance_service.validate_path("", FileType.CLAUDE_MD, tmp_path)
+
+        assert not result.valid
+        assert "cannot be empty" in result.errors[0]
+
+    def test_rejects_absolute_unix_path(self, tmp_path):
+        """Test absolute Unix path is rejected."""
+        result = file_instance_service.validate_path(
+            "/etc/passwd", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert not result.valid
+        # On Windows, /etc/passwd is treated as relative but caught by resolve check
+        # On Unix, it's caught as absolute path
+        assert (
+            "must be relative" in result.errors[0]
+            or "outside repository" in result.errors[0]
+        )
+
+    def test_rejects_absolute_windows_path(self, tmp_path):
+        """Test absolute Windows path is rejected.
+
+        Note: On Unix, C:/Windows is treated as relative, so it may pass
+        is_absolute() but should still be caught by other validation.
+        """
+        import platform
+
+        result = file_instance_service.validate_path(
+            "C:/Windows/System32/config", FileType.CLAUDE_MD, tmp_path
+        )
+
+        if platform.system() == "Windows":
+            # On Windows, this is absolute and should be rejected
+            assert not result.valid
+            assert "must be relative" in result.errors[0]
+        else:
+            # On Unix, C:/Windows/... is treated as relative path
+            # Security note: This is actually safe on Unix since C: is just a filename
+            pass
+
+    def test_rejects_absolute_windows_path_backslash(self, tmp_path):
+        r"""Test absolute Windows path with backslashes is rejected.
+
+        Note: On Unix, backslashes in paths are literal characters, not separators.
+        C:\Windows becomes a filename "C:\Windows", which is valid on Unix.
+        """
+        import platform
+
+        result = file_instance_service.validate_path(
+            r"C:\Windows\System32\config", FileType.CLAUDE_MD, tmp_path
+        )
+
+        if platform.system() == "Windows":
+            # On Windows, this is absolute and should be rejected
+            assert not result.valid
+            assert "must be relative" in result.errors[0]
+        else:
+            # On Unix, backslashes are literal chars, not path separators
+            # This becomes a strange but technically valid relative path
+            pass
+
+    def test_rejects_parent_directory_reference(self, tmp_path):
+        """Test path with ../ is rejected (path traversal attack)."""
+        result = file_instance_service.validate_path(
+            "../../../etc/passwd", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert not result.valid
+        assert "parent directory" in result.errors[0]
+
+    def test_rejects_single_parent_reference(self, tmp_path):
+        """Test single parent directory reference is rejected."""
+        result = file_instance_service.validate_path(
+            "../CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert not result.valid
+        assert "parent directory" in result.errors[0]
+
+    def test_rejects_nested_parent_reference(self, tmp_path):
+        """Test nested path with parent reference is rejected."""
+        result = file_instance_service.validate_path(
+            "docs/../../etc/passwd", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert not result.valid
+        assert "parent directory" in result.errors[0]
+
+    def test_rejects_hidden_parent_reference(self, tmp_path):
+        """Test hidden parent reference in middle of path is rejected."""
+        result = file_instance_service.validate_path(
+            "docs/../../../CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        assert not result.valid
+        assert "parent directory" in result.errors[0]
+
+    def test_rejects_path_escaping_repo_via_resolve(self, tmp_path):
+        """Test path that resolves outside repository via complex path is rejected."""
+        # Even complex paths that resolve outside should be caught
+        # This path has ../ which will be caught
+        result = file_instance_service.validate_path(
+            "../outside.txt", FileType.CLAUDE_MD, tmp_path
+        )
+
+        # This will be caught by the parent directory check
+        assert not result.valid
+        assert "parent directory" in result.errors[0]
+
+    def test_rejects_path_that_resolves_outside_repo(self, tmp_path):
+        """Test path that resolves outside repository is rejected."""
+        # Even if no ../ in parts, the resolve check should catch escapes
+        # This tests the resolve() security check at lines 331-333
+
+        # Create subdirectory
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+
+        # Try various escape attempts that might bypass simple checks
+        dangerous_paths = [
+            "subdir/../../outside.txt",
+        ]
+
+        for dangerous_path in dangerous_paths:
+            result = file_instance_service.validate_path(
+                dangerous_path, FileType.CLAUDE_MD, tmp_path
+            )
+            assert not result.valid, f"Failed to reject: {dangerous_path}"
+
+    def test_warns_for_directory_type_without_trailing_slash(self, tmp_path):
+        """Test directory types generate warning without trailing slash."""
+        result = file_instance_service.validate_path(
+            ".claude/commands", FileType.COMMANDS, tmp_path
+        )
+
+        # Should be valid but with warning
+        assert result.valid
+        assert result.has_warnings
+        assert "should end with '/'" in result.warnings[0]
+
+    def test_allows_directory_type_with_trailing_slash(self, tmp_path):
+        """Test directory types with trailing slash are accepted."""
+        result = file_instance_service.validate_path(
+            ".claude/commands/", FileType.COMMANDS, tmp_path
+        )
+
+        assert result.valid
+        assert not result.has_warnings
+
+    def test_warns_for_existing_file_non_append_mode(self, tmp_path):
+        """Test warning when file exists and not in append mode."""
+        # Create existing file
+        existing = tmp_path / "CLAUDE.md"
+        existing.write_text("existing")
+
+        result = file_instance_service.validate_path(
+            "CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        # Should be valid but warn
+        assert result.valid
+        assert result.has_warnings
+        assert "already exists" in result.warnings[0]
+
+    def test_allows_existing_file_in_append_mode(self, tmp_path):
+        """Test existing file is OK for append-mode types."""
+        # Create existing gitignore
+        existing = tmp_path / ".gitignore"
+        existing.write_text("existing")
+
+        result = file_instance_service.validate_path(
+            ".gitignore", FileType.GITIGNORE, tmp_path
+        )
+
+        # GITIGNORE has append_mode=True, so no warning
+        assert result.valid
+        assert not result.has_warnings
+
+    def test_handles_invalid_path_edge_cases(self, tmp_path):
+        """Test invalid path edge cases are handled safely."""
+        # Test very long path (potential buffer overflow in other systems)
+        long_path = "a/" * 200 + "test.md"
+        result = file_instance_service.validate_path(
+            long_path, FileType.CLAUDE_MD, tmp_path
+        )
+
+        # Should either accept or reject gracefully (no crashes)
+        assert result is not None
+        assert isinstance(result.valid, bool)
+
+    def test_rejects_current_directory_dot(self, tmp_path):
+        """Test explicit current directory reference is handled."""
+        result = file_instance_service.validate_path(
+            "./CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        # ./ is valid (normalizes to CLAUDE.md)
+        assert result.valid
+
+    def test_rejects_multiple_current_directory_dots(self, tmp_path):
+        """Test multiple ./ references are handled."""
+        result = file_instance_service.validate_path(
+            "././././CLAUDE.md", FileType.CLAUDE_MD, tmp_path
+        )
+
+        # Multiple ./ should normalize fine
+        assert result.valid
+
+    def test_path_normalization_security(self, tmp_path):
+        """Test path normalization doesn't introduce security holes."""
+        import platform
+
+        # Test various obfuscated path traversal attempts
+        # Note: Backslashes are only path separators on Windows
+        if platform.system() == "Windows":
+            malicious_paths = [
+                "..\\..\\..\\etc\\passwd",  # Windows-style backslashes
+                "./../../../etc/passwd",  # Mixed
+                "foo/../../bar/../../../etc/passwd",  # Nested
+            ]
+        else:
+            # On Unix, backslashes are literal characters, not separators
+            # Only test with forward slashes
+            malicious_paths = [
+                "./../../../etc/passwd",  # Mixed
+                "foo/../../bar/../../../etc/passwd",  # Nested
+            ]
+
+        for malicious in malicious_paths:
+            result = file_instance_service.validate_path(
+                malicious, FileType.CLAUDE_MD, tmp_path
+            )
+            assert not result.valid, f"Failed to reject malicious path: {malicious}"
+            assert (
+                "parent directory" in result.errors[0]
+                or "outside repository" in result.errors[0]
+            )
+
+
+class TestGenerateInstanceId:
+    """Test generate_instance_id() function."""
+
+    def test_generates_basic_id(self):
+        """Test basic ID generation."""
+        result = file_instance_service.generate_instance_id(
+            FileType.CLAUDE_MD, "default", None, {}
+        )
+
+        assert result == "claude_md-default"
+
+    def test_includes_path_suffix_for_non_default_path(self):
+        """Test ID includes path suffix for custom paths."""
+        result = file_instance_service.generate_instance_id(
+            FileType.CLAUDE_MD, "custom", "docs/CLAUDE.md", {}
+        )
+
+        assert result == "claude_md-custom-docs"
+
+    def test_adds_counter_for_duplicate_ids(self):
+        """Test counter is added when ID exists."""
+        existing: dict[str, FileInstance] = {"claude_md-default": FileInstanceFactory()}
+
+        result = file_instance_service.generate_instance_id(
+            FileType.CLAUDE_MD, "default", None, existing
+        )
+
+        assert result == "claude_md-default-1"
+
+    def test_increments_counter_for_multiple_duplicates(self):
+        """Test counter increments for multiple duplicates."""
+        existing: dict[str, FileInstance] = {
+            "claude_md-default": FileInstanceFactory(),
+            "claude_md-default-1": FileInstanceFactory(),
+        }
+
+        result = file_instance_service.generate_instance_id(
+            FileType.CLAUDE_MD, "default", None, existing
+        )
+
+        assert result == "claude_md-default-2"

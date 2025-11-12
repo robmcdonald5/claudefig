@@ -142,6 +142,109 @@ Config file: /path/to/project/claudefig.toml
 └────────────────────────────┴────────────┘
 ```
 
+### `claudefig sync`
+
+Regenerate files from current configuration.
+
+**Usage:**
+
+```bash
+claudefig sync [OPTIONS]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path PATH` | Repository path | Current directory |
+| `--force` | Overwrite existing files | False |
+
+**Examples:**
+
+```bash
+# Sync files in current directory
+claudefig sync
+
+# Sync with force overwrite
+claudefig sync --force
+
+# Sync specific directory
+claudefig sync --path /path/to/repo
+
+# Combine options
+claudefig sync --path ../my-project --force
+```
+
+**What it does:**
+
+1. Reads `claudefig.toml` configuration
+2. Regenerates all enabled file instances
+3. Updates files based on current configuration
+4. Useful after modifying config or updating presets
+
+**When to use:**
+
+- After editing `claudefig.toml` manually
+- After changing file instance configurations
+- After updating preset templates
+- To refresh all generated files
+
+### `claudefig validate`
+
+Validate project configuration and file instances.
+
+**Usage:**
+
+```bash
+claudefig validate [OPTIONS]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path PATH` | Repository path | Current directory |
+
+**Examples:**
+
+```bash
+# Validate current directory
+claudefig validate
+
+# Validate specific directory
+claudefig validate --path /path/to/repo
+```
+
+**Example Output:**
+
+```
+Validating configuration in: /path/to/project
+
+⚠ Found 2 warning(s):
+
+  • claude_md-default: Template variable 'project_name' not set
+  • settings_json-default: File does not exist at path
+
+Health: ⚠ Warnings detected
+
+Validated 5 enabled instance(s)
+```
+
+**What it checks:**
+
+- Configuration file structure and syntax
+- File instance definitions
+- Preset references validity
+- Path conflicts between instances
+- Missing template variables
+- File existence (for update mode)
+
+**Exit codes:**
+
+- `0` - All validations passed (green health)
+- `0` - Warnings detected (yellow health)
+- `1` - Errors detected (red health)
+
 ### `claudefig setup-mcp`
 
 Set up MCP servers from `.claude/mcp/` directory.
@@ -311,6 +414,75 @@ claudefig config set custom.max_files 100
 Config saved to: /path/to/claudefig.toml
 ```
 
+### `claudefig config set-init`
+
+Manage initialization settings.
+
+**Usage:**
+
+```bash
+claudefig config set-init [OPTIONS]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--overwrite/--no-overwrite` | Allow overwriting existing files during init | None |
+| `--backup/--no-backup` | Create backup files before overwriting | None |
+| `--path PATH` | Repository path | Current directory |
+
+**Examples:**
+
+```bash
+# View current init settings
+claudefig config set-init
+
+# Enable overwriting files during init
+claudefig config set-init --overwrite
+
+# Disable overwriting
+claudefig config set-init --no-overwrite
+
+# Enable backup creation
+claudefig config set-init --backup
+
+# Disable backups
+claudefig config set-init --no-backup
+
+# Combine settings
+claudefig config set-init --overwrite --no-backup
+
+# From specific directory
+claudefig config set-init --overwrite --path /path/to/repo
+```
+
+**Output (viewing settings):**
+
+```
+Current initialization settings:
+
+Overwrite existing: False
+Create backups:     True
+
+Use --overwrite/--no-overwrite or --backup/--no-backup to change settings
+```
+
+**Output (changing settings):**
+
+```
++ Updated initialization settings:
+  overwrite_existing: enabled
+  create_backup: disabled
+
+Config saved to: /path/to/claudefig.toml
+```
+
+**What it controls:**
+
+- **overwrite_existing**: Whether `claudefig init` and `sync` overwrite existing files
+- **create_backup**: Whether to create `.bak` backups before overwriting files
+
 ## Files Commands
 
 Manage file instances (files to be generated).
@@ -396,9 +568,12 @@ claudefig files add FILE_TYPE [OPTIONS]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--preset NAME` | Preset name to use | `default` |
+| `--component NAME` | Component name to use (alternative to --preset) | None |
 | `--path-target PATH` | Target path for the file | File type default |
 | `--disabled` | Create instance as disabled | False (enabled) |
 | `--repo-path PATH` | Repository path | Current directory |
+
+**Note:** Use either `--preset` or `--component`, not both. If neither is provided, defaults to `default`.
 
 **Valid File Types:**
 
@@ -424,16 +599,28 @@ claudefig files add claude_md
 # Add with specific preset
 claudefig files add claude_md --preset backend
 
+# Add with specific component
+claudefig files add claude_md --component fastapi-backend
+
 # Add with custom path
 claudefig files add claude_md --preset frontend --path-target docs/FRONTEND.md
+
+# Add component with custom path
+claudefig files add claude_md --component react-frontend --path-target frontend/CLAUDE.md
 
 # Add as disabled
 claudefig files add hooks --disabled
 
-# Full example
+# Full example with preset
 claudefig files add claude_md \
   --preset backend \
   --path-target backend/CLAUDE.md \
+  --repo-path /path/to/repo
+
+# Full example with component
+claudefig files add claude_md \
+  --component fastapi-backend \
+  --path-target api/CLAUDE.md \
   --repo-path /path/to/repo
 ```
 
@@ -566,6 +753,283 @@ claudefig files disable claude_md-experimental --path /path/to/repo
 Config saved to: /path/to/claudefig.toml
 ```
 
+### `claudefig files edit`
+
+Edit an existing file instance.
+
+**Usage:**
+
+```bash
+claudefig files edit INSTANCE_ID [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `INSTANCE_ID` | ID of the instance to edit |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | New preset to use | None (no change) |
+| `--path-target PATH` | New target path for the file | None (no change) |
+| `--enable/--disable` | Enable or disable the instance | None (no change) |
+| `--repo-path PATH` | Repository path | Current directory |
+
+**Examples:**
+
+```bash
+# Change preset
+claudefig files edit claude_md-default --preset backend
+
+# Change target path
+claudefig files edit claude_md-default --path-target docs/CLAUDE.md
+
+# Change enabled state
+claudefig files edit claude_md-default --disable
+claudefig files edit claude_md-default --enable
+
+# Change multiple properties
+claudefig files edit claude_md-default \
+  --preset backend \
+  --path-target backend/CLAUDE.md \
+  --enable
+
+# From specific directory
+claudefig files edit claude_md-default --preset backend --repo-path /path/to/repo
+```
+
+**Output:**
+
+```
++ Updated file instance: claude_md-default
+
+Changes:
+  preset: claude_md:default → claude_md:backend
+  path: CLAUDE.md → backend/CLAUDE.md
+
+Config saved to: /path/to/claudefig.toml
+```
+
+**Notes:**
+
+- At least one option (`--preset`, `--path-target`, or `--enable/--disable`) must be provided
+- Changes are validated before being saved
+- The instance ID cannot be changed (remove and re-add instead)
+
+## Components Commands
+
+Discover and manage components.
+
+Components are reusable content templates that can be added to file instances. Components can be global (available to all projects) or preset-specific.
+
+### `claudefig components list`
+
+List available components.
+
+**Usage:**
+
+```bash
+claudefig components list [FILE_TYPE] [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Optional file type filter (e.g., claude_md, settings_json) |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | Preset to search for components | default |
+
+**Examples:**
+
+```bash
+# List all components
+claudefig components list
+
+# List CLAUDE.md components only
+claudefig components list claude_md
+
+# List components from specific preset
+claudefig components list claude_md --preset my-preset
+```
+
+**Example Output:**
+
+```
+Available Components - claude_md (3)
+
+Claude Md
+
+  • default (preset)
+  • fastapi-backend (global)
+    FastAPI backend with PostgreSQL focus
+  • react-frontend (global)
+    React frontend development focus
+
+Global: ~/.claudefig/components
+
+Use 'claudefig components show <type> <name>' for details
+```
+
+**Component Sources:**
+
+- **(preset)** - Component from preset-specific folder
+- **(global)** - Component from global pool (`~/.claudefig/components/`)
+
+### `claudefig components show`
+
+Show detailed information about a component.
+
+**Usage:**
+
+```bash
+claudefig components show FILE_TYPE COMPONENT_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Component type (e.g., claude_md) |
+| `COMPONENT_NAME` | Name of the component |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | Preset to search for components | default |
+
+**Examples:**
+
+```bash
+# Show default component
+claudefig components show claude_md default
+
+# Show specific component
+claudefig components show claude_md fastapi-backend
+```
+
+**Example Output:**
+
+```
+Component Details
+
+Name:        fastapi-backend
+Type:        claude_md
+Source:      Global
+Path:        ~/.claudefig/components/claude_md/fastapi-backend
+Description: FastAPI backend with PostgreSQL, Redis, and testing best practices
+Version:     1.0.0
+Author:      claudefig
+Tags:        fastapi, backend, api, python
+
+Requires:
+  • languages/python
+
+Recommends:
+  • general/testing-principles
+
+Files:
+  • content.md (8.2 KB)
+  • component.toml (0.7 KB)
+```
+
+### `claudefig components open`
+
+Open the components directory in file explorer.
+
+**Usage:**
+
+```bash
+claudefig components open [FILE_TYPE]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Optional file type to open specific type folder |
+
+**Examples:**
+
+```bash
+# Open global components directory
+claudefig components open
+
+# Open claude_md components folder
+claudefig components open claude_md
+```
+
+**Output:**
+
+```
+Opening components directory: ~/.claudefig/components/claude_md/
+
++ Opened in file manager
+```
+
+**Use cases:**
+
+- Browse available components
+- Manually create or modify components
+- Copy components between machines
+- Inspect component structure
+
+### `claudefig components edit`
+
+Edit a component's primary content file in your default editor.
+
+**Usage:**
+
+```bash
+claudefig components edit FILE_TYPE COMPONENT_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `FILE_TYPE` | Component type (e.g., claude_md) |
+| `COMPONENT_NAME` | Name of the component |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--preset NAME` | Preset to search for components | default |
+
+**Examples:**
+
+```bash
+# Edit a component
+claudefig components edit claude_md fastapi-backend
+
+# Edit preset-specific component
+claudefig components edit claude_md default --preset my-preset
+```
+
+**Output:**
+
+```
+Opening component file: ~/.claudefig/components/claude_md/fastapi-backend/content.md
+
+Opening content.md in editor...
++ Component file edited
+```
+
+**Notes:**
+
+- Opens the primary content file (usually `content.md`)
+- Uses `$EDITOR` environment variable or system default
+- Changes to global components affect all projects
+
 ## Presets Commands
 
 Manage presets (templates for file types).
@@ -670,6 +1134,240 @@ Variables:
   • framework: FastAPI
   • database: PostgreSQL
 ```
+
+### `claudefig presets apply`
+
+Apply a preset to a project.
+
+**Usage:**
+
+```bash
+claudefig presets apply PRESET_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name of the preset to apply |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path PATH` | Project path to apply preset to | Current directory |
+
+**Examples:**
+
+```bash
+# Apply a preset to current directory
+claudefig presets apply my-fastapi-preset
+
+# Apply to specific directory
+claudefig presets apply backend-template --path /path/to/new-project
+```
+
+**Output:**
+
+```
+Applying preset 'my-fastapi-preset' to: /path/to/project
+
++ Preset 'my-fastapi-preset' applied successfully!
+Created: /path/to/project/claudefig.toml
+```
+
+**What it does:**
+
+1. Loads the preset configuration from `~/.claudefig/presets/{preset_name}/`
+2. Creates `claudefig.toml` in the target directory
+3. Copies all file instance definitions from the preset
+
+**Note:** This will fail if `claudefig.toml` already exists in the target directory.
+
+### `claudefig presets create`
+
+Save current project config as a preset.
+
+**Usage:**
+
+```bash
+claudefig presets create PRESET_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name for the new preset |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--description TEXT` | Description of the preset | Empty string |
+| `--path PATH` | Project path to save config from | Current directory |
+
+**Examples:**
+
+```bash
+# Create preset from current project
+claudefig presets create my-fastapi-project
+
+# Create with description
+claudefig presets create my-fastapi-project \
+  --description "FastAPI project with PostgreSQL and Redis"
+
+# Create from specific directory
+claudefig presets create backend-template --path /path/to/project
+```
+
+**Output:**
+
+```
++ Created preset: my-fastapi-project
+Location: ~/.claudefig/presets/my-fastapi-project/claudefig.toml
+```
+
+**What it does:**
+
+1. Reads `claudefig.toml` from the project directory
+2. Saves it to `~/.claudefig/presets/{preset_name}/claudefig.toml`
+3. Preset becomes available globally for reuse
+
+**Requirements:**
+
+- Project must have a `claudefig.toml` file
+- Run `claudefig init` first if the project doesn't have a config
+
+### `claudefig presets delete`
+
+Delete a preset.
+
+**Usage:**
+
+```bash
+claudefig presets delete PRESET_NAME
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name of the preset to delete |
+
+**Examples:**
+
+```bash
+# Delete a preset (will prompt for confirmation)
+claudefig presets delete my-old-preset
+```
+
+**Output:**
+
+```
+Are you sure you want to delete this preset? [y/N]: y
++ Deleted preset: my-old-preset
+```
+
+**Notes:**
+
+- Requires confirmation before deleting
+- Cannot delete built-in presets (like "default")
+- Only deletes user-created presets from `~/.claudefig/presets/`
+
+### `claudefig presets edit`
+
+Edit a preset's TOML file in your default editor.
+
+**Usage:**
+
+```bash
+claudefig presets edit PRESET_NAME
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name of the preset to edit |
+
+**Examples:**
+
+```bash
+# Edit a preset
+claudefig presets edit my-preset
+
+# Edit the default preset
+claudefig presets edit default
+```
+
+**Output:**
+
+```
+Opening preset file: ~/.claudefig/presets/my-preset/claudefig.toml
+
+Opening ~/.claudefig/presets/my-preset/claudefig.toml in editor...
++ Preset file edited
+```
+
+**What it does:**
+
+1. Opens the preset's `claudefig.toml` file in your default editor
+2. Uses `$EDITOR` environment variable if set, otherwise uses system default
+3. Allows you to modify:
+   - Preset metadata (name, description)
+   - File instance definitions
+   - Configuration settings
+
+**Editor selection:**
+
+- Unix/Linux/macOS: Uses `$EDITOR` or falls back to `xdg-open`
+- Windows: Uses default `.toml` file association
+
+**Warning:** Editing the "default" preset will affect all new projects that use it.
+
+### `claudefig presets open`
+
+Open the presets directory in file explorer.
+
+**Usage:**
+
+```bash
+claudefig presets open
+```
+
+**Examples:**
+
+```bash
+# Open presets folder
+claudefig presets open
+```
+
+**Output:**
+
+```
+Opening presets directory: ~/.claudefig/presets/
+
++ Opened in file manager
+```
+
+**What it does:**
+
+1. Opens `~/.claudefig/presets/` in your system file manager
+2. Allows you to browse, copy, or manually edit preset files
+
+**File managers:**
+
+- macOS: Opens in Finder
+- Windows: Opens in File Explorer
+- Linux: Opens in default file manager (Nautilus, Dolphin, etc.)
+
+**Use cases:**
+
+- Browse available presets
+- Manually backup preset files
+- Copy preset directories between machines
+- Inspect preset structure
 
 ## Examples
 

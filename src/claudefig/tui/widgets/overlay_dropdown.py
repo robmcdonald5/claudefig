@@ -1,7 +1,5 @@
 """Overlay dropdown widget that doesn't affect document flow."""
 
-from typing import Optional
-
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.reactive import reactive, var
@@ -108,9 +106,9 @@ class OverlayDropdown(Widget):
         title: str = "",
         *,
         expanded: bool = False,
-        name: Optional[str] = None,
-        id: Optional[str] = None,
-        classes: Optional[str] = None,
+        name: str | None = None,
+        id: str | None = None,
+        classes: str | None = None,
     ) -> None:
         """Initialize the overlay dropdown.
 

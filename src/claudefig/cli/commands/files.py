@@ -105,8 +105,13 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
 @click.argument("file_type")
 @click.option(
     "--preset",
-    default="default",
-    help="Preset name to use (default: default)",
+    default=None,
+    help="Preset name to use",
+)
+@click.option(
+    "--component",
+    default=None,
+    help="Component name to use (alternative to --preset)",
 )
 @click.option(
     "--path-target",
@@ -128,13 +133,37 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
 @with_config(path_param="repo_path_arg")
 @handle_errors("adding file instance")
 def files_add(
-    file_type, preset, path_target, disabled, repo_path_arg, config_data, config_repo
+    file_type,
+    preset,
+    component,
+    path_target,
+    disabled,
+    repo_path_arg,
+    config_data,
+    config_repo,
 ):
     """Add a new file instance.
 
     FILE_TYPE: Type of file (e.g., claude_md, settings_json)
+
+    Use --preset to specify a preset name, or --component to specify a component name.
+    If neither is provided, defaults to 'default'.
     """
     from claudefig.models import FileInstance
+    from claudefig.template_manager import FileTemplateManager
+
+    # Validate preset and component options
+    if preset and component:
+        console.print(format_cli_error("Cannot specify both --preset and --component"))
+        raise click.Abort()
+
+    # Determine which name to use
+    if component:
+        preset_name = component
+    elif preset:
+        preset_name = preset
+    else:
+        preset_name = "default"
 
     # Parse file type
     try:
@@ -143,6 +172,25 @@ def files_add(
         console.print(f"[red]Invalid file type:[/red] {file_type}")
         console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
         raise click.Abort() from None
+
+    # If component was specified, verify it exists
+    if component:
+        manager = FileTemplateManager()
+        components = manager.list_components("default", type=file_type)
+        component_exists = any(
+            c["name"] == component and c["type"] == file_type for c in components
+        )
+
+        if not component_exists:
+            console.print(
+                format_cli_error(
+                    f"Component '{component}' not found for type '{file_type}'"
+                )
+            )
+            console.print(
+                f"\n[dim]Use 'claudefig components list {file_type}' to see available components[/dim]"
+            )
+            raise click.Abort()
 
     # Load existing instances
     instances_data = config_service.get_file_instances(config_data)
@@ -161,11 +209,11 @@ def files_add(
 
     # Generate instance ID
     instance_id = file_instance_service.generate_instance_id(
-        file_type_enum, preset, path_target, instances_dict
+        file_type_enum, preset_name, path_target, instances_dict
     )
 
     # Build preset ID
-    preset_id = f"{file_type_enum.value}:{preset}"
+    preset_id = f"{file_type_enum.value}:{preset_name}"
 
     # Create instance
     instance = FileInstance(
