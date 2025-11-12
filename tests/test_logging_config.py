@@ -3,20 +3,19 @@
 import logging
 import sys
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from claudefig.logging_config import (
-    ClaudefigLogger,
-    setup_logging,
-    get_logger,
-    set_verbose,
-    set_quiet,
+    BACKUP_COUNT,
     DEFAULT_LOG_DIR,
     MAX_LOG_SIZE,
-    BACKUP_COUNT,
+    ClaudefigLogger,
+    get_logger,
+    set_quiet,
+    set_verbose,
+    setup_logging,
 )
 
 
@@ -190,7 +189,6 @@ class TestSetupFileHandler:
         logger.log_dir = temp_log_dir
         logger._setup_file_handler(logging.INFO)
 
-        log_file = temp_log_dir / "claudefig.log"
         # File might not exist until first log message
         assert logger._file_handler is not None  # type: ignore[attr-defined]
 
@@ -201,6 +199,7 @@ class TestSetupFileHandler:
         logger._setup_file_handler(logging.INFO)
 
         from logging.handlers import RotatingFileHandler
+
         assert isinstance(logger._file_handler, RotatingFileHandler)  # type: ignore[attr-defined]
 
     def test_setup_file_handler_max_bytes(self, temp_log_dir):
@@ -225,7 +224,10 @@ class TestSetupFileHandler:
         logger.log_dir = temp_log_dir
 
         # Mock RotatingFileHandler to raise PermissionError
-        with patch('claudefig.logging_config.RotatingFileHandler', side_effect=PermissionError("No permission")):
+        with patch(
+            "claudefig.logging_config.RotatingFileHandler",
+            side_effect=PermissionError("No permission"),
+        ):
             # Should not raise, just print warning
             logger._setup_file_handler(logging.INFO)
 
@@ -442,6 +444,7 @@ class TestGetLogFiles:
 
         # Modify new_file to have newer timestamp
         import time
+
         time.sleep(0.01)
         new_file.touch()
 
@@ -491,6 +494,7 @@ class TestClearOldLogs:
         # Set modification time to 40 days ago
         old_time = (datetime.now() - timedelta(days=40)).timestamp()
         import os
+
         os.utime(old_file, (old_time, old_time))
 
         count = logger.clear_old_logs(days=30)
@@ -526,6 +530,7 @@ class TestClearOldLogs:
 
             old_time = (datetime.now() - timedelta(days=40)).timestamp()
             import os
+
             os.utime(old_file, (old_time, old_time))
 
         count = logger.clear_old_logs(days=30)
@@ -553,6 +558,7 @@ class TestClearOldLogs:
 
         old_time = (datetime.now() - timedelta(days=10)).timestamp()
         import os
+
         os.utime(old_file, (old_time, old_time))
 
         # Should delete with days=5, but not with days=15
@@ -605,6 +611,7 @@ class TestGetLoggerFunction:
     def test_get_logger_auto_initializes(self):
         """Test that get_logger auto-initializes if needed."""
         from claudefig import logging_config
+
         logging_config._logger_instance = None  # type: ignore[attr-defined]
 
         result = get_logger()
@@ -621,6 +628,7 @@ class TestGetLoggerFunction:
     def test_get_logger_without_file_logging(self):
         """Test that get_logger disables file logging by default."""
         from claudefig import logging_config
+
         logging_config._logger_instance = None  # type: ignore[attr-defined]
 
         get_logger()
@@ -638,6 +646,7 @@ class TestSetVerboseFunction:
         set_verbose(True)
 
         from claudefig import logging_config
+
         assert logging_config._logger_instance._console_handler.level == logging.DEBUG  # type: ignore[attr-defined]
 
     def test_set_verbose_disables_debug(self, temp_log_dir):
@@ -647,11 +656,13 @@ class TestSetVerboseFunction:
         set_verbose(False)
 
         from claudefig import logging_config
+
         assert logging_config._logger_instance._console_handler.level == logging.WARNING  # type: ignore[attr-defined]
 
     def test_set_verbose_auto_initializes(self):
         """Test that set_verbose auto-initializes if needed."""
         from claudefig import logging_config
+
         logging_config._logger_instance = None  # type: ignore[attr-defined]
 
         set_verbose(True)
@@ -669,6 +680,7 @@ class TestSetQuietFunction:
         set_quiet(True)
 
         from claudefig import logging_config
+
         assert logging_config._logger_instance._console_handler.level == logging.ERROR  # type: ignore[attr-defined]
 
     def test_set_quiet_restores_warning(self, temp_log_dir):
@@ -678,11 +690,13 @@ class TestSetQuietFunction:
         set_quiet(False)
 
         from claudefig import logging_config
+
         assert logging_config._logger_instance._console_handler.level == logging.WARNING  # type: ignore[attr-defined]
 
     def test_set_quiet_auto_initializes(self):
         """Test that set_quiet auto-initializes if needed."""
         from claudefig import logging_config
+
         logging_config._logger_instance = None  # type: ignore[attr-defined]
 
         set_quiet(True)

@@ -3,7 +3,6 @@
 import logging
 from importlib.resources import files
 from pathlib import Path
-from typing import Optional
 
 from claudefig.component_loaders import create_component_loader_chain
 
@@ -17,7 +16,7 @@ class FileTemplateManager:
     as opposed to ConfigTemplateManager which handles entire project configurations.
     """
 
-    def __init__(self, custom_template_dir: Optional[Path] = None):
+    def __init__(self, custom_template_dir: Path | None = None):
         """Initialize template manager.
 
         Args:

@@ -5,8 +5,9 @@ in CLI commands, such as config loading, error handling, and validation.
 """
 
 import functools
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import click
 from rich.console import Console

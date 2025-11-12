@@ -1,7 +1,7 @@
 """Tests for PresetDefinitionLoader service."""
 
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -110,7 +110,9 @@ class TestPresetDefinitionLoaderInit:
         # Cache should be empty
         assert loader._cache == {}
 
-    def test_init_with_custom_paths(self, library_presets_dir, user_presets_dir, project_presets_dir):
+    def test_init_with_custom_paths(
+        self, library_presets_dir, user_presets_dir, project_presets_dir
+    ):
         """Test initialization with custom paths."""
         loader = PresetDefinitionLoader(
             library_presets_path=library_presets_dir,
@@ -224,13 +226,18 @@ class TestLoadFromLibrary:
 
     def test_load_from_library_no_library_path(self):
         """Test loading from library when path not configured."""
-        with patch("claudefig.services.preset_definition_loader.files", side_effect=FileNotFoundError()):
+        with patch(
+            "claudefig.services.preset_definition_loader.files",
+            side_effect=FileNotFoundError(),
+        ):
             loader = PresetDefinitionLoader(library_presets_path=None)
 
             # Library path should be None when files() fails
             assert loader.library_presets_path is None
 
-            with pytest.raises(FileNotFoundError, match="Library presets path not found"):
+            with pytest.raises(
+                FileNotFoundError, match="Library presets path not found"
+            ):
                 loader.load_from_library("test")
 
 
@@ -398,7 +405,10 @@ class TestLoadPreset:
     def test_load_preset_skips_none_paths(self, library_presets_dir, tmp_path):
         """Test that None paths are skipped during priority loading."""
         # Mock to ensure user_presets_path doesn't get a real path
-        with patch("claudefig.services.preset_definition_loader.get_user_config_dir", return_value=tmp_path / "nonexistent"):
+        with patch(
+            "claudefig.services.preset_definition_loader.get_user_config_dir",
+            return_value=tmp_path / "nonexistent",
+        ):
             loader = PresetDefinitionLoader(
                 library_presets_path=library_presets_dir,
                 user_presets_path=None,  # Skip user
@@ -610,17 +620,25 @@ class TestListAvailablePresets:
 
     def test_list_with_none_paths(self):
         """Test listing when paths are None."""
-        with patch("claudefig.services.preset_definition_loader.files", side_effect=FileNotFoundError()):
-            with patch("claudefig.services.preset_definition_loader.get_user_config_dir", return_value=Path("/nonexistent")):
-                loader = PresetDefinitionLoader(
-                    library_presets_path=None,
-                    user_presets_path=None,
-                    project_presets_path=None,
-                )
+        with (
+            patch(
+                "claudefig.services.preset_definition_loader.files",
+                side_effect=FileNotFoundError(),
+            ),
+            patch(
+                "claudefig.services.preset_definition_loader.get_user_config_dir",
+                return_value=Path("/nonexistent"),
+            ),
+        ):
+            loader = PresetDefinitionLoader(
+                library_presets_path=None,
+                user_presets_path=None,
+                project_presets_path=None,
+            )
 
-                result = loader.list_available_presets()
+            result = loader.list_available_presets()
 
-                assert len(result) == 0
+            assert len(result) == 0
 
     def test_list_handles_nested_structures(self, tmp_path):
         """Test that only top-level preset directories are listed."""
@@ -679,7 +697,7 @@ class TestPresetDefinitionLoaderEdgeCases:
         loader = PresetDefinitionLoader(library_presets_path=tmp_path)
 
         # PresetDefinition.from_toml should raise an appropriate error
-        with pytest.raises(Exception):  # Could be TOMLDecodeError or similar
+        with pytest.raises((ValueError, KeyError, TypeError)):  # TOML parsing errors
             loader.load_preset("broken")
 
     def test_concurrent_cache_access(self, library_presets_dir):

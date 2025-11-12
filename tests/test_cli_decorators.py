@@ -1,7 +1,7 @@
 """Tests for CLI decorators."""
 
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import click
 import pytest
@@ -183,9 +183,7 @@ class TestWithConfigDecorator:
         @click.command()
         @click.option("--config-path", default=".", type=click.Path())
         @with_config(
-            path_param="config_path",
-            config_name="my_config",
-            repo_name="my_repo"
+            path_param="config_path", config_name="my_config", repo_name="my_repo"
         )
         def test_cmd(config_path, my_config, my_repo):
             assert my_config == {"data": "test"}
@@ -264,6 +262,7 @@ class TestHandleErrorsDecorator:
 
     def test_passes_through_success(self, cli_runner):
         """Test decorator doesn't interfere with successful execution."""
+
         @click.command()
         @handle_errors("test operation")
         def test_cmd():
@@ -276,6 +275,7 @@ class TestHandleErrorsDecorator:
 
     def test_catches_generic_exception(self, cli_runner):
         """Test decorator catches and formats generic exceptions."""
+
         @click.command()
         @handle_errors("test operation")
         def test_cmd():
@@ -283,10 +283,13 @@ class TestHandleErrorsDecorator:
 
         result = cli_runner.invoke(test_cmd)
         assert result.exit_code == 1  # click.Abort
-        assert "Something went wrong" in result.output or "failed" in result.output.lower()
+        assert (
+            "Something went wrong" in result.output or "failed" in result.output.lower()
+        )
 
     def test_catches_config_file_not_found_error(self, cli_runner):
         """Test decorator handles ConfigFileNotFoundError specially."""
+
         @click.command()
         @handle_errors("loading config")
         def test_cmd():
@@ -298,6 +301,7 @@ class TestHandleErrorsDecorator:
 
     def test_formats_error_message(self, cli_runner):
         """Test decorator formats error messages properly."""
+
         @click.command()
         @handle_errors("doing something")
         def test_cmd():
@@ -309,6 +313,7 @@ class TestHandleErrorsDecorator:
 
     def test_raises_click_abort(self, cli_runner):
         """Test decorator raises click.Abort on error."""
+
         @click.command()
         @handle_errors("test")
         def test_cmd():
@@ -357,7 +362,7 @@ class TestHandleErrorsDecorator:
             extra_handlers={
                 ValueError: value_handler,
                 TypeError: type_handler,
-            }
+            },
         )
         def test_cmd(error_type):
             if error_type == "value":
@@ -366,17 +371,18 @@ class TestHandleErrorsDecorator:
                 raise TypeError("Type problem")
 
         # Test ValueError
-        result = cli_runner.invoke(test_cmd, ["value"])
+        cli_runner.invoke(test_cmd, ["value"])
         assert len(value_errors) == 1
         assert len(type_errors) == 0
 
         # Test TypeError
-        result = cli_runner.invoke(test_cmd, ["type"])
+        cli_runner.invoke(test_cmd, ["type"])
         assert len(value_errors) == 1
         assert len(type_errors) == 1
 
     def test_handler_return_true_prevents_abort(self, cli_runner):
         """Test that handler returning True prevents click.Abort."""
+
         def complete_handler(e):
             click.echo(f"Handled: {e}")
             return True  # Prevent abort
@@ -392,6 +398,7 @@ class TestHandleErrorsDecorator:
 
     def test_handler_return_false_continues_abort(self, cli_runner):
         """Test that handler returning False continues to abort."""
+
         def partial_handler(e):
             click.echo(f"Partial: {e}")
             return False  # Continue to abort
@@ -407,6 +414,7 @@ class TestHandleErrorsDecorator:
 
     def test_handler_return_none_continues_abort(self, cli_runner):
         """Test that handler returning None continues to abort."""
+
         def none_handler(e):
             click.echo("Handler called")
             return None  # Continue to abort
@@ -422,6 +430,7 @@ class TestHandleErrorsDecorator:
     @patch("claudefig.cli.decorators.logger")
     def test_logs_exception_with_context(self, mock_logger, cli_runner):
         """Test that exceptions are logged with operation context."""
+
         @click.command()
         @handle_errors("critical operation")
         def test_cmd():
@@ -436,6 +445,7 @@ class TestHandleErrorsDecorator:
 
     def test_operation_name_in_message(self, cli_runner):
         """Test that operation name appears in error output."""
+
         @click.command()
         @handle_errors("uploading files")
         def test_cmd():
@@ -444,10 +454,15 @@ class TestHandleErrorsDecorator:
         result = cli_runner.invoke(test_cmd)
         # Operation name should appear in output
         output_lower = result.output.lower()
-        assert "uploading files" in output_lower or "upload" in output_lower or "failed" in output_lower
+        assert (
+            "uploading files" in output_lower
+            or "upload" in output_lower
+            or "failed" in output_lower
+        )
 
     def test_preserves_function_name(self, cli_runner):
         """Test that decorator preserves wrapped function name."""
+
         @handle_errors("test")
         def my_function():
             pass
@@ -456,6 +471,7 @@ class TestHandleErrorsDecorator:
 
     def test_preserves_function_docstring(self, cli_runner):
         """Test that decorator preserves wrapped function docstring."""
+
         @handle_errors("test")
         def my_function():
             """Test docstring."""
@@ -485,6 +501,7 @@ class TestRequireGitRepoDecorator:
 
     def test_fails_outside_git_repo(self, cli_runner, tmp_path):
         """Test decorator aborts when not in git repository."""
+
         # No .git directory
         @click.command()
         @click.option("--path", default=".", type=click.Path())
@@ -499,6 +516,7 @@ class TestRequireGitRepoDecorator:
 
     def test_error_message_for_no_repo(self, cli_runner, tmp_path):
         """Test error message when not in git repo."""
+
         @click.command()
         @click.option("--path", default=".", type=click.Path())
         @require_git_repo(path_param="path")
@@ -711,9 +729,7 @@ class TestWithConfigOptionalDecorator:
         @click.command()
         @click.option("--config-dir", default=".", type=click.Path())
         @with_config_optional(
-            path_param="config_dir",
-            config_name="settings",
-            repo_name="repository"
+            path_param="config_dir", config_name="settings", repo_name="repository"
         )
         def test_cmd(config_dir, settings, repository):
             assert settings == {"test": "data"}
@@ -801,9 +817,10 @@ class TestDecoratorCombinations:
         git_dir = tmp_path / ".git"
         git_dir.mkdir()
 
-        with patch("claudefig.cli.decorators.config_service") as mock_config_service, \
-             patch("claudefig.cli.decorators.TomlConfigRepository") as mock_repo_class:
-
+        with (
+            patch("claudefig.cli.decorators.config_service") as mock_config_service,
+            patch("claudefig.cli.decorators.TomlConfigRepository") as mock_repo_class,
+        ):
             mock_repo = Mock()
             mock_repo_class.return_value = mock_repo
             mock_config_service.load_config.return_value = {}

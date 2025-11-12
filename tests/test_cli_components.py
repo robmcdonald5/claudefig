@@ -1,10 +1,8 @@
 """Tests for CLI components commands."""
 
-import sys
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-import click
 import pytest
 from click.testing import CliRunner
 
@@ -16,7 +14,6 @@ from claudefig.cli.commands.components import (
     components_open,
     components_show,
 )
-from claudefig.models import FileType
 
 
 @pytest.fixture
@@ -135,6 +132,7 @@ tags = ["test", "example"]
 
         # Mock tomllib as None (simulating Python < 3.11 without tomli)
         import claudefig.cli.commands.components as comp_module
+
         original_tomllib = comp_module.tomllib
         comp_module.tomllib = None
 
@@ -173,7 +171,9 @@ class TestComponentsList:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components.get_components_dir")
-    def test_list_all_components(self, mock_get_dir, mock_manager_class, cli_runner, sample_components):
+    def test_list_all_components(
+        self, mock_get_dir, mock_manager_class, cli_runner, sample_components
+    ):
         """Test listing all components without filter."""
         mock_get_dir.return_value = Path("/fake/components")
         mock_manager = Mock()
@@ -208,7 +208,9 @@ class TestComponentsList:
 
         assert result.exit_code == 0
         assert "default" in result.output
-        mock_manager.list_components.assert_called_once_with("default", type="claude_md")
+        mock_manager.list_components.assert_called_once_with(
+            "default", type="claude_md"
+        )
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components.get_components_dir")
@@ -219,7 +221,7 @@ class TestComponentsList:
         mock_manager.list_components.return_value = []
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(components_list, ["--preset", "custom-preset"])
+        cli_runner.invoke(components_list, ["--preset", "custom-preset"])
 
         mock_manager.list_components.assert_called_once_with("custom-preset", type=None)
 
@@ -255,9 +257,24 @@ class TestComponentsList:
         """Test that components are grouped by type in output."""
         mock_get_dir.return_value = Path("/fake/components")
         components = [
-            {"name": "comp1", "type": "claude_md", "source": "global", "path": Path("/fake1")},
-            {"name": "comp2", "type": "claude_md", "source": "global", "path": Path("/fake2")},
-            {"name": "comp3", "type": "settings_json", "source": "global", "path": Path("/fake3")},
+            {
+                "name": "comp1",
+                "type": "claude_md",
+                "source": "global",
+                "path": Path("/fake1"),
+            },
+            {
+                "name": "comp2",
+                "type": "claude_md",
+                "source": "global",
+                "path": Path("/fake2"),
+            },
+            {
+                "name": "comp3",
+                "type": "settings_json",
+                "source": "global",
+                "path": Path("/fake3"),
+            },
         ]
         mock_manager = Mock()
         mock_manager.list_components.return_value = components
@@ -272,12 +289,24 @@ class TestComponentsList:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components.get_components_dir")
-    def test_list_shows_source_labels(self, mock_get_dir, mock_manager_class, cli_runner):
+    def test_list_shows_source_labels(
+        self, mock_get_dir, mock_manager_class, cli_runner
+    ):
         """Test that list shows global vs preset source labels."""
         mock_get_dir.return_value = Path("/fake/components")
         components = [
-            {"name": "global_comp", "type": "claude_md", "source": "global", "path": Path("/fake1")},
-            {"name": "preset_comp", "type": "claude_md", "source": "preset", "path": Path("/fake2")},
+            {
+                "name": "global_comp",
+                "type": "claude_md",
+                "source": "global",
+                "path": Path("/fake1"),
+            },
+            {
+                "name": "preset_comp",
+                "type": "claude_md",
+                "source": "preset",
+                "path": Path("/fake2"),
+            },
         ]
         mock_manager = Mock()
         mock_manager.list_components.return_value = components
@@ -294,7 +323,9 @@ class TestComponentsList:
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components.get_components_dir")
     @patch("claudefig.cli.commands.components._load_component_metadata")
-    def test_list_shows_descriptions(self, mock_load_meta, mock_get_dir, mock_manager_class, cli_runner):
+    def test_list_shows_descriptions(
+        self, mock_load_meta, mock_get_dir, mock_manager_class, cli_runner
+    ):
         """Test that list shows component descriptions when available."""
         mock_get_dir.return_value = Path("/fake/components")
         mock_load_meta.return_value = {
@@ -302,7 +333,12 @@ class TestComponentsList:
         }
 
         components = [
-            {"name": "described", "type": "claude_md", "source": "global", "path": Path("/fake")},
+            {
+                "name": "described",
+                "type": "claude_md",
+                "source": "global",
+                "path": Path("/fake"),
+            },
         ]
         mock_manager = Mock()
         mock_manager.list_components.return_value = components
@@ -315,7 +351,9 @@ class TestComponentsList:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components.get_components_dir")
-    def test_list_empty_with_type_filter(self, mock_get_dir, mock_manager_class, cli_runner):
+    def test_list_empty_with_type_filter(
+        self, mock_get_dir, mock_manager_class, cli_runner
+    ):
         """Test listing empty results with type filter shows specific message."""
         mock_get_dir.return_value = Path("/fake/components")
         mock_manager = Mock()
@@ -333,7 +371,9 @@ class TestComponentsShow:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components._load_component_metadata")
-    def test_show_valid_component(self, mock_load_meta, mock_manager_class, cli_runner, tmp_path):
+    def test_show_valid_component(
+        self, mock_load_meta, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test showing valid component details."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -363,7 +403,9 @@ class TestComponentsShow:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components._load_component_metadata")
-    def test_show_with_metadata(self, mock_load_meta, mock_manager_class, cli_runner, tmp_path):
+    def test_show_with_metadata(
+        self, mock_load_meta, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test showing component with full metadata."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -421,7 +463,9 @@ class TestComponentsShow:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components._load_component_metadata")
-    def test_show_without_metadata_file(self, mock_load_meta, mock_manager_class, cli_runner, tmp_path):
+    def test_show_without_metadata_file(
+        self, mock_load_meta, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test showing component without component.toml."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -445,7 +489,9 @@ class TestComponentsShow:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components._load_component_metadata")
-    def test_show_displays_file_sizes(self, mock_load_meta, mock_manager_class, cli_runner, tmp_path):
+    def test_show_displays_file_sizes(
+        self, mock_load_meta, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test that show displays file sizes."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -468,7 +514,9 @@ class TestComponentsShow:
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
     @patch("claudefig.cli.commands.components._load_component_metadata")
-    def test_show_preset_component(self, mock_load_meta, mock_manager_class, cli_runner, tmp_path):
+    def test_show_preset_component(
+        self, mock_load_meta, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test showing preset-specific component."""
         comp_path = tmp_path / "preset_component"
         comp_path.mkdir()
@@ -478,11 +526,18 @@ class TestComponentsShow:
 
         mock_manager = Mock()
         mock_manager.list_components.return_value = [
-            {"name": "preset_comp", "type": "claude_md", "source": "preset", "path": comp_path}
+            {
+                "name": "preset_comp",
+                "type": "claude_md",
+                "source": "preset",
+                "path": comp_path,
+            }
         ]
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(components_show, ["claude_md", "preset_comp", "--preset", "custom"])
+        result = cli_runner.invoke(
+            components_show, ["claude_md", "preset_comp", "--preset", "custom"]
+        )
 
         assert result.exit_code == 0
         assert "Preset-specific" in result.output or "preset" in result.output.lower()
@@ -493,7 +548,9 @@ class TestComponentsOpen:
 
     @patch("claudefig.cli.commands.components.open_folder_in_explorer")
     @patch("claudefig.cli.commands.components.get_components_dir")
-    def test_open_global_directory(self, mock_get_dir, mock_open_folder, cli_runner, tmp_path):
+    def test_open_global_directory(
+        self, mock_get_dir, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test opening global components directory."""
         mock_get_dir.return_value = tmp_path / "components"
 
@@ -505,7 +562,9 @@ class TestComponentsOpen:
 
     @patch("claudefig.cli.commands.components.open_folder_in_explorer")
     @patch("claudefig.cli.commands.components.get_components_dir")
-    def test_open_specific_type(self, mock_get_dir, mock_open_folder, cli_runner, tmp_path):
+    def test_open_specific_type(
+        self, mock_get_dir, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test opening specific file type directory."""
         components_dir = tmp_path / "components"
         mock_get_dir.return_value = components_dir
@@ -543,7 +602,9 @@ class TestComponentsOpen:
 
     @patch("claudefig.cli.commands.components.open_folder_in_explorer")
     @patch("claudefig.cli.commands.components.get_components_dir")
-    def test_open_handles_error(self, mock_get_dir, mock_open_folder, cli_runner, tmp_path):
+    def test_open_handles_error(
+        self, mock_get_dir, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test handling error when file manager can't open."""
         mock_get_dir.return_value = tmp_path / "components"
         mock_open_folder.side_effect = RuntimeError("Cannot open")
@@ -551,7 +612,10 @@ class TestComponentsOpen:
         result = cli_runner.invoke(components_open, [])
 
         assert result.exit_code == 0  # Should not fail
-        assert "Could not open file manager" in result.output or "Cannot open" in result.output
+        assert (
+            "Could not open file manager" in result.output
+            or "Cannot open" in result.output
+        )
 
 
 class TestComponentsEdit:
@@ -559,7 +623,9 @@ class TestComponentsEdit:
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_finds_primary_file(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_finds_primary_file(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test editing component finds primary content file."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -580,7 +646,9 @@ class TestComponentsEdit:
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_missing_component(self, mock_manager_class, mock_open_editor, cli_runner):
+    def test_edit_missing_component(
+        self, mock_manager_class, mock_open_editor, cli_runner
+    ):
         """Test editing non-existent component."""
         mock_manager = Mock()
         mock_manager.list_components.return_value = []
@@ -613,7 +681,9 @@ class TestComponentsEdit:
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_preset_warning(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_preset_warning(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test editing preset-specific component shows warning."""
         comp_path = tmp_path / "preset_component"
         comp_path.mkdir()
@@ -621,7 +691,12 @@ class TestComponentsEdit:
 
         mock_manager = Mock()
         mock_manager.list_components.return_value = [
-            {"name": "preset_comp", "type": "claude_md", "source": "preset", "path": comp_path}
+            {
+                "name": "preset_comp",
+                "type": "claude_md",
+                "source": "preset",
+                "path": comp_path,
+            }
         ]
         mock_manager_class.return_value = mock_manager
 
@@ -633,7 +708,9 @@ class TestComponentsEdit:
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_prefers_content_md(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_prefers_content_md(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test edit prefers content.md over other files."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -656,7 +733,9 @@ class TestComponentsEdit:
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_fallback_to_first_file(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_fallback_to_first_file(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test edit falls back to first non-.toml file if no known content files."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -687,7 +766,9 @@ class TestComponentsEdit:
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_with_custom_preset(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_with_custom_preset(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test editing component from custom preset."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -699,14 +780,18 @@ class TestComponentsEdit:
         ]
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(components_edit, ["claude_md", "test", "--preset", "custom"])
+        result = cli_runner.invoke(
+            components_edit, ["claude_md", "test", "--preset", "custom"]
+        )
 
         assert result.exit_code == 0
         mock_manager.list_components.assert_called_once_with("custom", type="claude_md")
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")
     @patch("claudefig.cli.commands.components.FileTemplateManager")
-    def test_edit_handles_editor_error(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_handles_editor_error(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test handling error when editor can't open."""
         comp_path = tmp_path / "test_component"
         comp_path.mkdir()
@@ -723,7 +808,10 @@ class TestComponentsEdit:
         result = cli_runner.invoke(components_edit, ["claude_md", "test"])
 
         # Should handle the error gracefully (decorator should catch it)
-        assert "Error opening editor" in result.output or "Editor not found" in result.output
+        assert (
+            "Error opening editor" in result.output
+            or "Editor not found" in result.output
+        )
 
 
 class TestComponentsGroupIntegration:

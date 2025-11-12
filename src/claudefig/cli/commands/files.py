@@ -133,7 +133,14 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
 @with_config(path_param="repo_path_arg")
 @handle_errors("adding file instance")
 def files_add(
-    file_type, preset, component, path_target, disabled, repo_path_arg, config_data, config_repo
+    file_type,
+    preset,
+    component,
+    path_target,
+    disabled,
+    repo_path_arg,
+    config_data,
+    config_repo,
 ):
     """Add a new file instance.
 
@@ -147,21 +154,16 @@ def files_add(
 
     # Validate preset and component options
     if preset and component:
-        console.print(
-            format_cli_error("Cannot specify both --preset and --component")
-        )
+        console.print(format_cli_error("Cannot specify both --preset and --component"))
         raise click.Abort()
 
     # Determine which name to use
     if component:
         preset_name = component
-        source_type = "component"
     elif preset:
         preset_name = preset
-        source_type = "preset"
     else:
         preset_name = "default"
-        source_type = "default"
 
     # Parse file type
     try:

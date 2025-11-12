@@ -4,7 +4,7 @@ This module provides consistent error messaging across the application,
 ensuring uniform formatting, color schemes, and terminology.
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 # Color scheme constants for Rich markup
 COLOR_ERROR = "red"
@@ -51,7 +51,7 @@ class ErrorMessages:
     # --- Validation Errors ---
 
     @staticmethod
-    def validation_failed(details: Optional[str] = None) -> str:
+    def validation_failed(details: str | None = None) -> str:
         """Format a validation failure message.
 
         Args:
@@ -66,7 +66,7 @@ class ErrorMessages:
 
     @staticmethod
     def invalid_type(
-        type_name: str, value: str, valid_options: Optional[list[str]] = None
+        type_name: str, value: str, valid_options: list[str] | None = None
     ) -> str:
         """Format an invalid type error message.
 
@@ -98,7 +98,7 @@ class ErrorMessages:
     # --- Operation Errors ---
 
     @staticmethod
-    def operation_failed(operation: str, details: Optional[str] = None) -> str:
+    def operation_failed(operation: str, details: str | None = None) -> str:
         """Format a generic operation failure message.
 
         Args:
@@ -143,8 +143,8 @@ class ErrorMessages:
     @staticmethod
     def success(
         action: str,
-        resource_type: Optional[str] = None,
-        identifier: Optional[str] = None,
+        resource_type: str | None = None,
+        identifier: str | None = None,
     ) -> str:
         """Format a success message.
 

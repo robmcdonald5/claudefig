@@ -2,9 +2,8 @@
 
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-import click
 import pytest
 from click.testing import CliRunner
 
@@ -80,10 +79,14 @@ class TestPresetsList:
         assert "default" in result.output
         assert "fastapi" in result.output
         assert "broken" in result.output
-        mock_manager.list_global_presets.assert_called_once_with(include_validation=False)
+        mock_manager.list_global_presets.assert_called_once_with(
+            include_validation=False
+        )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_list_with_validation_flag(self, mock_manager_class, cli_runner, sample_presets):
+    def test_list_with_validation_flag(
+        self, mock_manager_class, cli_runner, sample_presets
+    ):
         """Test listing presets with validation status."""
         mock_manager = Mock()
         mock_manager.list_global_presets.return_value = sample_presets
@@ -95,7 +98,9 @@ class TestPresetsList:
         assert result.exit_code == 0
         assert "Valid" in result.output  # Column header
         assert "Yes" in result.output or "No" in result.output
-        mock_manager.list_global_presets.assert_called_once_with(include_validation=True)
+        mock_manager.list_global_presets.assert_called_once_with(
+            include_validation=True
+        )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
     def test_list_empty_presets(self, mock_manager_class, cli_runner):
@@ -140,7 +145,9 @@ class TestPresetsList:
         assert str(custom_location) in result.output
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_list_shows_file_counts(self, mock_manager_class, cli_runner, sample_presets):
+    def test_list_shows_file_counts(
+        self, mock_manager_class, cli_runner, sample_presets
+    ):
         """Test that list shows file counts for each preset."""
         mock_manager = Mock()
         mock_manager.list_global_presets.return_value = sample_presets
@@ -200,13 +207,25 @@ class TestPresetsShow:
         """Test that show displays all file instances."""
         mock_config = Mock()
         mock_config.get_file_instances.return_value = [
-            {"type": "claude_md", "path": "CLAUDE.md", "preset": "test", "enabled": True},
-            {"type": "settings_json", "path": ".vscode/settings.json", "preset": "test", "enabled": False},
+            {
+                "type": "claude_md",
+                "path": "CLAUDE.md",
+                "preset": "test",
+                "enabled": True,
+            },
+            {
+                "type": "settings_json",
+                "path": ".vscode/settings.json",
+                "preset": "test",
+                "enabled": False,
+            },
         ]
 
         mock_manager = Mock()
         mock_manager.get_preset_config.return_value = mock_config
-        mock_manager.list_global_presets.return_value = [{"name": "test", "file_count": 2}]
+        mock_manager.list_global_presets.return_value = [
+            {"name": "test", "file_count": 2}
+        ]
         mock_manager_class.return_value = mock_manager
 
         result = cli_runner.invoke(presets_show, ["test"])
@@ -225,7 +244,9 @@ class TestPresetsShow:
 
         mock_manager = Mock()
         mock_manager.get_preset_config.return_value = mock_config
-        mock_manager.list_global_presets.return_value = [{"name": "empty", "file_count": 0}]
+        mock_manager.list_global_presets.return_value = [
+            {"name": "empty", "file_count": 0}
+        ]
         mock_manager_class.return_value = mock_manager
 
         result = cli_runner.invoke(presets_show, ["empty"])
@@ -271,19 +292,27 @@ class TestPresetsApply:
     def test_apply_missing_preset(self, mock_manager_class, cli_runner, tmp_path):
         """Test applying non-existent preset."""
         mock_manager = Mock()
-        mock_manager.apply_preset_to_project.side_effect = TemplateNotFoundError("Not found")
+        mock_manager.apply_preset_to_project.side_effect = TemplateNotFoundError(
+            "Not found"
+        )
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_apply, ["nonexistent", "--path", str(tmp_path)])
+        result = cli_runner.invoke(
+            presets_apply, ["nonexistent", "--path", str(tmp_path)]
+        )
 
         # Custom handler should print message
-        assert "not found" in result.output.lower() or "Preset not found" in result.output
+        assert (
+            "not found" in result.output.lower() or "Preset not found" in result.output
+        )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
     def test_apply_config_exists_error(self, mock_manager_class, cli_runner, tmp_path):
         """Test applying when config already exists."""
         mock_manager = Mock()
-        mock_manager.apply_preset_to_project.side_effect = ConfigFileExistsError("Config exists")
+        mock_manager.apply_preset_to_project.side_effect = ConfigFileExistsError(
+            "Config exists"
+        )
         mock_manager_class.return_value = mock_manager
 
         result = cli_runner.invoke(presets_apply, ["default", "--path", str(tmp_path)])
@@ -294,7 +323,9 @@ class TestPresetsApply:
     def test_apply_file_exists_error(self, mock_manager_class, cli_runner, tmp_path):
         """Test applying when file exists."""
         mock_manager = Mock()
-        mock_manager.apply_preset_to_project.side_effect = FileExistsError("File exists")
+        mock_manager.apply_preset_to_project.side_effect = FileExistsError(
+            "File exists"
+        )
         mock_manager_class.return_value = mock_manager
 
         result = cli_runner.invoke(presets_apply, ["default", "--path", str(tmp_path)])
@@ -310,7 +341,9 @@ class TestPresetsApply:
         mock_manager = Mock()
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_apply, ["default", "--path", str(custom_path)])
+        result = cli_runner.invoke(
+            presets_apply, ["default", "--path", str(custom_path)]
+        )
 
         assert result.exit_code == 0
         call_args = mock_manager.apply_preset_to_project.call_args
@@ -323,7 +356,9 @@ class TestPresetsApply:
         mock_manager = Mock()
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_apply, ["custom_preset", "--path", str(tmp_path)])
+        result = cli_runner.invoke(
+            presets_apply, ["custom_preset", "--path", str(tmp_path)]
+        )
 
         assert result.exit_code == 0
         assert "custom_preset" in result.output
@@ -356,13 +391,15 @@ class TestPresetsCreate:
 
         result = cli_runner.invoke(
             presets_create,
-            ["my_preset", "--description", "Test preset", "--path", str(tmp_path)]
+            ["my_preset", "--description", "Test preset", "--path", str(tmp_path)],
         )
 
         assert result.exit_code == 0
         assert "Created preset" in result.output
         assert "my_preset" in result.output
-        mock_manager.save_global_preset.assert_called_once_with("my_preset", "Test preset")
+        mock_manager.save_global_preset.assert_called_once_with(
+            "my_preset", "Test preset"
+        )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
     def test_create_without_config(self, mock_manager_class, cli_runner, tmp_path):
@@ -371,13 +408,17 @@ class TestPresetsCreate:
         mock_manager = Mock()
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_create, ["my_preset", "--path", str(tmp_path)])
+        result = cli_runner.invoke(
+            presets_create, ["my_preset", "--path", str(tmp_path)]
+        )
 
         assert result.exit_code == 1
         assert "not found" in result.output.lower() or "Initialize" in result.output
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_create_with_default_description(self, mock_manager_class, cli_runner, tmp_path):
+    def test_create_with_default_description(
+        self, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test creating preset with default (empty) description."""
         config_file = tmp_path / "claudefig.toml"
         config_file.write_text("[project]\nname = 'test'")
@@ -386,7 +427,9 @@ class TestPresetsCreate:
         mock_manager.global_presets_dir = tmp_path / "presets"
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_create, ["my_preset", "--path", str(tmp_path)])
+        result = cli_runner.invoke(
+            presets_create, ["my_preset", "--path", str(tmp_path)]
+        )
 
         assert result.exit_code == 0
         mock_manager.save_global_preset.assert_called_once_with("my_preset", "")
@@ -420,7 +463,9 @@ class TestPresetsCreate:
         mock_manager.global_presets_dir = presets_dir
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_create, ["my_preset", "--path", str(tmp_path)])
+        result = cli_runner.invoke(
+            presets_create, ["my_preset", "--path", str(tmp_path)]
+        )
 
         assert result.exit_code == 0
         assert "Location:" in result.output
@@ -435,12 +480,16 @@ class TestPresetsCreate:
         mock_manager.save_global_preset.side_effect = ValueError("Invalid name")
         mock_manager_class.return_value = mock_manager
 
-        result = cli_runner.invoke(presets_create, ["bad-name", "--path", str(tmp_path)])
+        result = cli_runner.invoke(
+            presets_create, ["bad-name", "--path", str(tmp_path)]
+        )
 
         assert "Error" in result.output or "Invalid name" in result.output
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_create_handles_file_not_found(self, mock_manager_class, cli_runner, tmp_path):
+    def test_create_handles_file_not_found(
+        self, mock_manager_class, cli_runner, tmp_path
+    ):
         """Test create handles FileNotFoundError from manager."""
         config_file = tmp_path / "claudefig.toml"
         config_file.write_text("[project]\nname = 'test'")
@@ -486,18 +535,24 @@ class TestPresetsDelete:
     def test_delete_missing_preset(self, mock_manager_class, cli_runner):
         """Test deleting non-existent preset."""
         mock_manager = Mock()
-        mock_manager.delete_global_preset.side_effect = TemplateNotFoundError("Not found")
+        mock_manager.delete_global_preset.side_effect = TemplateNotFoundError(
+            "Not found"
+        )
         mock_manager_class.return_value = mock_manager
 
         result = cli_runner.invoke(presets_delete, ["nonexistent"], input="y\n")
 
-        assert "not found" in result.output.lower() or "Preset not found" in result.output
+        assert (
+            "not found" in result.output.lower() or "Preset not found" in result.output
+        )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
     def test_delete_handles_value_error(self, mock_manager_class, cli_runner):
         """Test delete handles ValueError (e.g., built-in preset protection)."""
         mock_manager = Mock()
-        mock_manager.delete_global_preset.side_effect = ValueError("Cannot delete built-in")
+        mock_manager.delete_global_preset.side_effect = ValueError(
+            "Cannot delete built-in"
+        )
         mock_manager_class.return_value = mock_manager
 
         result = cli_runner.invoke(presets_delete, ["default"], input="y\n")
@@ -513,7 +568,9 @@ class TestPresetsDelete:
 
         result = cli_runner.invoke(presets_delete, ["missing"], input="y\n")
 
-        assert "not found" in result.output.lower() or "Preset not found" in result.output
+        assert (
+            "not found" in result.output.lower() or "Preset not found" in result.output
+        )
 
 
 class TestPresetsEdit:
@@ -521,7 +578,9 @@ class TestPresetsEdit:
 
     @patch("claudefig.cli.commands.presets.open_file_in_editor")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_edit_success(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_success(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test successfully editing preset file."""
         preset_dir = tmp_path / "test_preset"
         preset_dir.mkdir()
@@ -552,7 +611,9 @@ class TestPresetsEdit:
 
     @patch("claudefig.cli.commands.presets.open_file_in_editor")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_edit_default_preset_warning(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_default_preset_warning(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test editing default preset shows warning."""
         preset_dir = tmp_path / "default"
         preset_dir.mkdir()
@@ -571,7 +632,9 @@ class TestPresetsEdit:
 
     @patch("claudefig.cli.commands.presets.open_file_in_editor")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_edit_missing_toml_file(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_missing_toml_file(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test editing when preset directory exists but toml file missing."""
         preset_dir = tmp_path / "incomplete"
         preset_dir.mkdir()
@@ -589,7 +652,9 @@ class TestPresetsEdit:
 
     @patch("claudefig.cli.commands.presets.open_file_in_editor")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_edit_handles_editor_error(self, mock_manager_class, mock_open_editor, cli_runner, tmp_path):
+    def test_edit_handles_editor_error(
+        self, mock_manager_class, mock_open_editor, cli_runner, tmp_path
+    ):
         """Test handling error when editor can't open."""
         preset_dir = tmp_path / "test"
         preset_dir.mkdir()
@@ -604,7 +669,10 @@ class TestPresetsEdit:
 
         result = cli_runner.invoke(presets_edit, ["test"])
 
-        assert "Error opening editor" in result.output or "Editor not found" in result.output
+        assert (
+            "Error opening editor" in result.output
+            or "Editor not found" in result.output
+        )
 
 
 class TestPresetsOpen:
@@ -612,7 +680,9 @@ class TestPresetsOpen:
 
     @patch("claudefig.cli.commands.presets.open_folder_in_explorer")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_open_success(self, mock_manager_class, mock_open_folder, cli_runner, tmp_path):
+    def test_open_success(
+        self, mock_manager_class, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test successfully opening presets directory."""
         mock_manager = Mock()
         mock_manager.global_presets_dir = tmp_path / "presets"
@@ -626,7 +696,9 @@ class TestPresetsOpen:
 
     @patch("claudefig.cli.commands.presets.open_folder_in_explorer")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_open_creates_directory(self, mock_manager_class, mock_open_folder, cli_runner, tmp_path):
+    def test_open_creates_directory(
+        self, mock_manager_class, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test that open creates directory if it doesn't exist."""
         presets_dir = tmp_path / "presets"
 
@@ -641,7 +713,9 @@ class TestPresetsOpen:
 
     @patch("claudefig.cli.commands.presets.open_folder_in_explorer")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_open_handles_error(self, mock_manager_class, mock_open_folder, cli_runner, tmp_path):
+    def test_open_handles_error(
+        self, mock_manager_class, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test handling error when file manager can't open."""
         mock_manager = Mock()
         mock_manager.global_presets_dir = tmp_path / "presets"
@@ -652,11 +726,16 @@ class TestPresetsOpen:
         result = cli_runner.invoke(presets_open, [])
 
         assert result.exit_code == 0  # Should not fail
-        assert "Could not open file manager" in result.output or "Navigate to" in result.output
+        assert (
+            "Could not open file manager" in result.output
+            or "Navigate to" in result.output
+        )
 
     @patch("claudefig.cli.commands.presets.open_folder_in_explorer")
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_open_shows_directory_path(self, mock_manager_class, mock_open_folder, cli_runner, tmp_path):
+    def test_open_shows_directory_path(
+        self, mock_manager_class, mock_open_folder, cli_runner, tmp_path
+    ):
         """Test that open shows directory path."""
         presets_dir = tmp_path / "custom_presets"
 

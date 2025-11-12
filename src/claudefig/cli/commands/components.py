@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 import click
-from rich.table import Table
 
 from claudefig.cli.decorators import handle_errors
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_warning
@@ -95,22 +94,18 @@ def components_list(file_type, preset):
         try:
             FileType(file_type)
         except ValueError:
-            console.print(
-                format_cli_error(f"Invalid file type: {file_type}")
-            )
+            console.print(format_cli_error(f"Invalid file type: {file_type}"))
             console.print(
                 f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
             )
-            raise click.Abort()
+            raise click.Abort() from None
 
     manager = FileTemplateManager()
     components = manager.list_components(preset, type=file_type)
 
     if not components:
         if file_type:
-            console.print(
-                f"[yellow]No {file_type} components found[/yellow]"
-            )
+            console.print(f"[yellow]No {file_type} components found[/yellow]")
         else:
             console.print("[yellow]No components found[/yellow]")
 
@@ -149,7 +144,11 @@ def components_list(file_type, preset):
         console.print(f"[bold cyan]{type_display}[/bold cyan]\n")
 
         for comp in sorted(comps, key=lambda c: (c["source"], c["name"])):
-            source_label = "[cyan](preset)[/cyan]" if comp["source"] == "preset" else "[green](global)[/green]"
+            source_label = (
+                "[cyan](preset)[/cyan]"
+                if comp["source"] == "preset"
+                else "[green](global)[/green]"
+            )
             comp_name = comp["name"]
 
             # Try to load metadata for description
@@ -197,20 +196,22 @@ def components_show(file_type, component_name, preset):
     try:
         FileType(file_type)
     except ValueError:
-        console.print(
-            format_cli_error(f"Invalid file type: {file_type}")
-        )
+        console.print(format_cli_error(f"Invalid file type: {file_type}"))
         console.print(
             f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
         )
-        raise click.Abort()
+        raise click.Abort() from None
 
     manager = FileTemplateManager()
     components = manager.list_components(preset, type=file_type)
 
     # Find the specific component
     component = next(
-        (c for c in components if c["name"] == component_name and c["type"] == file_type),
+        (
+            c
+            for c in components
+            if c["name"] == component_name and c["type"] == file_type
+        ),
         None,
     )
 
@@ -229,7 +230,7 @@ def components_show(file_type, component_name, preset):
     metadata = _load_component_metadata(component["path"])
 
     # Display component details
-    console.print(f"\n[bold blue]Component Details[/bold blue]\n")
+    console.print("\n[bold blue]Component Details[/bold blue]\n")
 
     source_display = "Preset-specific" if component["source"] == "preset" else "Global"
     console.print(f"[bold]Name:[/bold]        {component_name}")
@@ -259,17 +260,17 @@ def components_show(file_type, component_name, preset):
         if "dependencies" in metadata:
             deps = metadata["dependencies"]
             if deps.get("requires"):
-                console.print(f"\n[bold]Requires:[/bold]")
+                console.print("\n[bold]Requires:[/bold]")
                 for req in deps["requires"]:
                     console.print(f"  • {req}")
 
             if deps.get("recommends"):
-                console.print(f"\n[bold]Recommends:[/bold]")
+                console.print("\n[bold]Recommends:[/bold]")
                 for rec in deps["recommends"]:
                     console.print(f"  • {rec}")
 
         # Show files
-        console.print(f"\n[bold]Files:[/bold]")
+        console.print("\n[bold]Files:[/bold]")
         comp_path = component["path"]
         for file in comp_path.iterdir():
             if file.is_file() and not file.name.startswith("."):
@@ -279,7 +280,7 @@ def components_show(file_type, component_name, preset):
 
     else:
         # No metadata file, just list files
-        console.print(f"\n[bold]Files:[/bold]")
+        console.print("\n[bold]Files:[/bold]")
         comp_path = component["path"]
         for file in comp_path.iterdir():
             if file.is_file():
@@ -309,13 +310,11 @@ def components_open(file_type):
         try:
             FileType(file_type)
         except ValueError:
-            console.print(
-                format_cli_error(f"Invalid file type: {file_type}")
-            )
+            console.print(format_cli_error(f"Invalid file type: {file_type}"))
             console.print(
                 f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
             )
-            raise click.Abort()
+            raise click.Abort() from None
 
         target_dir = components_dir / file_type
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -365,20 +364,22 @@ def components_edit(file_type, component_name, preset):
     try:
         FileType(file_type)
     except ValueError:
-        console.print(
-            format_cli_error(f"Invalid file type: {file_type}")
-        )
+        console.print(format_cli_error(f"Invalid file type: {file_type}"))
         console.print(
             f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
         )
-        raise click.Abort()
+        raise click.Abort() from None
 
     manager = FileTemplateManager()
     components = manager.list_components(preset, type=file_type)
 
     # Find the specific component
     component = next(
-        (c for c in components if c["name"] == component_name and c["type"] == file_type),
+        (
+            c
+            for c in components
+            if c["name"] == component_name and c["type"] == file_type
+        ),
         None,
     )
 
@@ -414,7 +415,11 @@ def components_edit(file_type, component_name, preset):
     # If no known content file, just pick the first non-.toml file
     if not target_file:
         for file in comp_path.iterdir():
-            if file.is_file() and file.suffix != ".toml" and not file.name.startswith("."):
+            if (
+                file.is_file()
+                and file.suffix != ".toml"
+                and not file.name.startswith(".")
+            ):
                 target_file = file
                 break
 
@@ -426,14 +431,10 @@ def components_edit(file_type, component_name, preset):
         )
         raise click.Abort()
 
-    console.print(
-        f"[bold blue]Opening component file:[/bold blue] {target_file}\n"
-    )
+    console.print(f"[bold blue]Opening component file:[/bold blue] {target_file}\n")
 
     if component["source"] == "preset":
-        console.print(
-            "[yellow]Warning: Editing preset-specific component[/yellow]\n"
-        )
+        console.print("[yellow]Warning: Editing preset-specific component[/yellow]\n")
 
     console.print(f"[dim]Opening {target_file} in editor...[/dim]")
 
