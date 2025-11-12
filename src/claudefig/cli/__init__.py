@@ -11,10 +11,11 @@ console = Console()
 
 # Import main group
 # Import command groups
-from .commands import config, files, presets  # noqa: E402
+from .commands import components, config, files, presets  # noqa: E402
 from .main import main  # noqa: E402
 
 # Register command groups with main
+main.add_command(components.components_group)
 main.add_command(config.config_group)
 main.add_command(files.files_group)
 main.add_command(presets.presets_group)
