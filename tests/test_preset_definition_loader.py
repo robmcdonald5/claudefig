@@ -712,9 +712,7 @@ class TestPresetDefinitionLoaderEdgeCases:
         assert result1 is result2 is result3
 
     def test_load_preset_name_case_sensitivity(self, library_presets_dir):
-        """Test that preset names are case-sensitive on case-sensitive filesystems."""
-        import platform
-
+        """Test that preset names follow filesystem case sensitivity."""
         # Create "Test" preset
         (library_presets_dir / "Test").mkdir()
         (library_presets_dir / "Test" / "claudefig.toml").write_text(
@@ -727,13 +725,17 @@ class TestPresetDefinitionLoaderEdgeCases:
         result = loader.load_preset("Test")
         assert result.name == "Test"
 
-        # On Windows, filesystem is case-insensitive so "test" will also work
-        # On Unix-like systems, it should fail
-        if platform.system() == "Windows":
-            # On Windows, "test" will also find "Test"
+        # Test filesystem case sensitivity by actually checking if file exists
+        # Some filesystems are case-insensitive (Windows, macOS default)
+        # Some are case-sensitive (Linux, macOS with APFS case-sensitive)
+        test_lower_path = library_presets_dir / "test"
+        is_case_insensitive = test_lower_path.exists()  # Will exist if case-insensitive
+
+        if is_case_insensitive:
+            # Filesystem is case-insensitive: "test" will find "Test"
             result2 = loader.load_preset("test")
             assert result2.name == "Test"
         else:
-            # On Unix, "test" should not find "Test"
+            # Filesystem is case-sensitive: "test" should not find "Test"
             with pytest.raises(FileNotFoundError):
                 loader.load_preset("test")
