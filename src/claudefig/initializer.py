@@ -241,6 +241,9 @@ class Initializer:
                     "\n[yellow]Initialization completed with warnings[/yellow]"
                 )
 
+            # Auto-setup MCP servers if any MCP instances were enabled
+            self._auto_setup_mcp_servers(repo_path, enabled_instances)
+
             # Clear tracking on success
             self._clear_tracking()
 
@@ -580,9 +583,13 @@ class Initializer:
             return False
 
     def setup_mcp_servers(self, repo_path: Path) -> bool:
-        """Set up MCP servers from .claude/mcp/ directory.
+        """Set up MCP servers from .mcp.json or .claude/mcp/ directory.
 
-        Runs 'claude mcp add-json' for each JSON file in .claude/mcp/
+        Supports two configuration patterns:
+        1. Standard .mcp.json file in project root (checked first)
+        2. Multiple JSON files in .claude/mcp/ directory
+
+        Runs 'claude mcp add-json' for each server configuration found.
 
         Args:
             repo_path: Path to repository
@@ -593,22 +600,33 @@ class Initializer:
         import json
         import subprocess
 
+        json_files = []
+        config_sources = []
+
+        # Check for standard .mcp.json first
+        mcp_json = repo_path / ".mcp.json"
+        if mcp_json.exists():
+            json_files.append(mcp_json)
+            config_sources.append(".mcp.json (standard)")
+
+        # Check for .claude/mcp/*.json files
         mcp_dir = repo_path / ".claude" / "mcp"
-
-        if not mcp_dir.exists():
-            console.print("[yellow]![/yellow] No .claude/mcp/ directory found")
-            return False
-
-        # Find all JSON files
-        json_files = list(mcp_dir.glob("*.json"))
+        if mcp_dir.exists():
+            dir_json_files = list(mcp_dir.glob("*.json"))
+            json_files.extend(dir_json_files)
+            if dir_json_files:
+                config_sources.append(f".claude/mcp/ ({len(dir_json_files)} files)")
 
         if not json_files:
             console.print(
-                "[yellow]![/yellow] No MCP config files found in .claude/mcp/"
+                "[yellow]![/yellow] No MCP configuration found. "
+                "Expected .mcp.json or .claude/mcp/*.json"
             )
             return False
 
         console.print("\n[bold blue]Setting up MCP servers...[/bold blue]")
+        if config_sources:
+            console.print(f"[dim]Sources:[/dim] {', '.join(config_sources)}")
 
         success_count = 0
         for json_file in json_files:
@@ -622,8 +640,11 @@ class Initializer:
                 with open(json_file, encoding="utf-8") as f:
                     json_content = f.read().strip()
 
-                # Validate JSON
-                json.loads(json_content)
+                # Parse and validate JSON
+                config = json.loads(json_content)
+
+                # Validate transport type if present
+                self._validate_mcp_transport(config, json_file.name)
 
                 # Build claude mcp add-json command
                 cmd = ["claude", "mcp", "add-json", server_name, json_content]
@@ -645,6 +666,8 @@ class Initializer:
 
             except json.JSONDecodeError as e:
                 console.print(f"[red]x[/red] Invalid JSON in {json_file.name}: {e}")
+            except ValueError as e:
+                console.print(f"[red]x[/red] Configuration error in {json_file.name}: {e}")
             except subprocess.TimeoutExpired:
                 console.print(f"[red]x[/red] Timeout adding {server_name}")
             except FileNotFoundError:
@@ -663,6 +686,130 @@ class Initializer:
         else:
             console.print("\n[yellow]No MCP servers were added[/yellow]")
             return False
+
+    def _validate_mcp_transport(self, config: dict, filename: str) -> None:
+        """Validate MCP transport configuration.
+
+        Args:
+            config: Parsed JSON configuration
+            filename: Name of config file (for error messages)
+
+        Raises:
+            ValueError: If transport configuration is invalid
+        """
+        # If no transport type specified, assume STDIO (backward compatibility)
+        if "type" not in config and "transport" not in config:
+            return
+
+        transport_type = config.get("type") or config.get("transport", {}).get("type")
+
+        if not transport_type:
+            return
+
+        # Validate transport type
+        valid_transports = ["stdio", "http", "sse"]
+        if transport_type not in valid_transports:
+            raise ValueError(
+                f"Invalid transport type '{transport_type}'. "
+                f"Must be one of: {', '.join(valid_transports)}"
+            )
+
+        # Transport-specific validation
+        if transport_type == "http":
+            if "url" not in config:
+                raise ValueError(
+                    "HTTP transport requires 'url' field. "
+                    "Example: \"url\": \"${MCP_SERVICE_URL}\""
+                )
+
+            # Warn about common security issues
+            url = config.get("url", "")
+            if url.startswith("http://") and not url.startswith("http://localhost"):
+                console.print(
+                    f"[yellow]Warning:[/yellow] {filename} uses HTTP (not HTTPS). "
+                    "Consider using HTTPS for production."
+                )
+
+            # Check for hardcoded credentials (common mistake)
+            headers = config.get("headers", {})
+            for key, value in headers.items():
+                if isinstance(value, str) and not value.startswith("${"):
+                    if any(
+                        sensitive in key.lower()
+                        for sensitive in ["auth", "token", "key", "secret"]
+                    ):
+                        console.print(
+                            f"[yellow]Warning:[/yellow] {filename} may contain hardcoded "
+                            f"credentials in header '{key}'. Use environment variables: "
+                            "\"${VAR_NAME}\""
+                        )
+
+        elif transport_type == "stdio":
+            if "command" not in config:
+                raise ValueError(
+                    "STDIO transport requires 'command' field. "
+                    "Example: \"command\": \"npx\""
+                )
+
+        elif transport_type == "sse":
+            console.print(
+                f"[yellow]Info:[/yellow] SSE transport is deprecated. "
+                "Consider using HTTP transport instead."
+            )
+
+    def _auto_setup_mcp_servers(
+        self, repo_path: Path, enabled_instances: list
+    ) -> None:
+        """Automatically setup MCP servers if MCP instances are enabled.
+
+        Called during initialization to register MCP servers with Claude Code.
+        Non-fatal - warnings are shown but initialization continues on failure.
+
+        Args:
+            repo_path: Path to repository
+            enabled_instances: List of enabled FileInstance objects
+        """
+        from .models import FileType
+
+        # Check if any MCP instances are enabled
+        has_mcp = any(
+            instance.type == FileType.MCP for instance in enabled_instances
+        )
+
+        if not has_mcp:
+            return
+
+        # Check if MCP configs exist
+        mcp_json = repo_path / ".mcp.json"
+        mcp_dir = repo_path / ".claude" / "mcp"
+
+        has_configs = mcp_json.exists() or (
+            mcp_dir.exists() and list(mcp_dir.glob("*.json"))
+        )
+
+        if not has_configs:
+            # No configs yet - user will add them later
+            return
+
+        # Attempt to setup MCP servers
+        console.print("\n[bold blue]Setting up MCP servers...[/bold blue]")
+
+        try:
+            success = self.setup_mcp_servers(repo_path)
+            if not success:
+                console.print(
+                    "[yellow]Note:[/yellow] MCP servers not registered. "
+                    "You can run 'claudefig setup-mcp' later to register them."
+                )
+        except Exception as e:
+            # Non-fatal - just warn the user
+            console.print(
+                f"[yellow]Warning:[/yellow] Could not auto-setup MCP servers: {e}"
+            )
+            console.print(
+                "[dim]You can manually setup MCP servers by running:[/dim] "
+                "claudefig setup-mcp"
+            )
 
     def _copy_claude_template_file(
         self, template_name: str, filename: str, dest_dir: Path, force: bool
