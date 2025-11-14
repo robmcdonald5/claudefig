@@ -57,7 +57,7 @@ enabled = false
 
 [[components]]
 type = "mcp"
-name = "default"
+name = "stdio-local"
 path = ".claude/mcp/"
 enabled = false
 

@@ -1,0 +1,11 @@
+{
+  "type": "http",
+  "url": "${MCP_API_URL}",
+  "headers": {
+    "Authorization": "Bearer ${MCP_API_KEY}",
+    "Content-Type": "application/json"
+  },
+  "transport": {
+    "type": "http"
+  }
+}
