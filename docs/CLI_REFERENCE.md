@@ -247,7 +247,9 @@ Validated 5 enabled instance(s)
 
 ### `claudefig setup-mcp`
 
-Set up MCP servers from `.claude/mcp/` directory.
+Set up MCP servers from configuration files.
+
+**Note:** MCP servers are **automatically registered during `claudefig init`**. This command is mainly for manual re-registration or troubleshooting.
 
 **Usage:**
 
@@ -269,18 +271,64 @@ claudefig setup-mcp
 
 # Setup in specific directory
 claudefig setup-mcp --path /path/to/repo
+
+# Re-register after editing MCP configs
+# Edit .claude/mcp/github.json
+claudefig setup-mcp
 ```
+
+**Configuration Patterns:**
+
+Supports two configuration patterns (checks both):
+
+1. **Standard `.mcp.json`** (project root)
+   ```json
+   {
+     "command": "npx",
+     "args": ["-y", "@modelcontextprotocol/server-github"],
+     "env": {
+       "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+     }
+   }
+   ```
+
+2. **Multiple files in `.claude/mcp/`** (claudefig extended)
+   ```
+   .claude/mcp/
+   ├── github.json
+   ├── notion.json
+   └── custom-api.json
+   ```
 
 **What it does:**
 
-1. Scans `.claude/mcp/` for JSON files
-2. Runs `claude mcp add-json` for each file
-3. Configures MCP servers with Claude Code
+1. Finds configuration files (`.mcp.json` or `.claude/mcp/*.json`)
+2. Validates JSON syntax
+3. Validates transport type (stdio, http, sse)
+4. Checks for security issues:
+   - Warns about HTTP (non-HTTPS) usage
+   - Detects hardcoded credentials
+   - Validates required fields per transport type
+5. Runs `claude mcp add-json <name> <config>` for each server
+6. Reports success/failure for each registration
+
+**Transport Types:**
+
+- **STDIO**: Local command-line tools (npm packages)
+- **HTTP**: Remote cloud services (OAuth 2.1 or API keys)
+- **SSE**: Server-Sent Events (deprecated)
 
 **Requirements:**
 
 - Claude Code CLI must be installed
 - `claude` command must be in PATH
+- Valid MCP configuration file(s)
+
+**See Also:**
+
+- `docs/ADDING_NEW_COMPONENTS.md` - MCP configuration guide
+- `docs/MCP_SECURITY_GUIDE.md` - Security best practices
+- `src/presets/default/components/mcp/` - Template examples
 
 ## Config Commands
 
@@ -586,7 +634,7 @@ claudefig files add FILE_TYPE [OPTIONS]
 - `hooks` - Hook scripts
 - `output_styles` - Output styles
 - `statusline` - Status line script
-- `mcp` - MCP server configs
+- `mcp` - MCP server configs (3 variants: stdio-local, http-oauth, http-apikey)
 - `plugins` - Claude Code Plugins
 - `skills` - Claude Code Skills
 
@@ -1527,21 +1575,46 @@ claudefig init        # Generate files
 
 ### Example 9: MCP Server Setup
 
-Configure MCP servers:
+Configure MCP servers with automatic registration:
 
 ```bash
-# Add MCP preset
-claudefig files add mcp --preset default
+# Option A: Local development tools (STDIO)
+claudefig files add mcp --preset stdio-local
+claudefig init  # Automatically registers MCP servers!
 
-# Generate MCP config files
-claudefig init --force
+# Edit .claude/mcp/config.json
+# Set GITHUB_TOKEN environment variable
+export GITHUB_TOKEN="your_token"
 
-# Edit MCP configs in .claude/mcp/
-# (Add your API keys, configure servers, etc.)
+# Option B: Cloud service with OAuth
+claudefig files add mcp --preset http-oauth
+claudefig init
 
-# Set up MCP servers with Claude Code
+# Edit .claude/mcp/config.json with OAuth token
+# export MCP_ACCESS_TOKEN="your_oauth_token"
+# export MCP_SERVICE_URL="https://api.service.com/mcp"
+
+# Option C: Cloud service with API key
+claudefig files add mcp --preset http-apikey
+claudefig init
+
+# Edit .claude/mcp/config.json
+# export MCP_API_KEY="your_api_key"
+# export MCP_API_URL="https://api.service.com/mcp"
+
+# Manual re-registration (optional, if you edit configs later)
 claudefig setup-mcp
+
+# Verify MCP servers are registered
+claude mcp list
 ```
+
+**Available MCP Presets:**
+- `mcp:stdio-local` - Local npm packages and command-line tools
+- `mcp:http-oauth` - Cloud services with OAuth 2.1 authentication
+- `mcp:http-apikey` - Cloud services with API key authentication
+
+**See:** `docs/MCP_SECURITY_GUIDE.md` for security best practices
 
 ### Example 10: Working with Multiple Projects
 
@@ -1737,9 +1810,3 @@ claudefig presets list --type claude_md
 # Use a valid preset ID
 claudefig files add claude_md --preset default
 ```
-
-## See Also
-
-- [Getting Started with Presets](PRESETS_GUIDE.md)
-- [Customizing Your Configuration](CONFIG_GUIDE.md)
-- [README](../README.md)
