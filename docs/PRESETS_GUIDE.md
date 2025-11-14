@@ -1,5 +1,45 @@
 # Getting Started with Presets
 
+## Table of Contents
+
+- [What Are Presets?](#what-are-presets)
+- [Understanding the Preset System](#understanding-the-preset-system)
+  - [Preset ID Format](#preset-id-format)
+  - [Preset Sources](#preset-sources)
+- [Using Built-in Presets](#using-built-in-presets)
+  - [Listing Available Presets](#listing-available-presets)
+  - [Viewing Preset Details](#viewing-preset-details)
+  - [Applying Presets](#applying-presets)
+- [Built-in Presets Reference](#built-in-presets-reference)
+  - [CLAUDE.md Presets](#claudemd-presets)
+  - [Settings Presets](#settings-presets)
+  - [Directory-based Presets](#directory-based-presets)
+  - [Special Presets](#special-presets)
+- [Creating Custom Presets](#creating-custom-presets)
+  - [User Presets (Global)](#user-presets-global)
+  - [Project Presets (Team-Shared)](#project-presets-team-shared)
+- [Preset Variables](#preset-variables)
+  - [Defining Variables](#defining-variables)
+  - [Using Variables in Templates](#using-variables-in-templates)
+  - [Overriding Variables](#overriding-variables)
+- [Preset Inheritance](#preset-inheritance)
+- [Advanced Preset Techniques](#advanced-preset-techniques)
+  - [Conditional Content](#conditional-content)
+  - [Multi-File Presets](#multi-file-presets)
+  - [Preset Tags](#preset-tags)
+- [Preset Best Practices](#preset-best-practices)
+  - [1. Use Descriptive Names](#1-use-descriptive-names)
+  - [2. Provide Clear Descriptions](#2-provide-clear-descriptions)
+  - [3. Set Sensible Default Variables](#3-set-sensible-default-variables)
+  - [4. Document Variables](#4-document-variables)
+  - [5. Version Your Presets](#5-version-your-presets)
+  - [6. Share User Presets](#6-share-user-presets)
+- [Troubleshooting](#troubleshooting)
+  - [Preset Not Found](#preset-not-found)
+  - [Invalid Preset Format](#invalid-preset-format)
+  - [Variables Not Substituting](#variables-not-substituting)
+  - [Preset Inheritance Not Working](#preset-inheritance-not-working)
+
 ## What Are Presets?
 
 **Presets** are reusable templates for Claude Code configuration files. Instead of manually creating CLAUDE.md files, settings, commands, or other configurations from scratch, you can choose from pre-built templates or create your own.
@@ -386,13 +426,13 @@ claudefig presets list --tag python --tag backend
 
 ### 1. Use Descriptive Names
 
-❌ Bad:
+Bad:
 ```
 claude_md:template1
 claude_md:test
 ```
 
-✅ Good:
+Good:
 ```
 claude_md:python-backend-api
 claude_md:react-frontend-spa
@@ -503,9 +543,3 @@ git push -u origin main
 1. Verify parent preset exists: `claudefig presets show parent-id`
 2. Check `extends` field uses full preset ID (e.g., `claude_md:parent`)
 3. Ensure no circular inheritance (A extends B extends A)
-
-## Next Steps
-
-- Learn about [File Instances](CONFIG_GUIDE.md#file-instances)
-- Explore [CLI Commands](CLI_REFERENCE.md)
-- Read about [Configuration Management](CONFIG_GUIDE.md)

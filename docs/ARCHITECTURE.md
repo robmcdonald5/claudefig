@@ -1,6 +1,36 @@
-## Architecture
+# Architecture
 
-### System Overview
+## Table of Contents
+
+- [System Overview](#system-overview)
+- [Core Components](#core-components)
+  - [1. Preset System (`preset_manager.py`)](#1-preset-system-preset_managerpy)
+  - [2. File Instance System (`file_instance_manager.py`, `models.py`)](#2-file-instance-system-file_instance_managerpy-modelspy)
+  - [3. Configuration System (`config.py`)](#3-configuration-system-configpy)
+  - [4. TUI Interface (`tui/`)](#4-tui-interface-tui)
+  - [5. CLI Interface (`cli.py`)](#5-cli-interface-clipy)
+  - [6. Initializer (`initializer.py`)](#6-initializer-initializerpy)
+  - [File Type Enum vs Strings?](#file-type-enum-vs-strings)
+  - [Validation Strategy](#validation-strategy)
+- [Data Flow](#data-flow)
+- [State Synchronization Pattern (CRITICAL)](#state-synchronization-pattern-critical)
+  - [The Correct Pattern](#the-correct-pattern)
+  - [Common Operations](#common-operations)
+  - [Why This Pattern?](#why-this-pattern)
+  - [Antipatterns (DO NOT DO THIS)](#antipatterns-do-not-do-this)
+  - [Implementation Guidelines](#implementation-guidelines)
+  - [Real-World Examples](#real-world-examples)
+- [TUI Architecture Patterns and Design Philosophy](#tui-architecture-patterns-and-design-philosophy)
+  - [Base Classes and Inheritance](#base-classes-and-inheritance)
+  - [Screen Lifecycle and Refresh Pattern](#screen-lifecycle-and-refresh-pattern)
+  - [Widget Composition vs Inheritance](#widget-composition-vs-inheritance)
+  - [Navigation Architecture](#navigation-architecture)
+  - [State Management Strategy](#state-management-strategy)
+  - [Code Organization Principles](#code-organization-principles)
+- [Summary](#summary)
+  - [Design Philosophy](#design-philosophy)
+
+## System Overview
 
 claudefig uses a **preset-based architecture** with **file instances** as the core abstraction:
 
