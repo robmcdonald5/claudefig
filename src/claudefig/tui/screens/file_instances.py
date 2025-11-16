@@ -100,8 +100,8 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                 self.action_focus_next()
             event.stop()
 
-    def compose(self) -> ComposeResult:
-        """Compose the file instances screen."""
+    def compose_screen_content(self) -> ComposeResult:
+        """Compose the file instances screen content."""
         # can_focus=False prevents the container from being in the focus chain
         # while still allowing it to be scrolled programmatically
         with VerticalScroll(id="file-instances-screen", can_focus=False):

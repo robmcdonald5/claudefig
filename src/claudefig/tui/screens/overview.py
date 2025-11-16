@@ -53,8 +53,8 @@ class OverviewScreen(BaseScreen):
         self.instances_dict = instances_dict
         self.preset_repo = TomlPresetRepository()
 
-    def compose(self) -> ComposeResult:
-        """Compose the overview screen."""
+    def compose_screen_content(self) -> ComposeResult:
+        """Compose the overview screen content."""
         # can_focus=False prevents the container from being in the focus chain
         # while still allowing it to be scrolled programmatically
         with VerticalScroll(id="overview-screen", can_focus=False):

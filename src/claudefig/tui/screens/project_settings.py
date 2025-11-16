@@ -39,8 +39,8 @@ class ProjectSettingsScreen(BaseScreen):
         self.config_repo = config_repo
         self.instances_dict = instances_dict
 
-    def compose(self) -> ComposeResult:
-        """Compose the initialization settings screen."""
+    def compose_screen_content(self) -> ComposeResult:
+        """Compose the initialization settings screen content."""
         # can_focus=False prevents the container from being in the focus chain
         # while still allowing it to be scrolled programmatically
         with VerticalScroll(id="project-settings-screen", can_focus=False):

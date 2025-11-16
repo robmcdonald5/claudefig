@@ -4,7 +4,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Label
+from textual.widgets import Footer, Label
 
 from claudefig.tui.base.mixins import ScrollNavigationMixin
 
@@ -56,7 +56,7 @@ class BaseModalScreen(Screen, ScrollNavigationMixin):
     ]
 
     def compose(self) -> ComposeResult:
-        """Compose standard modal layout.
+        """Compose standard modal layout with footer for dynamic keybinding display.
 
         Subclasses should NOT override this method. Instead, override:
         - compose_title()
@@ -76,6 +76,9 @@ class BaseModalScreen(Screen, ScrollNavigationMixin):
             # Action buttons
             with Horizontal(classes="dialog-actions"):
                 yield from self.compose_actions()
+
+        # Footer displays modal-specific keybindings (Cancel, Navigate, etc.)
+        yield Footer()
 
     def compose_title(self) -> str:
         """Return the modal title text.
