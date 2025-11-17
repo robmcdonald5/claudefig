@@ -735,9 +735,13 @@ class Initializer:
             # Check for hardcoded credentials (common mistake)
             headers = config.get("headers", {})
             for key, value in headers.items():
-                if isinstance(value, str) and not value.startswith("${") and any(
-                    sensitive in key.lower()
-                    for sensitive in ["auth", "token", "key", "secret"]
+                if (
+                    isinstance(value, str)
+                    and not value.startswith("${")
+                    and any(
+                        sensitive in key.lower()
+                        for sensitive in ["auth", "token", "key", "secret"]
+                    )
                 ):
                     console.print(
                         f"[yellow]Warning:[/yellow] {filename} may contain hardcoded "
