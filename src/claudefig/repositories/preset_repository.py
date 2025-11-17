@@ -335,6 +335,16 @@ class TomlPresetRepository(AbstractPresetRepository):
         from importlib.resources import files
 
         try:
+            # Backward compatibility aliases
+            alias_map = {
+                (FileType.MCP, "default"): "stdio-local",
+            }
+
+            # Check if this is an aliased component
+            alias_key = (file_type, component_name)
+            if alias_key in alias_map:
+                component_name = alias_map[alias_key]
+
             # Path: src/presets/default/components/{file_type}/{component_name}/{file_name}
             builtin_source = files("presets").joinpath("default")
 
@@ -583,14 +593,39 @@ class TomlPresetRepository(AbstractPresetRepository):
                 source=PresetSource.BUILT_IN,
                 tags=["standard"],
             ),
-            # MCP preset
+            # MCP presets
+            Preset(
+                id="mcp:stdio-local",
+                type=FileType.MCP,
+                name="STDIO Local",
+                description="Local MCP servers (npm packages, command-line tools)",
+                source=PresetSource.BUILT_IN,
+                tags=["stdio", "local", "development"],
+            ),
+            Preset(
+                id="mcp:http-oauth",
+                type=FileType.MCP,
+                name="HTTP OAuth",
+                description="Cloud MCP servers with OAuth 2.1 authentication",
+                source=PresetSource.BUILT_IN,
+                tags=["http", "oauth", "cloud", "production"],
+            ),
+            Preset(
+                id="mcp:http-apikey",
+                type=FileType.MCP,
+                name="HTTP API Key",
+                description="Cloud MCP servers with API key authentication",
+                source=PresetSource.BUILT_IN,
+                tags=["http", "apikey", "cloud"],
+            ),
+            # Backward compatibility: mcp:default -> stdio-local
             Preset(
                 id="mcp:default",
                 type=FileType.MCP,
-                name="Default",
-                description="Standard MCP server examples",
+                name="Default (STDIO Local)",
+                description="Alias for stdio-local (backward compatibility)",
                 source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
+                tags=["stdio", "local", "development", "deprecated"],
             ),
             # Plugins preset
             Preset(

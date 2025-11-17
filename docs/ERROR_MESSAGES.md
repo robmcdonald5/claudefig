@@ -2,6 +2,32 @@
 
 This document describes the standardized error messaging system used throughout claudefig.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Core Principles](#core-principles)
+- [Module Structure](#module-structure)
+  - [ErrorMessages Class](#errormessages-class)
+  - [FormattedMessages Class](#formattedmessages-class)
+  - [Convenience Functions](#convenience-functions)
+- [Usage Examples](#usage-examples)
+  - [CLI Usage](#cli-usage)
+  - [TUI Usage](#tui-usage)
+- [Standardized Terminology](#standardized-terminology)
+- [Color Scheme](#color-scheme)
+- [Message Patterns](#message-patterns)
+  - [Not Found Pattern](#not-found-pattern)
+  - [Invalid Type Pattern](#invalid-type-pattern)
+  - [Operation Failed Pattern](#operation-failed-pattern)
+  - [Empty Value Pattern](#empty-value-pattern)
+  - [Validation Failed Pattern](#validation-failed-pattern)
+- [Migration Guide](#migration-guide)
+  - [Step 1: Add Import](#step-1-add-import)
+  - [Step 2: Replace Error Messages](#step-2-replace-error-messages)
+  - [Step 3: Use Consistent Terminology](#step-3-use-consistent-terminology)
+- [Testing](#testing)
+- [Future Enhancements](#future-enhancements)
+
 ## Overview
 
 All error messages in claudefig use the centralized `ErrorMessages` class from `claudefig.error_messages` to ensure consistent formatting, terminology, and color schemes across both CLI and TUI interfaces.

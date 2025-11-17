@@ -1,5 +1,43 @@
 # Customizing Your Configuration
 
+## Table of Contents
+
+- [Configuration File Structure](#configuration-file-structure)
+  - [Location](#location)
+  - [Basic Structure](#basic-structure)
+  - [Configuration Sections](#configuration-sections)
+- [File Instances](#file-instances)
+  - [Anatomy of a File Instance](#anatomy-of-a-file-instance)
+  - [File Types](#file-types)
+  - [Multiple Instances](#multiple-instances)
+  - [Enabling and Disabling Instances](#enabling-and-disabling-instances)
+  - [Variable Overrides](#variable-overrides)
+- [Configuration Management](#configuration-management)
+  - [Viewing Configuration](#viewing-configuration)
+  - [Modifying Configuration](#modifying-configuration)
+  - [Exporting Configuration](#exporting-configuration)
+  - [Importing Configuration](#importing-configuration)
+- [Workflow Patterns](#workflow-patterns)
+  - [Pattern 1: Minimal Setup](#pattern-1-minimal-setup)
+  - [Pattern 2: Full-Featured Setup](#pattern-2-full-featured-setup)
+  - [Pattern 3: Multi-Context Setup](#pattern-3-multi-context-setup)
+  - [Pattern 4: Staged Rollout](#pattern-4-staged-rollout)
+- [Advanced Configuration](#advanced-configuration)
+  - [Custom Preset Directories](#custom-preset-directories)
+  - [Template Variables Everywhere](#template-variables-everywhere)
+  - [Conditional Generation](#conditional-generation)
+  - [Path Templates](#path-templates)
+  - [Hook Integration](#hook-integration)
+- [Validation and Error Handling](#validation-and-error-handling)
+  - [Validation Levels](#validation-levels)
+  - [Common Validation Errors](#common-validation-errors)
+  - [Recovery from Corruption](#recovery-from-corruption)
+- [Troubleshooting](#troubleshooting)
+  - [Config Not Found](#config-not-found)
+  - [Changes Not Applying](#changes-not-applying)
+  - [Invalid TOML Syntax](#invalid-toml-syntax)
+  - [Preset Variables Not Working](#preset-variables-not-working)
+
 ## Configuration File Structure
 
 claudefig stores its configuration in `claudefig.toml` using the TOML format. This file defines which files to generate and how to generate them.
@@ -532,163 +570,6 @@ claudefig init --reset
 # Manually re-add instances or restore from backup
 ```
 
-## Migration from v1.x
-
-If you're upgrading from claudefig v1.x (feature flag system):
-
-### Old Config (v1.x)
-
-```toml
-[claude]
-create_claude_md = true
-create_settings = true
-create_commands = true
-create_hooks = false
-```
-
-### New Config (v2.0)
-
-```toml
-[[files]]
-id = "claude_md-default"
-type = "claude_md"
-preset = "claude_md:default"
-path = "CLAUDE.md"
-enabled = true
-
-[[files]]
-id = "settings_json-default"
-type = "settings_json"
-preset = "settings_json:default"
-path = ".claude/settings.json"
-enabled = true
-
-[[files]]
-id = "commands-default"
-type = "commands"
-preset = "commands:default"
-path = ".claude/commands/"
-enabled = true
-```
-
-### Migration Steps
-
-1. **Backup old config:**
-
-```bash
-cp claudefig.toml claudefig.toml.v1.backup
-```
-
-2. **Run migration tool:**
-
-```bash
-claudefig migrate v1-to-v2
-```
-
-3. **Review changes:**
-
-```bash
-claudefig config show
-```
-
-4. **Test generation:**
-
-```bash
-claudefig init --dry-run
-```
-
-5. **Apply changes:**
-
-```bash
-claudefig init --force
-```
-
-### Feature Flag to File Instance Mapping
-
-| Old Flag | New File Instance |
-|----------|-------------------|
-| `claude.create_claude_md` | `type = "claude_md"` |
-| `claude.create_settings` | `type = "settings_json"` |
-| `claude.create_settings_local` | `type = "settings_local_json"` |
-| `claude.create_gitignore` | `type = "gitignore"` |
-| `claude.create_commands` | `type = "commands"` |
-| `claude.create_agents` | `type = "agents"` |
-| `claude.create_hooks` | `type = "hooks"` |
-| `claude.create_output_styles` | `type = "output_styles"` |
-| `claude.create_statusline` | `type = "statusline"` |
-| `claude.create_mcp` | `type = "mcp"` |
-
-## Configuration Best Practices
-
-### 1. Version Control
-
-**Do commit:**
-- `claudefig.toml` - Project configuration
-- `.claudefig/presets/` - Project-specific presets
-
-**Don't commit:**
-- `.claude/settings.local.json` - Personal settings
-- Generated files if they contain secrets
-
-### 2. Team Collaboration
-
-Share configurations with your team:
-
-```bash
-# Add to version control
-git add claudefig.toml
-git commit -m "Add claudefig configuration"
-git push
-
-# Team members pull and generate
-git pull
-claudefig init
-```
-
-### 3. Environment-Specific Configs
-
-Use different configs for different environments:
-
-```bash
-# Development
-cp claudefig.dev.toml claudefig.toml
-claudefig init
-
-# Production
-cp claudefig.prod.toml claudefig.toml
-claudefig init
-```
-
-### 4. Documentation
-
-Document your configuration choices:
-
-```toml
-# We use multiple CLAUDE.md files to separate concerns:
-# - CLAUDE.md: Overall project context
-# - backend/CLAUDE.md: Backend API specifics
-# - frontend/CLAUDE.md: React app specifics
-
-[[files]]
-id = "claude_md-main"
-# ... rest of config
-```
-
-### 5. Regular Maintenance
-
-Periodically review and clean up:
-
-```bash
-# List all instances
-claudefig files list
-
-# Remove unused instances
-claudefig files remove old-instance-id
-
-# Update presets to latest versions
-claudefig presets update
-```
-
 ## Troubleshooting
 
 ### Config Not Found
@@ -741,9 +622,3 @@ variable_name = "value"
 # Ensure template uses correct syntax
 # In template: {variable_name}
 ```
-
-## Next Steps
-
-- Learn about [Presets](PRESETS_GUIDE.md)
-- Explore [CLI Commands](CLI_REFERENCE.md)
-- Read [Contributing Guidelines](../CONTRIBUTING.md)

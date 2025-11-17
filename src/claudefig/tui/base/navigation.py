@@ -32,9 +32,11 @@ Usage:
         pass
 """
 
+from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
 from textual.screen import Screen
+from textual.widgets import Footer
 
 from claudefig.tui.base.mixins import BackButtonMixin, ScrollNavigationMixin
 
@@ -169,6 +171,29 @@ class BaseScreen(Screen, BackButtonMixin, ScrollNavigationMixin):
         Binding("left", "focus_left", "Navigate Left", show=True),
         Binding("right", "focus_right", "Navigate Right", show=True),
     ]
+
+    def compose(self) -> ComposeResult:
+        """Compose screen with footer for dynamic keybinding display.
+
+        Child classes should override compose_screen_content() instead of compose()
+        to ensure the footer is always included and displays screen-specific bindings.
+        """
+        yield from self.compose_screen_content()
+        yield Footer()
+
+    def compose_screen_content(self) -> ComposeResult:
+        """Compose all screen widgets.
+
+        Override this method in child classes instead of compose() to ensure
+        the footer displays properly. This allows the base class to handle
+        footer composition while child classes define the complete screen layout.
+
+        Yields:
+            All widgets and containers that make up the screen.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement compose_screen_content()"
+        )
 
     def action_pop_screen(self) -> None:
         """Pop this screen from the stack (go back).

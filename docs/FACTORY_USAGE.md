@@ -1,5 +1,23 @@
 # Test Factory Usage Guide
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Available Factories](#available-factories)
+  - [FileInstanceFactory](#fileinstancefactory)
+  - [PresetFactory](#presetfactory)
+  - [PresetDefinitionFactory](#presetdefinitionfactory)
+- [Common Patterns](#common-patterns)
+  - [Pattern 1: Simple Object Creation](#pattern-1-simple-object-creation)
+  - [Pattern 2: Creating Dictionaries of Instances](#pattern-2-creating-dictionaries-of-instances)
+  - [Pattern 3: Type Annotations for Dictionaries](#pattern-3-type-annotations-for-dictionaries)
+  - [Pattern 4: Testing with Inheritance](#pattern-4-testing-with-inheritance)
+  - [Pattern 5: Removing Default Values](#pattern-5-removing-default-values)
+  - [Pattern 6: When NOT to Use Factories](#pattern-6-when-not-to-use-factories)
+- [Pytest Fixtures](#pytest-fixtures)
+- [Type Checking Notes](#type-checking-notes)
+- [Reference](#reference)
+
 ## Overview
 
 This project uses `factory-boy` and `pytest-factoryboy` to streamline test data creation. Factories provide sensible defaults while allowing easy customization, reducing boilerplate and improving test maintainability.

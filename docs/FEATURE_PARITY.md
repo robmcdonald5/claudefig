@@ -2,7 +2,31 @@
 
 **Purpose:** Track feature parity between TUI and CLI interfaces as required by CLAUDE.md.
 
-**Last Updated:** 2025-11-07
+**Last Updated:** 2025-11-14
+
+## Table of Contents
+
+- [Parity Requirement](#parity-requirement)
+- [Feature Categories](#feature-categories)
+  - [1. Project Initialization](#1-project-initialization)
+  - [2. File Instance Management](#2-file-instance-management)
+  - [3. Preset Management](#3-preset-management)
+  - [4. Template Management](#4-template-management)
+  - [5. Configuration Management](#5-configuration-management)
+  - [6. Validation & Overview](#6-validation--overview)
+  - [7. MCP Management](#7-mcp-management)
+- [Summary](#summary)
+  - [Overall Parity Status](#overall-parity-status-incomplete)
+  - [Critical Gaps](#critical-gaps)
+- [Recommendations](#recommendations)
+  - [Phase 1: Add Template Management to TUI](#phase-1-add-template-management-to-tui-high-priority)
+  - [Phase 2: Add Preset CRUD to TUI](#phase-2-add-preset-crud-to-tui-high-priority)
+  - [Phase 3: Add Reordering to CLI](#phase-3-add-reordering-to-cli-medium-priority)
+  - [Phase 4: Add File Editing to CLI](#phase-4-add-file-editing-to-cli-medium-priority)
+  - [Total Estimated Effort to Achieve Full Parity](#total-estimated-effort-to-achieve-full-parity)
+- [Decision Log](#decision-log)
+  - [2025-11-14: MCP Auto-Setup Implementation](#2025-11-14-mcp-auto-setup-implementation)
+  - [2025-01-30: Initial Parity Assessment](#2025-01-30-initial-parity-assessment)
 
 ## Parity Requirement
 
@@ -89,6 +113,26 @@ Per CLAUDE.md line 36-37:
 
 **Status:** ⚠️ **Partial Parity** - TUI has overview features, CLI has validation
 
+### 7. MCP Management
+
+| Feature | TUI | CLI | Notes |
+|---------|-----|-----|-------|
+| Add MCP file instance | ✓ (File Instances Screen) | ✓ (`files add --type mcp`) | Full parity |
+| Select MCP preset variant | ✓ (stdio-local/http-oauth/http-apikey) | ✓ (`--preset mcp:*`) | Full parity |
+| Auto-setup MCP on initialization | ✓ (automatic) | ✓ (automatic) | Full parity (v1.1.0+) |
+| Manual MCP setup | ❌ | ✓ (`setup-mcp`) | **CLI-only** (optional - auto-setup covers most cases) |
+| Edit MCP config files | ✓ (File Instances edit) | ✓ (manual file editing) | Full parity |
+| Transport validation | ✓ (during init) | ✓ (during init/setup-mcp) | Full parity |
+| Security warnings | ✓ (during init) | ✓ (during init/setup-mcp) | Full parity |
+
+**Status:** ✅ **Near Full Parity** - Manual setup command is CLI-only but not required (auto-setup provides equivalent functionality in TUI)
+
+**Notes:**
+- As of v1.1.0, MCP servers are automatically registered during initialization in both TUI and CLI
+- The `setup-mcp` CLI command remains available for manual re-registration or troubleshooting
+- Both interfaces support all three transport types (STDIO, HTTP OAuth, HTTP API Key)
+- Transport validation and security warnings work identically in both interfaces
+
 ## Summary
 
 ### Overall Parity Status: ⚠️ INCOMPLETE
@@ -101,7 +145,10 @@ Per CLAUDE.md line 36-37:
 | Template Management | 0 | 7 | ❌ None |
 | Configuration | 0 | 2 | ⚠️ Partial |
 | Validation & Overview | 2 | 0 | ⚠️ Partial |
-| **TOTAL** | **4** | **13** | **⚠️ Incomplete** |
+| MCP Management | 0 | 1* | ✅ Near Full |
+| **TOTAL** | **4** | **14*** | **⚠️ Incomplete** |
+
+*Manual `setup-mcp` command is CLI-only but optional (auto-setup provides equivalent functionality)
 
 ### Critical Gaps
 
@@ -181,6 +228,18 @@ Estimated effort: 1-2 hours
 **17-25 hours** of development work
 
 ## Decision Log
+
+### 2025-11-14: MCP Auto-Setup Implementation
+
+- **Added**: Automatic MCP server registration during initialization (both TUI and CLI)
+- **Added**: Three MCP preset variants (stdio-local, http-oauth, http-apikey)
+- **Added**: Transport validation and security warnings
+- **Added**: Support for both `.mcp.json` and `.claude/mcp/*.json` configuration patterns
+- **Decision**: Keep `setup-mcp` as CLI-only command, but make it optional via auto-setup
+  - Auto-setup provides equivalent functionality in TUI
+  - Manual command remains available for re-registration/troubleshooting
+  - This approach achieves functional parity while respecting interface strengths
+- **Result**: MCP Management achieves near-full parity (✅)
 
 ### 2025-01-30: Initial Parity Assessment
 

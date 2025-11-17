@@ -44,8 +44,8 @@ class GeneralConfigScreen(BaseScreen):
         self.config_repo = config_repo
         self.instances_dict = instances_dict
 
-    def compose(self) -> ComposeResult:
-        """Compose the general config editor."""
+    def compose_screen_content(self) -> ComposeResult:
+        """Compose the general config editor content."""
         # can_focus=False prevents the container from being in the focus chain
         # while still allowing it to be scrolled programmatically
         with VerticalScroll(id="general-config-screen", can_focus=False):

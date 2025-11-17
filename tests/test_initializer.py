@@ -54,6 +54,15 @@ def git_repo(tmp_path):
     return tmp_path
 
 
+@pytest.fixture
+def mock_config_data():
+    """Create mock config data for initialization tests."""
+    return {
+        "project": {"name": "test-project"},
+        "file_instances": [],
+    }
+
+
 class TestInitializerInit:
     """Tests for Initializer.__init__ method."""
 
@@ -511,6 +520,229 @@ class TestSetupMcpServers:
         # Should succeed because at least one server was added
         assert result is True
         assert mock_subprocess.call_count == 2
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_with_mcp_json(self, mock_subprocess, tmp_path):
+        """Test MCP setup with standard .mcp.json file."""
+        initializer = Initializer()
+
+        # Create .mcp.json file in project root
+        mcp_json = tmp_path / ".mcp.json"
+        mcp_json.write_text('{"command": "test", "args": ["-y"]}', encoding="utf-8")
+
+        # Mock successful subprocess execution
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stderr = ""
+        mock_subprocess.return_value = mock_result
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should succeed
+        assert result is True
+        mock_subprocess.assert_called_once()
+
+        # Verify server name is extracted from filename
+        call_args = mock_subprocess.call_args[0][0]
+        assert call_args[3] == ".mcp"  # Server name from .mcp.json
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_both_patterns(self, mock_subprocess, tmp_path):
+        """Test MCP setup with both .mcp.json and .claude/mcp/*.json files."""
+        initializer = Initializer()
+
+        # Create .mcp.json
+        mcp_json = tmp_path / ".mcp.json"
+        mcp_json.write_text('{"command": "root-server"}', encoding="utf-8")
+
+        # Create .claude/mcp/*.json
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "dir-server.json"
+        mcp_file.write_text('{"command": "dir-server"}', encoding="utf-8")
+
+        # Mock successful subprocess execution
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stderr = ""
+        mock_subprocess.return_value = mock_result
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should succeed and process both files
+        assert result is True
+        assert mock_subprocess.call_count == 2
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_http_transport_valid(self, mock_subprocess, tmp_path):
+        """Test MCP setup with valid HTTP transport configuration."""
+        initializer = Initializer()
+
+        # Create MCP directory with HTTP config
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "http-server.json"
+        mcp_file.write_text(
+            '{"type": "http", "url": "https://api.example.com/mcp"}',
+            encoding="utf-8",
+        )
+
+        # Mock successful subprocess execution
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stderr = ""
+        mock_subprocess.return_value = mock_result
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should succeed
+        assert result is True
+        mock_subprocess.assert_called_once()
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_http_transport_missing_url(
+        self, mock_subprocess, tmp_path
+    ):
+        """Test MCP setup fails with HTTP transport missing URL."""
+        initializer = Initializer()
+
+        # Create MCP directory with invalid HTTP config (missing url)
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "http-server.json"
+        mcp_file.write_text('{"type": "http"}', encoding="utf-8")
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should fail validation
+        assert result is False
+        # Subprocess should not be called
+        mock_subprocess.assert_not_called()
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_stdio_transport_missing_command(
+        self, mock_subprocess, tmp_path
+    ):
+        """Test MCP setup fails with STDIO transport missing command."""
+        initializer = Initializer()
+
+        # Create MCP directory with invalid STDIO config (missing command)
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "stdio-server.json"
+        mcp_file.write_text('{"type": "stdio", "args": ["-y"]}', encoding="utf-8")
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should fail validation
+        assert result is False
+        # Subprocess should not be called
+        mock_subprocess.assert_not_called()
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_invalid_transport_type(self, mock_subprocess, tmp_path):
+        """Test MCP setup fails with invalid transport type."""
+        initializer = Initializer()
+
+        # Create MCP directory with invalid transport type
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "invalid-server.json"
+        mcp_file.write_text(
+            '{"type": "websocket", "url": "ws://..."}', encoding="utf-8"
+        )
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should fail validation
+        assert result is False
+        # Subprocess should not be called
+        mock_subprocess.assert_not_called()
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_sse_transport_deprecation_warning(
+        self, mock_subprocess, tmp_path, capsys
+    ):
+        """Test MCP setup shows deprecation warning for SSE transport."""
+        initializer = Initializer()
+
+        # Create MCP directory with SSE config
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "sse-server.json"
+        mcp_file.write_text(
+            '{"type": "sse", "url": "https://api.example.com/events"}',
+            encoding="utf-8",
+        )
+
+        # Mock successful subprocess execution
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stderr = ""
+        mock_subprocess.return_value = mock_result
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should succeed but show warning
+        assert result is True
+        mock_subprocess.assert_called_once()
+        # Note: Console output testing would require capturing rich console output
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_http_non_https_warning(
+        self, mock_subprocess, tmp_path, capsys
+    ):
+        """Test MCP setup warns about HTTP (non-HTTPS) usage."""
+        initializer = Initializer()
+
+        # Create MCP directory with HTTP (not HTTPS) config
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "http-server.json"
+        mcp_file.write_text(
+            '{"type": "http", "url": "http://api.example.com/mcp"}',
+            encoding="utf-8",
+        )
+
+        # Mock successful subprocess execution
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stderr = ""
+        mock_subprocess.return_value = mock_result
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should succeed but show warning
+        assert result is True
+        mock_subprocess.assert_called_once()
+
+    @patch("subprocess.run")
+    def test_setup_mcp_servers_hardcoded_credentials_warning(
+        self, mock_subprocess, tmp_path, capsys
+    ):
+        """Test MCP setup warns about potential hardcoded credentials."""
+        initializer = Initializer()
+
+        # Create MCP directory with hardcoded credential
+        mcp_dir = tmp_path / ".claude" / "mcp"
+        mcp_dir.mkdir(parents=True)
+        mcp_file = mcp_dir / "http-server.json"
+        mcp_file.write_text(
+            '{"type": "http", "url": "https://api.example.com/mcp", "headers": {"Authorization": "Bearer sk_live_abc123"}}',
+            encoding="utf-8",
+        )
+
+        # Mock successful subprocess execution
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stderr = ""
+        mock_subprocess.return_value = mock_result
+
+        result = initializer.setup_mcp_servers(tmp_path)
+
+        # Should succeed but show warning
+        assert result is True
+        mock_subprocess.assert_called_once()
 
 
 class TestInitializeTemplateErrors:

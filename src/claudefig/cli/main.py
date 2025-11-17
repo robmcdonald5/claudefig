@@ -240,9 +240,29 @@ def show():
     help="Repository path (default: current directory)",
 )
 def setup_mcp(path):
-    """Set up MCP servers from .claude/mcp/ directory.
+    """Set up MCP servers from configuration files.
 
-    Runs 'claude mcp add-json' for each JSON file in .claude/mcp/
+    Supports two configuration patterns:
+    \b
+    1. Standard .mcp.json in project root
+    2. Multiple .json files in .claude/mcp/ directory
+
+    Runs 'claude mcp add-json' for each server configuration.
+
+    Transport types supported:
+    \b
+    - STDIO: Local command-line tools (npx packages)
+    - HTTP: Remote cloud services (OAuth 2.1 or API keys)
+    - SSE: Server-Sent Events (deprecated)
+
+    Validates:
+    \b
+    - JSON syntax
+    - Transport type requirements
+    - Security best practices (warns about hardcoded credentials)
+
+    See docs/ADDING_NEW_COMPONENTS.md and docs/MCP_SECURITY_GUIDE.md
+    for detailed setup instructions and security guidelines.
     """
     repo_path = Path(path).resolve()
 
