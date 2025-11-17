@@ -667,7 +667,9 @@ class Initializer:
             except json.JSONDecodeError as e:
                 console.print(f"[red]x[/red] Invalid JSON in {json_file.name}: {e}")
             except ValueError as e:
-                console.print(f"[red]x[/red] Configuration error in {json_file.name}: {e}")
+                console.print(
+                    f"[red]x[/red] Configuration error in {json_file.name}: {e}"
+                )
             except subprocess.TimeoutExpired:
                 console.print(f"[red]x[/red] Timeout adding {server_name}")
             except FileNotFoundError:
@@ -719,7 +721,7 @@ class Initializer:
             if "url" not in config:
                 raise ValueError(
                     "HTTP transport requires 'url' field. "
-                    "Example: \"url\": \"${MCP_SERVICE_URL}\""
+                    'Example: "url": "${MCP_SERVICE_URL}"'
                 )
 
             # Warn about common security issues
@@ -733,33 +735,30 @@ class Initializer:
             # Check for hardcoded credentials (common mistake)
             headers = config.get("headers", {})
             for key, value in headers.items():
-                if isinstance(value, str) and not value.startswith("${"):
-                    if any(
-                        sensitive in key.lower()
-                        for sensitive in ["auth", "token", "key", "secret"]
-                    ):
-                        console.print(
-                            f"[yellow]Warning:[/yellow] {filename} may contain hardcoded "
-                            f"credentials in header '{key}'. Use environment variables: "
-                            "\"${VAR_NAME}\""
-                        )
+                if isinstance(value, str) and not value.startswith("${") and any(
+                    sensitive in key.lower()
+                    for sensitive in ["auth", "token", "key", "secret"]
+                ):
+                    console.print(
+                        f"[yellow]Warning:[/yellow] {filename} may contain hardcoded "
+                        f"credentials in header '{key}'. Use environment variables: "
+                        '"${VAR_NAME}"'
+                    )
 
         elif transport_type == "stdio":
             if "command" not in config:
                 raise ValueError(
                     "STDIO transport requires 'command' field. "
-                    "Example: \"command\": \"npx\""
+                    'Example: "command": "npx"'
                 )
 
         elif transport_type == "sse":
             console.print(
-                f"[yellow]Info:[/yellow] SSE transport is deprecated. "
+                "[yellow]Info:[/yellow] SSE transport is deprecated. "
                 "Consider using HTTP transport instead."
             )
 
-    def _auto_setup_mcp_servers(
-        self, repo_path: Path, enabled_instances: list
-    ) -> None:
+    def _auto_setup_mcp_servers(self, repo_path: Path, enabled_instances: list) -> None:
         """Automatically setup MCP servers if MCP instances are enabled.
 
         Called during initialization to register MCP servers with Claude Code.
@@ -772,9 +771,7 @@ class Initializer:
         from .models import FileType
 
         # Check if any MCP instances are enabled
-        has_mcp = any(
-            instance.type == FileType.MCP for instance in enabled_instances
-        )
+        has_mcp = any(instance.type == FileType.MCP for instance in enabled_instances)
 
         if not has_mcp:
             return

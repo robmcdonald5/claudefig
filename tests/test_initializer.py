@@ -640,9 +640,7 @@ class TestSetupMcpServers:
         mock_subprocess.assert_not_called()
 
     @patch("subprocess.run")
-    def test_setup_mcp_servers_invalid_transport_type(
-        self, mock_subprocess, tmp_path
-    ):
+    def test_setup_mcp_servers_invalid_transport_type(self, mock_subprocess, tmp_path):
         """Test MCP setup fails with invalid transport type."""
         initializer = Initializer()
 
@@ -650,7 +648,9 @@ class TestSetupMcpServers:
         mcp_dir = tmp_path / ".claude" / "mcp"
         mcp_dir.mkdir(parents=True)
         mcp_file = mcp_dir / "invalid-server.json"
-        mcp_file.write_text('{"type": "websocket", "url": "ws://..."}', encoding="utf-8")
+        mcp_file.write_text(
+            '{"type": "websocket", "url": "ws://..."}', encoding="utf-8"
+        )
 
         result = initializer.setup_mcp_servers(tmp_path)
 
