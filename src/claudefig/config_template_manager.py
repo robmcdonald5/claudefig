@@ -492,6 +492,108 @@ class ConfigTemplateManager:
             else:
                 raise FileOperationError(f"create preset '{name}'", str(e)) from e
 
+    def create_preset_from_discovery(
+        self,
+        preset_name: str,
+        description: str,
+        components: list,
+    ) -> None:
+        """Create a preset from discovered components.
+
+        Creates a preset directory with claudefig.toml file and component files
+        from a list of discovered components.
+
+        Args:
+            preset_name: Name of the preset to create
+            description: Optional description
+            components: List of DiscoveredComponent objects to include
+
+        Raises:
+            ValueError: If preset name is invalid or already exists
+            FileOperationError: If component copying fails
+        """
+        import tomli_w
+
+        from claudefig.exceptions import FileOperationError
+
+        # Validate name
+        if not preset_name or "/" in preset_name or "\\" in preset_name:
+            raise ValueError(f"Invalid preset name: '{preset_name}'")
+
+        # Check if already exists
+        preset_dir = self.global_presets_dir / preset_name
+        if preset_dir.exists():
+            raise ValueError(f"Preset '{preset_name}' already exists")
+
+        try:
+            # Create preset directory
+            preset_dir.mkdir(parents=True, exist_ok=True)
+            components_dir = preset_dir / "components"
+            components_dir.mkdir(exist_ok=True)
+
+            # Build component list for preset definition
+            component_refs = []
+
+            # Copy each component to preset directory structure
+            for component in components:
+                # Create component subdirectory
+                comp_dir = components_dir / component.type.value / component.name
+                comp_dir.mkdir(parents=True, exist_ok=True)
+
+                # Copy component file(s)
+                if component.path.is_file():
+                    # Single file - copy to component directory
+                    dest_file = comp_dir / component.path.name
+                    shutil.copy2(component.path, dest_file)
+                elif component.path.is_dir():
+                    # Directory - copy entire contents
+                    shutil.copytree(component.path, comp_dir, dirs_exist_ok=True)
+
+                # Add component reference to preset definition
+                component_refs.append(
+                    {
+                        "type": component.type.value,
+                        "name": component.name,
+                        "path": str(component.relative_path),
+                        "enabled": True,
+                        "variables": {},
+                    }
+                )
+
+            # Build preset definition
+            preset_data: dict[str, Any] = {
+                "preset": {
+                    "name": preset_name,
+                    "version": "1.0.0",
+                    "description": description
+                    or "Preset created from repository components",
+                },
+                "components": component_refs,
+            }
+
+            # Save preset TOML
+            toml_path = preset_dir / "claudefig.toml"
+            with open(toml_path, "wb") as f:
+                tomli_w.dump(preset_data, f)
+
+        except Exception as e:
+            # Cleanup preset directory if creation failed
+            if preset_dir.exists():
+                import contextlib
+
+                with contextlib.suppress(Exception):
+                    shutil.rmtree(preset_dir)
+
+            # Re-raise the original exception
+            if isinstance(e, (ValueError, FileNotFoundError)):
+                raise
+            else:
+                from claudefig.exceptions import FileOperationError
+
+                raise FileOperationError(
+                    f"create preset '{preset_name}'", str(e)
+                ) from e
+
     def delete_global_preset(self, name: str) -> None:
         """Delete a global preset directory.
 
