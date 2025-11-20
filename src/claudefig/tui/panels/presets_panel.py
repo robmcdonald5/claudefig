@@ -26,6 +26,7 @@ from claudefig.tui.screens import (
     CreatePresetScreen,
     DeletePresetScreen,
 )
+from claudefig.tui.screens.create_preset_wizard import CreatePresetWizard
 
 
 class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
@@ -115,7 +116,8 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                     disabled=True,  # Disabled until preset selected
                 )
                 yield Button("📁 Open Presets Folder", id="btn-open-folder")
-                yield Button("+ Create New Preset", id="btn-create-preset")
+                yield Button("Create from Config", id="btn-create-from-config")
+                yield Button("Create from Repo", id="btn-create-from-repo")
 
     def on_mount(self) -> None:
         """Called when the widget is mounted.
@@ -231,12 +233,29 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
             elif button_id == "btn-open-folder":
                 self._open_presets_folder()
 
-            # Create new preset
-            elif button_id == "btn-create-preset":
+            # Create preset from config (Path 1)
+            elif button_id == "btn-create-from-config":
                 result = await self.app.push_screen_wait(CreatePresetScreen())
                 if result and result.get("action") == "create":
                     await self._create_preset(
                         result.get("name"), result.get("description")
+                    )
+
+            # Create preset from discovered components (Path 2)
+            elif button_id == "btn-create-from-repo":
+                repo_path = Path.cwd()
+                result = await self.app.push_screen_wait(CreatePresetWizard(repo_path))
+                if result and result.get("action") == "created":
+                    # Auto-switch to newly created preset
+                    preset_name = result.get("preset_name")
+                    self.selected_preset = preset_name
+                    PresetsPanel._last_selected_preset = preset_name
+
+                    # Refresh the panel to show new preset
+                    self.refresh(recompose=True)
+
+                    self.app.notify(
+                        f"Switched to preset: {preset_name}", severity="information"
                     )
 
         except asyncio.CancelledError:
@@ -294,13 +313,29 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
     async def _create_preset(self, name: str, description: str) -> None:
         """Create a new preset from current config."""
         try:
+            # Validate that claudefig.toml exists in current directory
+            config_path = Path.cwd() / "claudefig.toml"
+            if not config_path.exists():
+                self.app.notify(
+                    "No Claudefig config detected. Please initialize Claudefig first (Initialize Project).",
+                    severity="error",
+                    timeout=5,
+                )
+                return
+
             self.config_template_manager.save_global_preset(name, description)
             self.app.notify(
                 f"Created preset '{name}' successfully!", severity="information"
             )
 
+            # Auto-switch to newly created preset
+            self.selected_preset = name
+            PresetsPanel._last_selected_preset = name
+
             # Refresh the panel to show new preset
             self.refresh(recompose=True)
+
+            self.app.notify(f"Switched to preset: {name}", severity="information")
 
         except PresetExistsError as e:
             self.app.notify(str(e), severity="error")
