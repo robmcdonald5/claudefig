@@ -32,6 +32,25 @@ class ConfigTemplateManager:
     that define complete project configurations.
     """
 
+    @staticmethod
+    def _sanitize_path_component(name: str) -> str:
+        """Sanitize a path component to prevent traversal attacks.
+
+        Args:
+            name: The name to sanitize (preset name or component name)
+
+        Returns:
+            Sanitized name safe for use in paths
+
+        Raises:
+            ValueError: If name is invalid after sanitization
+        """
+        sanitized = name.replace("/", "").replace("\\", "").replace("..", "")
+        sanitized = sanitized.strip().strip(".")
+        if not sanitized:
+            raise ValueError(f"Invalid name after sanitization: '{name}'")
+        return sanitized
+
     def __init__(self, global_presets_dir: Path | None = None):
         """Initialize config template manager.
 
@@ -516,18 +535,20 @@ class ConfigTemplateManager:
 
         from claudefig.exceptions import FileOperationError
 
-        # Validate name
-        if not preset_name or "/" in preset_name or "\\" in preset_name:
-            raise ValueError(f"Invalid preset name: '{preset_name}'")
+        if not preset_name:
+            raise ValueError("Preset name cannot be empty")
+        safe_preset_name = self._sanitize_path_component(preset_name)
 
-        # Check if already exists
-        preset_dir = self.global_presets_dir / preset_name
-        if preset_dir.exists():
-            raise ValueError(f"Preset '{preset_name}' already exists")
+        preset_dir = self.global_presets_dir / safe_preset_name
 
         try:
-            # Create preset directory
-            preset_dir.mkdir(parents=True, exist_ok=True)
+            # Use exist_ok=False to prevent race condition (TOCTOU)
+            # This atomically checks existence and creates in one operation
+            preset_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as e:
+            raise ValueError(f"Preset '{preset_name}' already exists") from e
+
+        try:
             components_dir = preset_dir / "components"
             components_dir.mkdir(exist_ok=True)
 
@@ -536,24 +557,23 @@ class ConfigTemplateManager:
 
             # Copy each component to preset directory structure
             for component in components:
-                # Create component subdirectory
-                comp_dir = components_dir / component.type.value / component.name
+                safe_comp_name = self._sanitize_path_component(component.name)
+
+                comp_dir = components_dir / component.type.value / safe_comp_name
                 comp_dir.mkdir(parents=True, exist_ok=True)
 
                 # Copy component file(s)
                 if component.path.is_file():
-                    # Single file - copy to component directory
                     dest_file = comp_dir / component.path.name
                     shutil.copy2(component.path, dest_file)
                 elif component.path.is_dir():
-                    # Directory - copy entire contents
                     shutil.copytree(component.path, comp_dir, dirs_exist_ok=True)
 
                 # Add component reference to preset definition
                 component_refs.append(
                     {
                         "type": component.type.value,
-                        "name": component.name,
+                        "name": safe_comp_name,
                         "path": str(component.relative_path),
                         "enabled": True,
                         "variables": {},
@@ -563,7 +583,7 @@ class ConfigTemplateManager:
             # Build preset definition
             preset_data: dict[str, Any] = {
                 "preset": {
-                    "name": preset_name,
+                    "name": safe_preset_name,
                     "version": "1.0.0",
                     "description": description
                     or "Preset created from repository components",
@@ -588,8 +608,6 @@ class ConfigTemplateManager:
             if isinstance(e, (ValueError, FileNotFoundError)):
                 raise
             else:
-                from claudefig.exceptions import FileOperationError
-
                 raise FileOperationError(
                     f"create preset '{preset_name}'", str(e)
                 ) from e
