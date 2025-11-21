@@ -226,7 +226,7 @@ def presets_create(preset_name, description, path):
             format_cli_error(ErrorMessages.config_file_not_found(str(repo_path)))
         )
         console.print("[dim]Initialize a config first with 'claudefig init'[/dim]")
-        raise click.Abort()
+        raise click.Abort() from None
 
     manager = ConfigTemplateManager()
 
@@ -328,6 +328,12 @@ def presets_create_from_repo(preset_name, description, path):
         console.print("\n[yellow]Warnings:[/yellow]")
         for warning in result.warnings:
             console.print(f"  [yellow]![/yellow] {warning}")
+        console.print(
+            "\n[dim]Note: Duplicate names will be disambiguated using folder prefixes.[/dim]"
+        )
+        console.print(
+            "[dim]Review the component list to ensure correct files are included.[/dim]"
+        )
 
     # Create preset with ALL components
     console.print(
