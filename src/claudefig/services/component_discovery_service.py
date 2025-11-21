@@ -54,7 +54,7 @@ FILE_TYPE_PATTERNS: dict[FileType, dict] = {
         "duplicate_sensitive": False,
     },
     FileType.MCP: {
-        "patterns": [".claude/mcp/**/*.json", "*/.mcp.json"],
+        "patterns": [".claude/mcp/**/*.json", "**/.mcp.json"],
         "duplicate_sensitive": False,
     },
     FileType.PLUGINS: {
@@ -75,9 +75,48 @@ class ComponentDiscoveryService:
     components based on file patterns and naming conventions.
     """
 
-    def __init__(self):
-        """Initialize the component discovery service."""
-        pass
+    def _glob_pattern(self, repo_path: Path, pattern: str):
+        """Execute a glob pattern correctly handling ** patterns.
+
+        Handles three cases:
+        1. Pattern starts with ** (e.g., "**/CLAUDE.md") - use rglob from repo root
+        2. Pattern has prefix before ** (e.g., ".claude/commands/**/*.md") -
+           navigate to prefix dir, then use rglob for the rest
+        3. No ** in pattern - use regular glob
+
+        Args:
+            repo_path: Repository root path
+            pattern: Glob pattern to match
+
+        Returns:
+            Iterator of matching paths
+        """
+        if "**" not in pattern:
+            # No recursive pattern - use regular glob
+            return repo_path.glob(pattern)
+
+        # Split pattern at first **
+        if pattern.startswith("**"):
+            # Pattern starts with ** - use rglob from repo root
+            # e.g., "**/CLAUDE.md" -> rglob("CLAUDE.md")
+            # e.g., "**/.gitignore" -> rglob(".gitignore")
+            suffix = pattern[3:] if pattern.startswith("**/") else pattern[2:]
+            return repo_path.rglob(suffix)
+        else:
+            # Pattern has a prefix directory before **
+            # e.g., ".claude/commands/**/*.md"
+            # Split into prefix and suffix at **
+            parts = pattern.split("**", 1)
+            prefix = parts[0].rstrip("/")  # e.g., ".claude/commands"
+            suffix = parts[1].lstrip("/")  # e.g., "*.md"
+
+            # Check if prefix directory exists
+            prefix_path = repo_path / prefix
+            if not prefix_path.exists() or not prefix_path.is_dir():
+                return iter([])  # Return empty iterator
+
+            # Use rglob from the prefix directory
+            return prefix_path.rglob(suffix)
 
     def discover_components(self, repo_path: Path) -> ComponentDiscoveryResult:
         """Discover all Claude Code components in a repository.
@@ -102,14 +141,19 @@ class ComponentDiscoveryService:
 
         start_time = time.time()
         discovered: list[DiscoveredComponent] = []
+        warnings: list[str] = []
 
         # Scan for each file type
         for file_type, config in FILE_TYPE_PATTERNS.items():
             for pattern in config["patterns"]:
                 try:
-                    for file_path in repo_path.glob(pattern):
+                    matches = self._glob_pattern(repo_path, pattern)
+
+                    for file_path in matches:
+                        # Skip symbolic links to avoid loops and duplicate discoveries
+                        if file_path.is_symlink():
+                            continue
                         # Only process files, not directories
-                        # Exception: plugin.json and skill.md are in directories
                         if file_path.is_file():
                             component = self._create_discovered_component(
                                 file_path=file_path,
@@ -119,12 +163,14 @@ class ComponentDiscoveryService:
                             )
                             if component:
                                 discovered.append(component)
-                except Exception:
-                    # Continue scanning even if one pattern fails
+                except (OSError, PermissionError) as e:
+                    # Log the error but continue scanning
+                    warnings.append(f"Error scanning pattern '{pattern}': {e}")
                     continue
 
-        # Detect duplicate names
-        warnings = self._detect_duplicate_names(discovered)
+        # Detect duplicate names and add to warnings
+        duplicate_warnings = self._detect_duplicate_names(discovered)
+        warnings.extend(duplicate_warnings)
 
         scan_time_ms = (time.time() - start_time) * 1000
 
