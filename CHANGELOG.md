@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Repository-based preset creation** - New `presets create-from-repo` CLI command and TUI Preset Wizard for creating presets from existing repository configurations
+- **Component Discovery Service** - New service using rglob patterns to scan repositories for Claude Code components (CLAUDE.md, commands, agents, hooks, MCP configs, plugins, skills, etc.)
+- **TUI Preset Wizard** - Multi-step interactive wizard with checkbox-based component selection for granular preset creation
+- **MCP HTTP transport variants** - Added `mcp:http-oauth` and `mcp:http-apikey` preset variants for cloud service integration
+- **Path sanitization and validation** - Security improvements preventing directory traversal and validating paths remain within repository boundaries
 - Plugins and Skills file type support with full TUI/CLI integration
 - Dual-source component discovery (global `~/.claudefig/components/` and preset-specific `~/.claudefig/presets/{preset}/components/`)
 - Structure validation and auto-healing system for user configuration
@@ -22,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **BREAKING:** Config filename from `.claudefig.toml` to `claudefig.toml` (no dot prefix) for better visibility
 - Preset system completely refactored to directory-based structure (removed JSON metadata files)
+- Component discovery migrated from custom file traversal to `rglob` patterns for improved performance and consistency
 - CLI refactored into logical command hierarchy with improved organization
 - TUI: Core Files functionality merged into unified File Instances screen with tabbed interface
 - Directory structure: Renamed `src/templates/` to `src/presets/` for clarity
