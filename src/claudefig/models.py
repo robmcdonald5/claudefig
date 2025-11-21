@@ -473,9 +473,22 @@ class DiscoveredComponent:
     relative_path: Path  # Path relative to repo root
     parent_folder: str  # Parent directory name
     is_duplicate: bool = False  # True if duplicate name detected
+    # Use list for mutability during discovery, but document that it should
+    # not be modified after creation
     duplicate_paths: list[Path] = field(
         default_factory=list
     )  # Other files with same name
+
+    def __post_init__(self) -> None:
+        """Validate component data after initialization."""
+        if not self.name or not self.name.strip():
+            raise ValueError("Component name cannot be empty")
+
+        if not self.path.is_absolute():
+            raise ValueError(f"path must be absolute: {self.path}")
+
+        if self.relative_path.is_absolute():
+            raise ValueError(f"relative_path must be relative: {self.relative_path}")
 
     def __repr__(self) -> str:
         """String representation of discovered component."""
