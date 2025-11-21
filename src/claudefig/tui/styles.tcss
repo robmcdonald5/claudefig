@@ -1316,19 +1316,15 @@ Input.hidden {
 }
 
 /* ============================================================================ */
-/* Component Selection List Styles (SelectionList widget) */
+/* Component Selection Styles */
 /* ============================================================================ */
 
-#component-checklist {
-    width: 100%;
-    height: auto;
-    max-height: 20;
-    border: solid $primary-lighten-1;
-    background: $surface;
-    padding: 1;
-    margin-top: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+/* Component group header for file type sections */
+.component-group-header {
+    color: $text-muted;
+    text-style: bold dim;
+    margin: 1 0;
+    text-align: left;
 }
 
 /* ============================================================================ */
@@ -1388,7 +1384,7 @@ Input.hidden {
 
 .wizard-help-text {
     color: $text-muted;
-    text-align: center;
+    text-align: left;
     margin: 1 0;
 }
 
