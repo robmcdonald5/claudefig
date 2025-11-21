@@ -22,7 +22,11 @@ class CreatePresetWizard(BaseScreen):
     Step 2: Component discovery and selection (final step - creates preset)
     """
 
+    TOTAL_STEPS = 2
+
     current_step = reactive(1, init=False)
+    # Track selected count for display
+    selected_count = reactive(0, init=False)
 
     def __init__(self, repo_path: Path, **kwargs) -> None:
         """Initialize the preset creation wizard.
@@ -36,6 +40,7 @@ class CreatePresetWizard(BaseScreen):
         self.preset_description: str = ""
         self.discovery_result: ComponentDiscoveryResult | None = None
         self.selected_components: list[DiscoveredComponent] = []
+        # Use unique key combining name and relative path to avoid collisions
         self.component_checkboxes: dict[str, Checkbox] = {}
 
         # Store initial step
@@ -43,6 +48,9 @@ class CreatePresetWizard(BaseScreen):
 
         # Navigation memory for button focus
         self._last_button_id: str = "btn-back"
+
+        # Initialize flag for step watcher (M4 fix)
+        self._initialized = False
 
     def on_mount(self) -> None:
         """Called when widget is mounted."""
@@ -74,7 +82,7 @@ class CreatePresetWizard(BaseScreen):
         # Update step indicator
         try:
             indicator = self.query_one("#step-indicator", Static)
-            indicator.update(f"Step {new_step} of 2")
+            indicator.update(f"Step {new_step} of {self.TOTAL_STEPS}")
         except Exception as e:
             # Widget might not exist yet during initialization
             self.notify(f"Error updating step indicator: {e}", severity="error")
@@ -106,16 +114,16 @@ class CreatePresetWizard(BaseScreen):
         try:
             name_input = self.query_one("#input-preset-name", Input)
             name_input.focus()
-        except Exception:
-            pass
+        except Exception as e:
+            self.log.warning(f"Could not focus input: {e}")
 
     def _focus_step2_button(self) -> None:
         """Focus the first button in step 2."""
         try:
             btn = self.query_one("#btn-back", Button)
             btn.focus()
-        except Exception:
-            pass
+        except Exception as e:
+            self.log.warning(f"Could not focus button: {e}")
 
     def compose_screen_content(self) -> ComposeResult:
         """Compose the wizard screen content."""
@@ -126,7 +134,9 @@ class CreatePresetWizard(BaseScreen):
                 classes="screen-description",
             )
             yield Static(
-                "Step 1 of 2", id="step-indicator", classes="wizard-step-indicator"
+                f"Step 1 of {self.TOTAL_STEPS}",
+                id="step-indicator",
+                classes="wizard-step-indicator",
             )
 
             # Dynamic content area
@@ -227,11 +237,20 @@ class CreatePresetWizard(BaseScreen):
             for warning in self.discovery_result.warnings:
                 container.mount(Static(f"• {warning}", classes="wizard-warning-text"))
 
-        # Component selection section
+        # Component selection section with count display
+        total_components = self.discovery_result.total_found
         container.mount(
             Label(
-                "Select components to include:",
+                "Select/deselect components you want in the preset:",
                 classes="wizard-label",
+            )
+        )
+        # Selection count label (will be updated dynamically)
+        container.mount(
+            Static(
+                f"Selected: {total_components} of {total_components}",
+                id="selection-count",
+                classes="wizard-help-text",
             )
         )
 
@@ -275,7 +294,9 @@ class CreatePresetWizard(BaseScreen):
 
                 # Create checkbox (default to checked)
                 checkbox = Checkbox(label, value=True, id=safe_id)
-                self.component_checkboxes[component.name] = checkbox
+                # Use unique key combining name and path to avoid collisions (M5 fix)
+                checkbox_key = f"{component.name}:{component.relative_path}"
+                self.component_checkboxes[checkbox_key] = checkbox
                 container.mount(checkbox)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -311,14 +332,10 @@ class CreatePresetWizard(BaseScreen):
             self.current_step = 2
 
         elif event.button.id == "btn-select-all":
-            # Select all checkboxes
-            for checkbox in self.component_checkboxes.values():
-                checkbox.value = True
+            self._select_all()
 
         elif event.button.id == "btn-clear-all":
-            # Clear all checkboxes
-            for checkbox in self.component_checkboxes.values():
-                checkbox.value = False
+            self._clear_all()
 
         elif event.button.id == "btn-create":
             # Get selected components from checkboxes
@@ -333,8 +350,10 @@ class CreatePresetWizard(BaseScreen):
 
         self.selected_components = []
         for component in self.discovery_result.components:
-            if component.name in self.component_checkboxes:
-                checkbox = self.component_checkboxes[component.name]
+            # Use unique key matching the one used when creating checkboxes
+            checkbox_key = f"{component.name}:{component.relative_path}"
+            if checkbox_key in self.component_checkboxes:
+                checkbox = self.component_checkboxes[checkbox_key]
                 if checkbox.value:
                     self.selected_components.append(component)
 
@@ -374,16 +393,18 @@ class CreatePresetWizard(BaseScreen):
                 if button_idx > 0:
                     buttons[button_idx - 1].focus()
                     self._last_button_id = buttons[button_idx - 1].id or "btn-back"
-                event.prevent_default()
-                event.stop()
+                    event.prevent_default()
+                    event.stop()
+                # else: at first button, do nothing (no wrap)
 
             elif event.key == "right":
                 # Move right, no wrap
                 if button_idx < len(buttons) - 1:
                     buttons[button_idx + 1].focus()
                     self._last_button_id = buttons[button_idx + 1].id or "btn-back"
-                event.prevent_default()
-                event.stop()
+                    event.prevent_default()
+                    event.stop()
+                # else: at last button, do nothing (no wrap)
 
             elif event.key == "down":
                 # Go to first checkbox
@@ -392,8 +413,8 @@ class CreatePresetWizard(BaseScreen):
                     checkboxes[0].focus()
                     # Smooth scroll to show the checkbox
                     checkboxes[0].scroll_visible(animate=False)
-                event.prevent_default()
-                event.stop()
+                    event.prevent_default()
+                    event.stop()
 
             elif event.key == "up":
                 # Scroll up when at buttons
@@ -435,9 +456,41 @@ class CreatePresetWizard(BaseScreen):
                 event.stop()
 
             elif event.key in ("left", "right"):
-                # No horizontal nav on checkboxes
-                event.prevent_default()
-                event.stop()
+                # No horizontal nav on checkboxes - let default behavior handle
+                pass
+
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """Handle checkbox state changes to update selection count."""
+        self._update_selection_count()
+
+    def _update_selection_count(self) -> None:
+        """Update the selection count display."""
+        if not self.discovery_result:
+            return
+        selected = sum(1 for cb in self.component_checkboxes.values() if cb.value)
+        total = self.discovery_result.total_found
+        try:
+            count_label = self.query_one("#selection-count", Static)
+            count_label.update(f"Selected: {selected} of {total}")
+        except Exception:
+            pass  # Label might not exist yet
+
+    def _select_all(self) -> None:
+        """Select all checkboxes."""
+        for checkbox in self.component_checkboxes.values():
+            checkbox.value = True
+        self._update_selection_count()
+
+    def _clear_all(self) -> None:
+        """Clear all checkboxes."""
+        for checkbox in self.component_checkboxes.values():
+            checkbox.value = False
+        self._update_selection_count()
+
+    def on_unmount(self) -> None:
+        """Clean up widget references to prevent memory leaks."""
+        self.component_checkboxes.clear()
+        self.selected_components.clear()
 
     def _create_preset(self) -> None:
         """Create preset from selected components."""
