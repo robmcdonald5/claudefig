@@ -192,6 +192,62 @@ presets_dir = ""
 2. `~/.claudefig/config.toml` in home directory (user defaults)
 3. Default config (hardcoded fallback)
 
+#### 3.5 Component Discovery Service (`services/component_discovery_service.py`)
+
+**Purpose:** Scan repositories to discover existing Claude Code components for preset creation.
+
+**Added:** v1.2.0 (2025-11)
+
+**Key Classes:**
+- `ComponentDiscoveryService` - Main service for scanning repositories
+- `DiscoveredComponent` - Represents a found component with metadata
+- `DiscoveryResult` - Contains all discovered components and scan metrics
+
+**Discovery Patterns:**
+The service uses `rglob` (recursive glob) to scan for components:
+
+| Component Type | Scan Pattern |
+|----------------|--------------|
+| CLAUDE.md | `**/CLAUDE.md`, `**/CLAUDE_*.md` |
+| .gitignore | `.gitignore` |
+| Settings | `.claude/settings.json`, `.claude/settings.local.json` |
+| Slash Commands | `.claude/commands/*.md` |
+| Sub-Agents | `.claude/agents/*.md` |
+| Hooks | `.claude/hooks/*.py` |
+| Output Styles | `.claude/output-styles/*.md` |
+| Status Line | `.claude/statusline.sh` |
+| MCP Configs | `.claude/mcp/*.json`, `.mcp.json` |
+| Plugins | `.claude/plugins/*` |
+| Skills | `.claude/skills/*` |
+
+**Features:**
+- Recursive scanning with configurable depth limits
+- Duplicate name detection with automatic disambiguation
+- Path validation and sanitization
+- Scan timing metrics for performance monitoring
+- Warning collection for ambiguous or problematic components
+
+**Usage Flow:**
+```
+Repository Path → ComponentDiscoveryService.discover_components()
+                          ↓
+                  DiscoveryResult
+                  ├── components: List[DiscoveredComponent]
+                  ├── total_found: int
+                  ├── scan_time_ms: float
+                  ├── warnings: List[str]
+                  └── has_warnings: bool
+                          ↓
+                  ConfigTemplateManager.create_preset_from_discovery()
+                          ↓
+                  New Preset in ~/.claudefig/presets/
+```
+
+**Integration Points:**
+- TUI: Preset Wizard uses this for interactive component selection
+- CLI: `presets create-from-repo` command uses this for batch scanning
+- ConfigTemplateManager: Receives discovered components for preset creation
+
 #### 4. TUI Interface (`tui/`)
 
 **Purpose:** Interactive terminal user interface using Textual framework.
@@ -815,6 +871,7 @@ The architecture prioritizes:
 
 ---
 
-**Last Updated:** 2025-11-07
+**Last Updated:** 2025-11-21
 **Schema Version:** 2.0
 **TUI Architecture Version:** 3 (Base Classes + Mixins)
+**Services Version:** 1.2.0 (Component Discovery)
