@@ -186,8 +186,12 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
 
         Enables/disables the Apply and Delete buttons based on selection state.
         """
-        apply_button = self.query_one("#btn-apply-preset", Button)
-        delete_button = self.query_one("#btn-delete-preset", Button)
+        try:
+            apply_button = self.query_one("#btn-apply-preset", Button)
+            delete_button = self.query_one("#btn-delete-preset", Button)
+        except Exception:
+            # Buttons may not exist yet during recompose
+            return
 
         if new_value and new_value in self._presets_data:
             # Enable Apply and Delete buttons when preset is selected
@@ -246,12 +250,12 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 repo_path = Path.cwd()
                 result = await self.app.push_screen_wait(CreatePresetWizard(repo_path))
                 if result and result.get("action") == "created":
-                    # Auto-switch to newly created preset
                     preset_name = result.get("preset_name")
-                    self.selected_preset = preset_name
+
+                    # Store selection - on_mount will restore it after recompose
                     PresetsPanel._last_selected_preset = preset_name
 
-                    # Refresh the panel to show new preset
+                    # Refresh the panel to show new preset (on_mount handles selection)
                     self.refresh(recompose=True)
 
                     self.app.notify(
@@ -328,11 +332,10 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 f"Created preset '{name}' successfully!", severity="information"
             )
 
-            # Auto-switch to newly created preset
-            self.selected_preset = name
+            # Store selection - on_mount will restore it after recompose
             PresetsPanel._last_selected_preset = name
 
-            # Refresh the panel to show new preset
+            # Refresh the panel to show new preset (on_mount handles selection)
             self.refresh(recompose=True)
 
             self.app.notify(f"Switched to preset: {name}", severity="information")

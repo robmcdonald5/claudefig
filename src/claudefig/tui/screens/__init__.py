@@ -10,12 +10,12 @@ from .project_settings import ProjectSettingsScreen
 from .save_component import SaveComponentScreen
 
 __all__ = [
-    "CreatePresetScreen",
     "ApplyPresetScreen",
+    "CreatePresetScreen",
     "DeletePresetScreen",
-    "PresetDetailsScreen",
-    "OverviewScreen",
-    "ProjectSettingsScreen",
     "FileInstancesScreen",
+    "OverviewScreen",
+    "PresetDetailsScreen",
+    "ProjectSettingsScreen",
     "SaveComponentScreen",
 ]
