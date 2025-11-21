@@ -6,14 +6,13 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Key
 from textual.reactive import reactive
-from textual.widgets import Button, Input, Label, Static
+from textual.widgets import Button, Checkbox, Input, Label, Static
 
 from claudefig.config_template_manager import ConfigTemplateManager
-from claudefig.models import ComponentDiscoveryResult, DiscoveredComponent
+from claudefig.models import ComponentDiscoveryResult, DiscoveredComponent, FileType
 from claudefig.services.component_discovery_service import ComponentDiscoveryService
 from claudefig.services.validation_service import validate_not_empty
 from claudefig.tui.base import BaseScreen
-from claudefig.tui.widgets import CheckboxList
 
 
 class CreatePresetWizard(BaseScreen):
@@ -37,12 +36,13 @@ class CreatePresetWizard(BaseScreen):
         self.preset_description: str = ""
         self.discovery_result: ComponentDiscoveryResult | None = None
         self.selected_components: list[DiscoveredComponent] = []
+        self.component_checkboxes: dict[str, Checkbox] = {}
 
         # Store initial step
         self._initial_step = 1
 
-        # Remember last focused button for navigation memory
-        self._last_button_index: int = 0
+        # Navigation memory for button focus
+        self._last_button_id: str = "btn-back"
 
     def on_mount(self) -> None:
         """Called when widget is mounted."""
@@ -94,6 +94,8 @@ class CreatePresetWizard(BaseScreen):
                 self.call_after_refresh(self._focus_step1_input)
             elif new_step == 2:
                 self._build_step2(content)
+                # Auto-focus the first button when navigating to step 2
+                self.call_after_refresh(self._focus_step2_button)
 
             # Note: No refresh needed - mount() automatically updates the display
         except Exception as e:
@@ -104,6 +106,14 @@ class CreatePresetWizard(BaseScreen):
         try:
             name_input = self.query_one("#input-preset-name", Input)
             name_input.focus()
+        except Exception:
+            pass
+
+    def _focus_step2_button(self) -> None:
+        """Focus the first button in step 2."""
+        try:
+            btn = self.query_one("#btn-back", Button)
+            btn.focus()
         except Exception:
             pass
 
@@ -153,7 +163,7 @@ class CreatePresetWizard(BaseScreen):
         actions.mount(Button("Discover Components →", id="btn-discover"))
 
     def _build_step2(self, container: Vertical) -> None:
-        """Build Step 2: Component selection.
+        """Build Step 2: Component selection with checkboxes.
 
         Args:
             container: Container to mount widgets into
@@ -217,25 +227,56 @@ class CreatePresetWizard(BaseScreen):
             for warning in self.discovery_result.warnings:
                 container.mount(Static(f"• {warning}", classes="wizard-warning-text"))
 
-        # Checkbox list for component selection
+        # Component selection section
         container.mount(
             Label(
-                "Select components to include (all selected by default):",
+                "Select components to include:",
                 classes="wizard-label",
             )
         )
-        container.mount(
-            CheckboxList(
-                components=self.discovery_result.components,
-                id="component-checklist",
-            )
-        )
 
-        # Actions
-        actions = Horizontal(classes="wizard-actions")
-        container.mount(actions)
-        actions.mount(Button("← Back", id="btn-back"))
-        actions.mount(Button("Create Preset", id="btn-create"))
+        # Add action buttons in a single row
+        action_buttons = Horizontal(classes="dialog-actions")
+        container.mount(action_buttons)
+        action_buttons.mount(Button("← Back", id="btn-back"))
+        action_buttons.mount(Button("Select All", id="btn-select-all"))
+        action_buttons.mount(Button("Clear All", id="btn-clear-all"))
+        action_buttons.mount(Button("Create Preset", id="btn-create"))
+
+        # Clear existing checkboxes
+        self.component_checkboxes.clear()
+
+        # Group components by file type
+        grouped: dict[FileType, list[DiscoveredComponent]] = {}
+        for component in self.discovery_result.components:
+            if component.type not in grouped:
+                grouped[component.type] = []
+            grouped[component.type].append(component)
+
+        # Build checkboxes for each group directly on the page
+        for file_type, group_components in grouped.items():
+            # Add group header
+            container.mount(
+                Static(
+                    f"──── {file_type.display_name} ({len(group_components)}) ────",
+                    classes="component-group-header",
+                )
+            )
+
+            # Add checkbox for each component
+            for idx, component in enumerate(group_components):
+                # Create checkbox label
+                label = f"{component.name} - {component.relative_path}"
+                if component.is_duplicate:
+                    label += " ⚠"
+
+                # Create safe ID (only letters, numbers, underscores, hyphens)
+                safe_id = f"chk-{file_type.value}-{idx}"
+
+                # Create checkbox (default to checked)
+                checkbox = Checkbox(label, value=True, id=safe_id)
+                self.component_checkboxes[component.name] = checkbox
+                container.mount(checkbox)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses.
@@ -269,20 +310,134 @@ class CreatePresetWizard(BaseScreen):
             self.preset_description = desc_input.value.strip()
             self.current_step = 2
 
-        elif event.button.id == "btn-create":
-            # Get selected components from checkbox list
-            try:
-                checklist = self.query_one("#component-checklist", CheckboxList)
-                self.selected_components = checklist.get_selected()
-            except Exception:
-                # If checklist doesn't exist, use all components
-                if self.discovery_result:
-                    self.selected_components = self.discovery_result.components
-                else:
-                    self.selected_components = []
+        elif event.button.id == "btn-select-all":
+            # Select all checkboxes
+            for checkbox in self.component_checkboxes.values():
+                checkbox.value = True
 
-            # Create the preset
+        elif event.button.id == "btn-clear-all":
+            # Clear all checkboxes
+            for checkbox in self.component_checkboxes.values():
+                checkbox.value = False
+
+        elif event.button.id == "btn-create":
+            # Get selected components from checkboxes
+            self._gather_selected_components()
+            # Create the preset with selected components
             self._create_preset()
+
+    def _gather_selected_components(self) -> None:
+        """Gather selected components from checkboxes."""
+        if not self.discovery_result:
+            return
+
+        self.selected_components = []
+        for component in self.discovery_result.components:
+            if component.name in self.component_checkboxes:
+                checkbox = self.component_checkboxes[component.name]
+                if checkbox.value:
+                    self.selected_components.append(component)
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for Step 2 navigation.
+
+        Navigation rules:
+        - Left/Right: Navigate horizontally between buttons (no wrap)
+        - Up/Down: Navigate vertically between checkboxes (no wrap)
+        - Up from first checkbox: Go to remembered button and scroll to top
+        - Down from buttons: Go to first checkbox
+        - Memory: Remember which button was last focused
+        """
+        # Only apply custom nav on step 2
+        if self.current_step != 2:
+            return
+
+        focused = self.focused
+        if focused is None:
+            return
+
+        # Get buttons and checkboxes
+        try:
+            dialog_actions = self.query_one(".dialog-actions", Horizontal)
+            buttons = list(dialog_actions.query(Button))
+            checkboxes = list(self.component_checkboxes.values())
+            scroll_container = self.query_one("#wizard-screen", VerticalScroll)
+        except Exception:
+            return
+
+        # Handle button navigation
+        if isinstance(focused, Button) and focused in buttons:
+            button_idx = buttons.index(focused)
+
+            if event.key == "left":
+                # Move left, no wrap
+                if button_idx > 0:
+                    buttons[button_idx - 1].focus()
+                    self._last_button_id = buttons[button_idx - 1].id or "btn-back"
+                event.prevent_default()
+                event.stop()
+
+            elif event.key == "right":
+                # Move right, no wrap
+                if button_idx < len(buttons) - 1:
+                    buttons[button_idx + 1].focus()
+                    self._last_button_id = buttons[button_idx + 1].id or "btn-back"
+                event.prevent_default()
+                event.stop()
+
+            elif event.key == "down":
+                # Go to first checkbox
+                if checkboxes:
+                    self._last_button_id = focused.id or "btn-back"
+                    checkboxes[0].focus()
+                    # Smooth scroll to show the checkbox
+                    checkboxes[0].scroll_visible(animate=False)
+                event.prevent_default()
+                event.stop()
+
+            elif event.key == "up":
+                # Scroll up when at buttons
+                scroll_container.scroll_home(animate=False)
+                event.prevent_default()
+                event.stop()
+
+        # Handle checkbox navigation
+        elif isinstance(focused, Checkbox) and focused in checkboxes:
+            checkbox_idx = checkboxes.index(focused)
+
+            if event.key == "up":
+                if checkbox_idx > 0:
+                    # Move to previous checkbox
+                    prev_checkbox = checkboxes[checkbox_idx - 1]
+                    prev_checkbox.focus()
+                    prev_checkbox.scroll_visible(animate=False)
+                else:
+                    # At first checkbox - go to remembered button and scroll to top
+                    try:
+                        btn = self.query_one(f"#{self._last_button_id}", Button)
+                        btn.focus()
+                    except Exception:
+                        if buttons:
+                            buttons[0].focus()
+                    # Scroll to top of screen
+                    scroll_container.scroll_home(animate=False)
+                event.prevent_default()
+                event.stop()
+
+            elif event.key == "down":
+                if checkbox_idx < len(checkboxes) - 1:
+                    # Move to next checkbox
+                    next_checkbox = checkboxes[checkbox_idx + 1]
+                    next_checkbox.focus()
+                    next_checkbox.scroll_visible(animate=False)
+                # else: at last checkbox, no wrap - do nothing
+                event.prevent_default()
+                event.stop()
+
+            elif event.key in ("left", "right"):
+                # No horizontal nav on checkboxes
+                event.prevent_default()
+                event.stop()
 
     def _create_preset(self) -> None:
         """Create preset from selected components."""
@@ -318,81 +473,3 @@ class CreatePresetWizard(BaseScreen):
                 severity="error",
             )
 
-    def on_key(self, event: Key) -> None:
-        """Handle key events for navigation.
-
-        Allows Tab to move between SelectionList and buttons (standard behavior).
-        Handles up/down arrow navigation between CheckboxList and buttons with memory.
-
-        Args:
-            event: The key event
-        """
-        focused = self.focused
-
-        # Handle CheckboxList navigation to buttons
-        if event.key == "down":
-            try:
-                from claudefig.tui.widgets import CheckboxList
-
-                checklist = self.query_one("#component-checklist", CheckboxList)
-                if focused == checklist:
-                    # Check if at last enabled option
-                    enabled_indices = [
-                        i
-                        for i, opt in enumerate(checklist._options)
-                        if not opt.disabled
-                    ]
-                    if enabled_indices and checklist.highlighted == enabled_indices[-1]:
-                        # At boundary - go to remembered button
-                        try:
-                            actions = self.query_one(".wizard-actions")
-                            buttons = list(actions.query(Button))
-                            if buttons:
-                                # Focus the remembered button (default to first)
-                                button_index = min(
-                                    self._last_button_index, len(buttons) - 1
-                                )
-                                buttons[button_index].focus()
-                                event.prevent_default()
-                                event.stop()
-                                return
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-
-        # Handle button navigation
-        if isinstance(focused, Button):
-            try:
-                actions = self.query_one(".wizard-actions")
-                if focused.parent == actions:
-                    buttons = list(actions.query(Button))
-                    try:
-                        current_index = buttons.index(focused)
-
-                        # Up arrow on ANY button -> go back to CheckboxList
-                        if event.key == "up":
-                            # Remember which button we were on
-                            self._last_button_index = current_index
-                            try:
-                                from claudefig.tui.widgets import CheckboxList
-
-                                checklist = self.query_one(
-                                    "#component-checklist", CheckboxList
-                                )
-                                checklist.focus()
-                                event.prevent_default()
-                                event.stop()
-                                return
-                            except Exception:
-                                pass
-
-                        # Down arrow on last button -> prevent wrapping
-                        elif event.key == "down" and current_index == len(buttons) - 1:
-                            event.prevent_default()
-                            event.stop()
-                            return
-                    except (ValueError, Exception):
-                        pass
-            except Exception:
-                pass
