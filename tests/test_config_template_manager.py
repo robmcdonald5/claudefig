@@ -520,3 +520,303 @@ enabled = false
         assert copied_settings.exists()
         # Just verify it's a JSON file by checking it can be read
         assert copied_settings.read_text().strip() != ""
+
+
+class TestCreatePresetFromDiscovery:
+    """Tests for create_preset_from_discovery method."""
+
+    def test_create_preset_from_discovery_success(self, tmp_path):
+        """Test successfully creating a preset from discovered components."""
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            import tomli as tomllib  # type: ignore[import-not-found]
+
+        from claudefig.models import DiscoveredComponent, FileType
+
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        # Create a mock source file
+        source_file = tmp_path / "source" / "CLAUDE.md"
+        source_file.parent.mkdir(parents=True)
+        source_file.write_text("# Test CLAUDE.md content")
+
+        # Create a discovered component
+        component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder="source",
+        )
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+        manager.create_preset_from_discovery(
+            preset_name="test-preset",
+            description="Test description",
+            components=[component],
+        )
+
+        # Verify preset directory was created
+        preset_dir = global_dir / "test-preset"
+        assert preset_dir.exists()
+        assert preset_dir.is_dir()
+
+        # Verify claudefig.toml was created
+        preset_file = preset_dir / "claudefig.toml"
+        assert preset_file.exists()
+
+        # Verify TOML content
+        with open(preset_file, "rb") as f:
+            preset_data = tomllib.load(f)
+
+        assert preset_data["preset"]["name"] == "test-preset"
+        assert preset_data["preset"]["description"] == "Test description"
+        assert preset_data["preset"]["version"] == "1.0.0"
+        assert len(preset_data["components"]) == 1
+        assert preset_data["components"][0]["type"] == "claude_md"
+
+        # Verify component file was copied
+        copied_file = preset_dir / "components" / "claude_md" / "CLAUDE" / "CLAUDE.md"
+        assert copied_file.exists()
+        assert copied_file.read_text() == "# Test CLAUDE.md content"
+
+    def test_create_preset_from_discovery_empty_name(self, tmp_path):
+        """Test that empty preset name raises ValueError."""
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            manager.create_preset_from_discovery(
+                preset_name="",
+                description="Test",
+                components=[],
+            )
+
+    def test_create_preset_from_discovery_existing(self, tmp_path):
+        """Test that existing preset name raises ValueError."""
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        # Create existing preset directory
+        existing_preset = global_dir / "existing-preset"
+        existing_preset.mkdir()
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+
+        with pytest.raises(ValueError, match="already exists"):
+            manager.create_preset_from_discovery(
+                preset_name="existing-preset",
+                description="Test",
+                components=[],
+            )
+
+    def test_create_preset_from_discovery_empty_components(self, tmp_path):
+        """Test creating preset with empty component list."""
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            import tomli as tomllib  # type: ignore[import-not-found]
+
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+        manager.create_preset_from_discovery(
+            preset_name="empty-preset",
+            description="Preset with no components",
+            components=[],
+        )
+
+        # Verify preset was created
+        preset_dir = global_dir / "empty-preset"
+        assert preset_dir.exists()
+
+        # Verify TOML was created
+        preset_file = preset_dir / "claudefig.toml"
+        with open(preset_file, "rb") as f:
+            preset_data = tomllib.load(f)
+
+        assert preset_data["preset"]["name"] == "empty-preset"
+        assert len(preset_data["components"]) == 0
+
+    def test_create_preset_from_discovery_creates_toml(self, tmp_path):
+        """Test that claudefig.toml is created with correct format."""
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            import tomli as tomllib  # type: ignore[import-not-found]
+
+        from claudefig.models import DiscoveredComponent, FileType
+
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        # Create source files
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        (source_dir / "CLAUDE.md").write_text("# Claude")
+        (source_dir / ".gitignore").write_text("*.pyc")
+
+        components = [
+            DiscoveredComponent(
+                name="CLAUDE",
+                type=FileType.CLAUDE_MD,
+                path=source_dir / "CLAUDE.md",
+                relative_path=Path("CLAUDE.md"),
+                parent_folder=".",
+            ),
+            DiscoveredComponent(
+                name="gitignore",
+                type=FileType.GITIGNORE,
+                path=source_dir / ".gitignore",
+                relative_path=Path(".gitignore"),
+                parent_folder=".",
+            ),
+        ]
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+        manager.create_preset_from_discovery(
+            preset_name="multi-component",
+            description="Multiple components",
+            components=components,
+        )
+
+        # Verify TOML content
+        preset_file = global_dir / "multi-component" / "claudefig.toml"
+        with open(preset_file, "rb") as f:
+            preset_data = tomllib.load(f)
+
+        # Should have [preset] section
+        assert "preset" in preset_data
+        assert preset_data["preset"]["name"] == "multi-component"
+        assert preset_data["preset"]["version"] == "1.0.0"
+
+        # Should have [[components]] array
+        assert "components" in preset_data
+        assert len(preset_data["components"]) == 2
+
+        types = {c["type"] for c in preset_data["components"]}
+        assert "claude_md" in types
+        assert "gitignore" in types
+
+    def test_create_preset_from_discovery_copies_files(self, tmp_path):
+        """Test that component files are copied correctly."""
+        from claudefig.models import DiscoveredComponent, FileType
+
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        # Create source files with specific content
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        claude_content = "# My Custom CLAUDE.md\n\nWith custom content."
+        (source_dir / "CLAUDE.md").write_text(claude_content)
+
+        component = DiscoveredComponent(
+            name="custom-claude",
+            type=FileType.CLAUDE_MD,
+            path=source_dir / "CLAUDE.md",
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+        manager.create_preset_from_discovery(
+            preset_name="file-copy-test",
+            description="Test file copying",
+            components=[component],
+        )
+
+        # Verify file was copied with correct content
+        copied_file = (
+            global_dir
+            / "file-copy-test"
+            / "components"
+            / "claude_md"
+            / "custom-claude"
+            / "CLAUDE.md"
+        )
+        assert copied_file.exists()
+        assert copied_file.read_text() == claude_content
+
+    def test_create_preset_from_discovery_copies_directories(self, tmp_path):
+        """Test that directory components are copied correctly."""
+        from claudefig.models import DiscoveredComponent, FileType
+
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        # Create source directory structure
+        source_dir = tmp_path / "source" / ".claude" / "commands"
+        source_dir.mkdir(parents=True)
+        (source_dir / "cmd1.md").write_text("# Command 1")
+        (source_dir / "cmd2.md").write_text("# Command 2")
+
+        # Note: For directory-based components, the path would be the file
+        # In the discovery service, each file becomes a separate component
+        cmd1_file = source_dir / "cmd1.md"
+
+        component = DiscoveredComponent(
+            name="cmd1",
+            type=FileType.COMMANDS,
+            path=cmd1_file,
+            relative_path=Path(".claude/commands/cmd1.md"),
+            parent_folder="commands",
+        )
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+        manager.create_preset_from_discovery(
+            preset_name="dir-test",
+            description="Test directory copying",
+            components=[component],
+        )
+
+        # Verify file was copied
+        copied_file = (
+            global_dir / "dir-test" / "components" / "commands" / "cmd1" / "cmd1.md"
+        )
+        assert copied_file.exists()
+        assert copied_file.read_text() == "# Command 1"
+
+    def test_sanitize_path_component(self, tmp_path):
+        """Test path sanitization prevents directory traversal."""
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+
+        # Test path traversal attempts
+        assert manager._sanitize_path_component("../evil") == "evil"
+        assert manager._sanitize_path_component("..\\evil") == "evil"
+        assert manager._sanitize_path_component("foo/bar") == "foobar"
+        assert manager._sanitize_path_component("foo\\bar") == "foobar"
+        assert manager._sanitize_path_component("normal-name") == "normal-name"
+
+    def test_create_preset_from_discovery_default_description(self, tmp_path):
+        """Test that empty description uses default."""
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            import tomli as tomllib  # type: ignore[import-not-found]
+
+        global_dir = tmp_path / "global"
+        global_dir.mkdir(parents=True)
+
+        manager = ConfigTemplateManager(global_presets_dir=global_dir)
+        manager.create_preset_from_discovery(
+            preset_name="no-desc",
+            description="",
+            components=[],
+        )
+
+        preset_file = global_dir / "no-desc" / "claudefig.toml"
+        with open(preset_file, "rb") as f:
+            preset_data = tomllib.load(f)
+
+        # Empty description should be preserved (not replaced with default here)
+        # The CLI handles the default description
+        assert "description" in preset_data["preset"]

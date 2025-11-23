@@ -30,6 +30,7 @@ Note on typing:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import factory
@@ -37,6 +38,8 @@ from factory.declarations import Dict, LazyAttribute, List, Sequence
 from factory.faker import Faker
 
 from claudefig.models import (
+    ComponentDiscoveryResult,
+    DiscoveredComponent,
     FileInstance,
     FileType,
     Preset,
@@ -204,3 +207,195 @@ class PresetDefinitionFactory(factory.Factory):  # type: ignore[misc]
     variables = Dict({})
     settings = Dict({})
     gitignore_entries = List([])
+
+
+class DiscoveredComponentFactory(factory.Factory):  # type: ignore[misc]
+    """Factory for creating DiscoveredComponent test objects.
+
+    Used for testing component discovery functionality.
+
+    Note:
+        Factory class attributes are descriptors, not typed attributes.
+        The path must be absolute and relative_path must be relative.
+    """
+
+    class Meta:  # type: ignore[misc]
+        model = DiscoveredComponent
+
+    # Factory descriptors (no type annotations)
+    name = Sequence(lambda n: f"component-{n}")
+    type = FileType.CLAUDE_MD
+    parent_folder = "."
+    is_duplicate = False
+    duplicate_paths = List([])
+
+    @LazyAttribute  # type: ignore[misc]
+    def path(obj: Any) -> Path:  # noqa: N805
+        """Generate absolute path based on file type.
+
+        Args:
+            obj: Factory instance being built.
+
+        Returns:
+            Absolute path for the component.
+        """
+        import tempfile
+        from pathlib import Path
+
+        # Generate a temp path that's absolute
+        type_filenames = {
+            FileType.CLAUDE_MD: "CLAUDE.md",
+            FileType.GITIGNORE: ".gitignore",
+            FileType.COMMANDS: "command.md",
+            FileType.AGENTS: "agent.md",
+            FileType.HOOKS: "hook.py",
+            FileType.OUTPUT_STYLES: "style.md",
+            FileType.MCP: "mcp.json",
+            FileType.PLUGINS: "plugin.json",
+            FileType.SKILLS: "skill.md",
+            FileType.SETTINGS_JSON: "settings.json",
+            FileType.SETTINGS_LOCAL_JSON: "settings.local.json",
+            FileType.STATUSLINE: "statusline.sh",
+        }
+        filename = type_filenames.get(obj.type, "file.txt")
+        return Path(tempfile.gettempdir()) / filename
+
+    @LazyAttribute  # type: ignore[misc]
+    def relative_path(obj: Any) -> Path:  # noqa: N805
+        """Generate relative path based on file type.
+
+        Args:
+            obj: Factory instance being built.
+
+        Returns:
+            Relative path for the component.
+        """
+        from pathlib import Path
+
+        type_paths = {
+            FileType.CLAUDE_MD: "CLAUDE.md",
+            FileType.GITIGNORE: ".gitignore",
+            FileType.COMMANDS: ".claude/commands/command.md",
+            FileType.AGENTS: ".claude/agents/agent.md",
+            FileType.HOOKS: ".claude/hooks/hook.py",
+            FileType.OUTPUT_STYLES: ".claude/output-styles/style.md",
+            FileType.MCP: ".claude/mcp/mcp.json",
+            FileType.PLUGINS: ".claude/plugins/plugin.json",
+            FileType.SKILLS: ".claude/skills/skill.md",
+            FileType.SETTINGS_JSON: ".claude/settings.json",
+            FileType.SETTINGS_LOCAL_JSON: ".claude/settings.local.json",
+            FileType.STATUSLINE: ".claude/statusline.sh",
+        }
+        return Path(type_paths.get(obj.type, "file.txt"))
+
+    @classmethod
+    def claude_md(cls, **kwargs: Any) -> DiscoveredComponent:
+        """Create a CLAUDE.md DiscoveredComponent.
+
+        Args:
+            **kwargs: Additional fields to override.
+
+        Returns:
+            DiscoveredComponent configured for CLAUDE.md.
+        """
+        defaults = {
+            "type": FileType.CLAUDE_MD,
+            "name": "CLAUDE",
+        }
+        return cls(**{**defaults, **kwargs})  # type: ignore[return-value]
+
+    @classmethod
+    def gitignore(cls, **kwargs: Any) -> DiscoveredComponent:
+        """Create a .gitignore DiscoveredComponent.
+
+        Args:
+            **kwargs: Additional fields to override.
+
+        Returns:
+            DiscoveredComponent configured for .gitignore.
+        """
+        defaults = {
+            "type": FileType.GITIGNORE,
+            "name": "gitignore",
+        }
+        return cls(**{**defaults, **kwargs})  # type: ignore[return-value]
+
+
+class ComponentDiscoveryResultFactory(factory.Factory):  # type: ignore[misc]
+    """Factory for creating ComponentDiscoveryResult test objects.
+
+    Used for testing component discovery results.
+
+    Note:
+        Factory class attributes are descriptors, not typed attributes.
+    """
+
+    class Meta:  # type: ignore[misc]
+        model = ComponentDiscoveryResult
+
+    # Factory descriptors (no type annotations)
+    components = List([])
+    warnings = List([])
+    scan_time_ms = 0.0
+
+    @LazyAttribute  # type: ignore[misc]
+    def total_found(obj: Any) -> int:  # noqa: N805
+        """Calculate total_found from components list.
+
+        Args:
+            obj: Factory instance being built.
+
+        Returns:
+            Number of components in the list.
+        """
+        return len(obj.components)
+
+    @classmethod
+    def with_components(
+        cls, components: list[DiscoveredComponent], **kwargs: Any
+    ) -> ComponentDiscoveryResult:
+        """Create result with specific components.
+
+        Args:
+            components: List of discovered components.
+            **kwargs: Additional fields to override.
+
+        Returns:
+            ComponentDiscoveryResult with the given components.
+        """
+        return cls(
+            components=components,
+            total_found=len(components),
+            **kwargs,
+        )  # type: ignore[return-value]
+
+    @classmethod
+    def empty(cls, **kwargs: Any) -> ComponentDiscoveryResult:
+        """Create an empty discovery result.
+
+        Args:
+            **kwargs: Additional fields to override.
+
+        Returns:
+            ComponentDiscoveryResult with no components.
+        """
+        return cls(
+            components=[],
+            total_found=0,
+            **kwargs,
+        )  # type: ignore[return-value]
+
+    @classmethod
+    def with_warnings(
+        cls, warnings: list[str], **kwargs: Any
+    ) -> ComponentDiscoveryResult:
+        """Create result with warnings.
+
+        Args:
+            warnings: List of warning messages.
+            **kwargs: Additional fields to override.
+
+        Returns:
+            ComponentDiscoveryResult with the given warnings.
+        """
+        return cls(warnings=warnings, **kwargs)  # type: ignore[return-value]

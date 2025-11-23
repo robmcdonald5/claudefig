@@ -10,6 +10,7 @@ from click.testing import CliRunner
 from claudefig.cli.commands.presets import (
     presets_apply,
     presets_create,
+    presets_create_from_repo,
     presets_delete,
     presets_edit,
     presets_group,
@@ -820,3 +821,347 @@ class TestPresetsGroupIntegration:
         open_cmd = presets_group.commands["open"]
         # Should have no arguments, only the command itself
         assert len(open_cmd.params) == 0
+
+    def test_create_from_repo_command_registered(self):
+        """Test create-from-repo command is registered in the group."""
+        command_names = [cmd.name for cmd in presets_group.commands.values()]
+        assert "create-from-repo" in command_names
+
+    def test_create_from_repo_command_has_correct_params(self):
+        """Test create-from-repo command has correct parameters."""
+        create_from_repo_cmd = presets_group.commands["create-from-repo"]
+        param_names = [p.name for p in create_from_repo_cmd.params]
+
+        assert "preset_name" in param_names
+        assert "description" in param_names
+        assert "path" in param_names
+
+
+class TestPresetsCreateFromRepo:
+    """Tests for 'presets create-from-repo' command."""
+
+    @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_success(
+        self, mock_discovery_class, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test successfully creating preset from repository."""
+        from claudefig.models import (
+            ComponentDiscoveryResult,
+            DiscoveredComponent,
+            FileType,
+        )
+
+        # Create a mock source file
+        source_file = tmp_path / "CLAUDE.md"
+        source_file.write_text("# Test")
+
+        # Setup mock discovery result
+        mock_component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+        mock_result = ComponentDiscoveryResult(
+            components=[mock_component],
+            total_found=1,
+            warnings=[],
+            scan_time_ms=10.5,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        mock_manager = Mock()
+        mock_manager.global_presets_dir = tmp_path / "presets"
+        mock_manager_class.return_value = mock_manager
+
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["my-preset", "--path", str(tmp_path)]
+        )
+
+        assert result.exit_code == 0
+        assert "SUCCESS" in result.output or "created" in result.output.lower()
+        mock_manager.create_preset_from_discovery.assert_called_once()
+
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_no_components(
+        self, mock_discovery_class, cli_runner, tmp_path
+    ):
+        """Test that no components found shows appropriate message."""
+        from claudefig.models import ComponentDiscoveryResult
+
+        mock_result = ComponentDiscoveryResult(
+            components=[],
+            total_found=0,
+            warnings=[],
+            scan_time_ms=5.0,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["empty-preset", "--path", str(tmp_path)]
+        )
+
+        # Should abort with exit code 1 (Abort)
+        assert result.exit_code == 1
+        assert (
+            "No usable components" in result.output
+            or "no components" in result.output.lower()
+        )
+
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_invalid_path(self, mock_discovery_class, cli_runner):
+        """Test handling invalid repository path."""
+        mock_discovery = Mock()
+        mock_discovery.discover_components.side_effect = ValueError(
+            "Repository path does not exist"
+        )
+        mock_discovery_class.return_value = mock_discovery
+
+        # Use a non-existent path - click will validate this before our code
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["test-preset", "--path", "/nonexistent/path"]
+        )
+
+        # Click validates path exists, so this should fail
+        assert result.exit_code != 0
+
+    @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_preset_exists(
+        self, mock_discovery_class, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test error when preset already exists."""
+        from claudefig.models import (
+            ComponentDiscoveryResult,
+            DiscoveredComponent,
+            FileType,
+        )
+
+        source_file = tmp_path / "CLAUDE.md"
+        source_file.write_text("# Test")
+
+        mock_component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+        mock_result = ComponentDiscoveryResult(
+            components=[mock_component],
+            total_found=1,
+            warnings=[],
+            scan_time_ms=10.0,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        mock_manager = Mock()
+        mock_manager.create_preset_from_discovery.side_effect = ValueError(
+            "Preset 'existing' already exists"
+        )
+        mock_manager_class.return_value = mock_manager
+
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["existing", "--path", str(tmp_path)]
+        )
+
+        assert result.exit_code == 1
+        assert "already exists" in result.output or "Error" in result.output
+
+    @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_with_description(
+        self, mock_discovery_class, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test create-from-repo with custom description."""
+        from claudefig.models import (
+            ComponentDiscoveryResult,
+            DiscoveredComponent,
+            FileType,
+        )
+
+        source_file = tmp_path / "CLAUDE.md"
+        source_file.write_text("# Test")
+
+        mock_component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+        mock_result = ComponentDiscoveryResult(
+            components=[mock_component],
+            total_found=1,
+            warnings=[],
+            scan_time_ms=10.0,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        mock_manager = Mock()
+        mock_manager.global_presets_dir = tmp_path / "presets"
+        mock_manager_class.return_value = mock_manager
+
+        result = cli_runner.invoke(
+            presets_create_from_repo,
+            [
+                "custom-preset",
+                "--description",
+                "Custom description",
+                "--path",
+                str(tmp_path),
+            ],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_manager.create_preset_from_discovery.call_args
+        assert call_args[1]["description"] == "Custom description"
+
+    @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_shows_table(
+        self, mock_discovery_class, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test that component table is displayed."""
+        from claudefig.models import (
+            ComponentDiscoveryResult,
+            DiscoveredComponent,
+            FileType,
+        )
+
+        source_file = tmp_path / "CLAUDE.md"
+        source_file.write_text("# Test")
+
+        mock_component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+        mock_result = ComponentDiscoveryResult(
+            components=[mock_component],
+            total_found=1,
+            warnings=[],
+            scan_time_ms=10.0,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        mock_manager = Mock()
+        mock_manager.global_presets_dir = tmp_path / "presets"
+        mock_manager_class.return_value = mock_manager
+
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["table-test", "--path", str(tmp_path)]
+        )
+
+        assert result.exit_code == 0
+        # Table should show component name and type
+        assert "CLAUDE" in result.output
+
+    @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_shows_warnings(
+        self, mock_discovery_class, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test that duplicate warnings are displayed."""
+        from claudefig.models import (
+            ComponentDiscoveryResult,
+            DiscoveredComponent,
+            FileType,
+        )
+
+        source_file = tmp_path / "CLAUDE.md"
+        source_file.write_text("# Test")
+
+        mock_component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+        mock_result = ComponentDiscoveryResult(
+            components=[mock_component],
+            total_found=1,
+            warnings=["Duplicate component name 'test' found in 2 locations"],
+            scan_time_ms=10.0,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        mock_manager = Mock()
+        mock_manager.global_presets_dir = tmp_path / "presets"
+        mock_manager_class.return_value = mock_manager
+
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["warning-test", "--path", str(tmp_path)]
+        )
+
+        assert result.exit_code == 0
+        # Warnings should be displayed
+        assert "Warning" in result.output or "Duplicate" in result.output
+
+    @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
+    @patch("claudefig.services.component_discovery_service.ComponentDiscoveryService")
+    def test_create_from_repo_shows_scan_time(
+        self, mock_discovery_class, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test that scan time is displayed in output."""
+        from claudefig.models import (
+            ComponentDiscoveryResult,
+            DiscoveredComponent,
+            FileType,
+        )
+
+        source_file = tmp_path / "CLAUDE.md"
+        source_file.write_text("# Test")
+
+        mock_component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=source_file,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+        mock_result = ComponentDiscoveryResult(
+            components=[mock_component],
+            total_found=1,
+            warnings=[],
+            scan_time_ms=25.5,
+        )
+
+        mock_discovery = Mock()
+        mock_discovery.discover_components.return_value = mock_result
+        mock_discovery_class.return_value = mock_discovery
+
+        mock_manager = Mock()
+        mock_manager.global_presets_dir = tmp_path / "presets"
+        mock_manager_class.return_value = mock_manager
+
+        result = cli_runner.invoke(
+            presets_create_from_repo, ["time-test", "--path", str(tmp_path)]
+        )
+
+        assert result.exit_code == 0
+        # Scan time should be displayed
+        assert "25.5" in result.output or "scanned" in result.output.lower()

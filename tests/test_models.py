@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from claudefig.models import (
     FileInstance,
     FileType,
@@ -721,3 +723,298 @@ class TestValidationResult:
             "Path outside repository",
         ]
         assert result.warnings == ["Path exists", "File will be overwritten"]
+
+
+class TestDiscoveredComponent:
+    """Tests for DiscoveredComponent dataclass."""
+
+    def test_discovered_component_creation(self, tmp_path):
+        """Test creating a DiscoveredComponent with valid data."""
+        from claudefig.models import DiscoveredComponent
+
+        file_path = tmp_path / "CLAUDE.md"
+        file_path.write_text("# Test")
+
+        component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=file_path,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+            is_duplicate=False,
+            duplicate_paths=[],
+        )
+
+        assert component.name == "CLAUDE"
+        assert component.type == FileType.CLAUDE_MD
+        assert component.path == file_path
+        assert component.relative_path == Path("CLAUDE.md")
+        assert component.parent_folder == "."
+        assert not component.is_duplicate
+        assert component.duplicate_paths == []
+
+    def test_discovered_component_empty_name_raises(self, tmp_path):
+        """Test that empty name raises ValueError."""
+        from claudefig.models import DiscoveredComponent
+
+        file_path = tmp_path / "CLAUDE.md"
+        file_path.write_text("# Test")
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            DiscoveredComponent(
+                name="",
+                type=FileType.CLAUDE_MD,
+                path=file_path,
+                relative_path=Path("CLAUDE.md"),
+                parent_folder=".",
+            )
+
+    def test_discovered_component_whitespace_name_raises(self, tmp_path):
+        """Test that whitespace-only name raises ValueError."""
+        from claudefig.models import DiscoveredComponent
+
+        file_path = tmp_path / "CLAUDE.md"
+        file_path.write_text("# Test")
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            DiscoveredComponent(
+                name="   ",
+                type=FileType.CLAUDE_MD,
+                path=file_path,
+                relative_path=Path("CLAUDE.md"),
+                parent_folder=".",
+            )
+
+    def test_discovered_component_relative_path_raises(self, tmp_path):
+        """Test that non-absolute path raises ValueError."""
+        from claudefig.models import DiscoveredComponent
+
+        with pytest.raises(ValueError, match="must be absolute"):
+            DiscoveredComponent(
+                name="CLAUDE",
+                type=FileType.CLAUDE_MD,
+                path=Path("relative/path/CLAUDE.md"),  # Not absolute
+                relative_path=Path("CLAUDE.md"),
+                parent_folder=".",
+            )
+
+    def test_discovered_component_absolute_relative_raises(self, tmp_path):
+        """Test that absolute relative_path raises ValueError."""
+        from claudefig.models import DiscoveredComponent
+
+        file_path = tmp_path / "CLAUDE.md"
+        file_path.write_text("# Test")
+
+        with pytest.raises(ValueError, match="must be relative"):
+            DiscoveredComponent(
+                name="CLAUDE",
+                type=FileType.CLAUDE_MD,
+                path=file_path,
+                relative_path=file_path,  # Absolute, should be relative
+                parent_folder=".",
+            )
+
+    def test_discovered_component_repr(self, tmp_path):
+        """Test DiscoveredComponent string representation."""
+        from claudefig.models import DiscoveredComponent
+
+        file_path = tmp_path / "CLAUDE.md"
+        file_path.write_text("# Test")
+
+        component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=file_path,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+
+        repr_str = repr(component)
+        assert "DiscoveredComponent" in repr_str
+        assert "name=CLAUDE" in repr_str
+        assert "type=claude_md" in repr_str
+        assert "path=CLAUDE.md" in repr_str
+        assert "(duplicate)" not in repr_str
+
+    def test_discovered_component_repr_with_duplicate(self, tmp_path):
+        """Test DiscoveredComponent repr includes duplicate indicator."""
+        from claudefig.models import DiscoveredComponent
+
+        file_path = tmp_path / "CLAUDE.md"
+        file_path.write_text("# Test")
+
+        component = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=file_path,
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+            is_duplicate=True,
+            duplicate_paths=[tmp_path / "other" / "CLAUDE.md"],
+        )
+
+        repr_str = repr(component)
+        assert "(duplicate)" in repr_str
+
+    def test_discovered_component_with_all_types(self, tmp_path):
+        """Test DiscoveredComponent creation with various FileTypes."""
+        from claudefig.models import DiscoveredComponent
+
+        test_cases = [
+            (FileType.CLAUDE_MD, "CLAUDE.md"),
+            (FileType.GITIGNORE, ".gitignore"),
+            (FileType.COMMANDS, "test-cmd.md"),
+            (FileType.AGENTS, "helper.md"),
+            (FileType.HOOKS, "pre-commit.py"),
+            (FileType.SETTINGS_JSON, "settings.json"),
+            (FileType.MCP, "filesystem.json"),
+        ]
+
+        for file_type, filename in test_cases:
+            file_path = tmp_path / filename
+            file_path.write_text("content")
+
+            component = DiscoveredComponent(
+                name=f"test-{file_type.value}",
+                type=file_type,
+                path=file_path,
+                relative_path=Path(filename),
+                parent_folder=".",
+            )
+
+            assert component.type == file_type
+
+
+class TestComponentDiscoveryResult:
+    """Tests for ComponentDiscoveryResult dataclass."""
+
+    def test_discovery_result_creation(self):
+        """Test creating ComponentDiscoveryResult with basic data."""
+        from claudefig.models import ComponentDiscoveryResult
+
+        result = ComponentDiscoveryResult(
+            components=[],
+            total_found=0,
+            warnings=[],
+            scan_time_ms=10.5,
+        )
+
+        assert result.components == []
+        assert result.total_found == 0
+        assert result.warnings == []
+        assert result.scan_time_ms == 10.5
+
+    def test_discovery_result_has_warnings_true(self):
+        """Test has_warnings returns True when warnings exist."""
+        from claudefig.models import ComponentDiscoveryResult
+
+        result = ComponentDiscoveryResult(
+            components=[],
+            total_found=0,
+            warnings=["Duplicate name found"],
+            scan_time_ms=5.0,
+        )
+
+        assert result.has_warnings is True
+
+    def test_discovery_result_has_warnings_false(self):
+        """Test has_warnings returns False when no warnings."""
+        from claudefig.models import ComponentDiscoveryResult
+
+        result = ComponentDiscoveryResult(
+            components=[],
+            total_found=0,
+            warnings=[],
+            scan_time_ms=5.0,
+        )
+
+        assert result.has_warnings is False
+
+    def test_discovery_result_get_by_type(self, tmp_path):
+        """Test get_components_by_type filters correctly."""
+        from claudefig.models import ComponentDiscoveryResult, DiscoveredComponent
+
+        # Create test components
+        claude_md = DiscoveredComponent(
+            name="CLAUDE",
+            type=FileType.CLAUDE_MD,
+            path=tmp_path / "CLAUDE.md",
+            relative_path=Path("CLAUDE.md"),
+            parent_folder=".",
+        )
+
+        gitignore = DiscoveredComponent(
+            name="gitignore",
+            type=FileType.GITIGNORE,
+            path=tmp_path / ".gitignore",
+            relative_path=Path(".gitignore"),
+            parent_folder=".",
+        )
+
+        command = DiscoveredComponent(
+            name="test-cmd",
+            type=FileType.COMMANDS,
+            path=tmp_path / ".claude" / "commands" / "test-cmd.md",
+            relative_path=Path(".claude/commands/test-cmd.md"),
+            parent_folder="commands",
+        )
+
+        # Create files for validation
+        (tmp_path / "CLAUDE.md").write_text("# Claude")
+        (tmp_path / ".gitignore").write_text("*.pyc")
+        cmd_dir = tmp_path / ".claude" / "commands"
+        cmd_dir.mkdir(parents=True)
+        (cmd_dir / "test-cmd.md").write_text("# Command")
+
+        result = ComponentDiscoveryResult(
+            components=[claude_md, gitignore, command],
+            total_found=3,
+            warnings=[],
+            scan_time_ms=15.0,
+        )
+
+        # Test filtering
+        claude_comps = result.get_components_by_type(FileType.CLAUDE_MD)
+        assert len(claude_comps) == 1
+        assert claude_comps[0].name == "CLAUDE"
+
+        gitignore_comps = result.get_components_by_type(FileType.GITIGNORE)
+        assert len(gitignore_comps) == 1
+        assert gitignore_comps[0].name == "gitignore"
+
+        command_comps = result.get_components_by_type(FileType.COMMANDS)
+        assert len(command_comps) == 1
+        assert command_comps[0].name == "test-cmd"
+
+        # Type with no components
+        agent_comps = result.get_components_by_type(FileType.AGENTS)
+        assert len(agent_comps) == 0
+
+    def test_discovery_result_repr(self):
+        """Test ComponentDiscoveryResult string representation."""
+        from claudefig.models import ComponentDiscoveryResult
+
+        result = ComponentDiscoveryResult(
+            components=[],
+            total_found=5,
+            warnings=["Warning 1", "Warning 2"],
+            scan_time_ms=25.3,
+        )
+
+        repr_str = repr(result)
+        assert "ComponentDiscoveryResult" in repr_str
+        assert "found=5" in repr_str
+        assert "warnings=2" in repr_str
+        assert "time=25.3ms" in repr_str
+
+    def test_discovery_result_defaults(self):
+        """Test ComponentDiscoveryResult default values."""
+        from claudefig.models import ComponentDiscoveryResult
+
+        result = ComponentDiscoveryResult(
+            components=[],
+            total_found=0,
+        )
+
+        assert result.warnings == []
+        assert result.scan_time_ms == 0.0
