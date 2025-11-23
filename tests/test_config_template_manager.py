@@ -227,7 +227,7 @@ class TestApplyPresetToProject:
         assert config_file.exists()
 
         # Load and verify it's in project config format (not PresetDefinition format)
-        with open(config_file, "rb") as f:
+        with open(config_file, "rb") as f:  # type: ignore[assignment]
             project_config = tomllib.load(f)
 
         # Should have [claudefig] section (project config format)

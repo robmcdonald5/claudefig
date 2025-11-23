@@ -1,6 +1,5 @@
 """Tests for ComponentDiscoveryService."""
 
-
 import pytest
 
 from claudefig.models import FileType

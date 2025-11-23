@@ -550,7 +550,7 @@ class TestFileInstance:
             id="test-instance", variables={"component_name": "my-custom-component"}
         )
 
-        assert instance.get_component_name() == "my-custom-component"
+        assert instance.get_component_name() == "my-custom-component"  # type: ignore[attr-defined]
 
     def test_get_component_name_from_preset(self):
         """Test get_component_name() extracts from preset field (Priority 2)."""
@@ -562,7 +562,7 @@ class TestFileInstance:
         )
 
         # No component_name in variables, should extract from preset
-        assert instance.get_component_name() == "backend-focused"
+        assert instance.get_component_name() == "backend-focused"  # type: ignore[attr-defined]
 
     def test_get_component_name_empty(self):
         """Test get_component_name() returns empty string when not found (Priority 3)."""
@@ -574,7 +574,7 @@ class TestFileInstance:
         )
 
         # No component_name in variables, no colon in preset
-        assert instance.get_component_name() == ""
+        assert instance.get_component_name() == ""  # type: ignore[attr-defined]
 
     def test_get_component_name_priority(self):
         """Test get_component_name() prioritizes variables over preset."""
@@ -583,7 +583,7 @@ class TestFileInstance:
         )
 
         # Should prefer variables over preset extraction
-        assert instance.get_component_name() == "from-variables"
+        assert instance.get_component_name() == "from-variables"  # type: ignore[attr-defined]
 
 
 class TestValidationResult:

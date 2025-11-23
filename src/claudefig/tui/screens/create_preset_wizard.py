@@ -525,4 +525,3 @@ class CreatePresetWizard(BaseScreen):
                 f"Unexpected error creating preset: {e}",
                 severity="error",
             )
-
