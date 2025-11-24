@@ -8,6 +8,7 @@ Complete command-line reference for claudefig.
 - [Main Commands](#main-commands)
 - [Config Commands](#config-commands)
 - [Files Commands](#files-commands)
+- [Components Commands](#components-commands)
 - [Presets Commands](#presets-commands)
 - [Examples](#examples)
 
@@ -1286,6 +1287,95 @@ Location: ~/.claudefig/presets/my-fastapi-project/claudefig.toml
 
 - Project must have a `claudefig.toml` file
 - Run `claudefig init` first if the project doesn't have a config
+
+### `claudefig presets create-from-repo`
+
+Create a preset by scanning a repository for existing Claude Code components.
+
+**Usage:**
+
+```bash
+claudefig presets create-from-repo PRESET_NAME [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name for the new preset |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--description`, `-d` | Description of the preset | Empty string |
+| `--path`, `-p` | Repository path to scan | Current directory |
+
+**Examples:**
+
+```bash
+# Create preset from current repository
+claudefig presets create-from-repo my-project-preset
+
+# Create with description
+claudefig presets create-from-repo my-fastapi-preset \
+  -d "FastAPI backend with existing Claude Code setup"
+
+# Scan specific repository
+claudefig presets create-from-repo legacy-setup --path /path/to/existing-repo
+```
+
+**Example Output:**
+
+```
+Scanning repository: /path/to/project
+
+Found 5 components (scanned in 12.3ms)
+
+┌────────────────────┬─────────────────┬───────────────────────────────┐
+│ Component          │ Type            │ Path                          │
+├────────────────────┼─────────────────┼───────────────────────────────┤
+│ default            │ CLAUDE.md       │ CLAUDE.md                     │
+│ backend            │ CLAUDE.md       │ backend/CLAUDE.md             │
+│ review-pr          │ Slash Commands  │ .claude/commands/review-pr.md │
+│ test-runner        │ Hooks           │ .claude/hooks/test-runner.py  │
+│ github             │ MCP Servers     │ .claude/mcp/github.json       │
+└────────────────────┴─────────────────┴───────────────────────────────┘
+
+Creating preset 'my-project-preset' with all discovered components...
+
+SUCCESS: Preset 'my-project-preset' created successfully!
+Location: ~/.claudefig/presets/my-project-preset
+Components: 5
+```
+
+**What it scans for:**
+
+- `CLAUDE.md` files (anywhere in repository)
+- `.gitignore` files
+- `settings.json` / `settings.local.json` in `.claude/`
+- Slash commands in `.claude/commands/`
+- Sub-agents in `.claude/agents/`
+- Hook scripts in `.claude/hooks/`
+- Output styles in `.claude/output-styles/`
+- Status line script (`.claude/statusline.sh`)
+- MCP server configs in `.claude/mcp/`
+- Plugins in `.claude/plugins/`
+- Skills in `.claude/skills/`
+
+**Notes:**
+
+- This command includes **all** discovered components in the preset
+- For interactive component selection, use the TUI: `claudefig interactive` → Presets → Create from Repo
+- Duplicate component names are disambiguated using folder prefixes
+- The preset is saved to `~/.claudefig/presets/{preset_name}/`
+
+**Use cases:**
+
+- Capture existing project setup as a reusable template
+- Migrate manual Claude Code configurations to claudefig
+- Share team configurations by exporting to presets
+- Create backups of current configuration
 
 ### `claudefig presets delete`
 

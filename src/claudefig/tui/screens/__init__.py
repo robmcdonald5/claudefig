@@ -2,6 +2,7 @@
 
 from .apply_preset import ApplyPresetScreen
 from .create_preset import CreatePresetScreen
+from .create_preset_wizard import CreatePresetWizard
 from .delete_preset import DeletePresetScreen
 from .file_instances import FileInstancesScreen
 from .overview import OverviewScreen
@@ -10,12 +11,13 @@ from .project_settings import ProjectSettingsScreen
 from .save_component import SaveComponentScreen
 
 __all__ = [
-    "CreatePresetScreen",
     "ApplyPresetScreen",
+    "CreatePresetScreen",
+    "CreatePresetWizard",
     "DeletePresetScreen",
-    "PresetDetailsScreen",
-    "OverviewScreen",
-    "ProjectSettingsScreen",
     "FileInstancesScreen",
+    "OverviewScreen",
+    "PresetDetailsScreen",
+    "ProjectSettingsScreen",
     "SaveComponentScreen",
 ]

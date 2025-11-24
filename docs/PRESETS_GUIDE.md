@@ -16,6 +16,7 @@
   - [Directory-based Presets](#directory-based-presets)
   - [Special Presets](#special-presets)
 - [Creating Custom Presets](#creating-custom-presets)
+  - [From Existing Repository](#from-existing-repository)
   - [User Presets (Global)](#user-presets-global)
   - [Project Presets (Team-Shared)](#project-presets-team-shared)
 - [Preset Variables](#preset-variables)
@@ -159,7 +160,11 @@ claudefig presets apply claude_md:backend --path docs/BACKEND.md
 | `agents:default` | Example custom agents |
 | `hooks:default` | Example pre/post hooks |
 | `output_styles:default` | Example output styles |
-| `mcp:default` | Example MCP server configs |
+| `mcp:stdio-local` | MCP server configs for local STDIO tools |
+| `mcp:http-oauth` | MCP server configs for HTTP OAuth services |
+| `mcp:http-apikey` | MCP server configs for HTTP API key services |
+| `plugins:default` | Example Claude Code plugins |
+| `skills:default` | Example Claude Code skills |
 
 ### Special Presets
 
@@ -171,6 +176,66 @@ claudefig presets apply claude_md:backend --path docs/BACKEND.md
 ## Creating Custom Presets
 
 **Note:** As of 2025, claudefig uses a directory-based preset architecture. Each preset is a complete directory structure containing components and metadata.
+
+### From Existing Repository
+
+The easiest way to create a preset is to scan an existing repository that already has Claude Code configurations. This automatically discovers all compatible components and packages them into a reusable preset.
+
+**CLI Method:**
+
+```bash
+# Scan current repository and create preset with all discovered components
+claudefig presets create-from-repo my-project-preset
+
+# With description
+claudefig presets create-from-repo my-fastapi-preset \
+  -d "FastAPI backend with PostgreSQL and Redis"
+
+# Scan specific repository
+claudefig presets create-from-repo legacy-setup --path /path/to/existing-repo
+```
+
+**TUI Method (Interactive Selection):**
+
+1. Launch `claudefig interactive`
+2. Navigate to **Presets** panel
+3. Select **Create from Repo**
+4. Enter preset name and description
+5. The wizard scans your repository and shows discovered components
+6. Use checkboxes to select which components to include
+7. Confirm to create the preset
+
+**What gets discovered:**
+
+| Component Type | Location(s) Scanned |
+|----------------|---------------------|
+| CLAUDE.md | `**/CLAUDE.md`, `**/CLAUDE_*.md` |
+| .gitignore | `.gitignore` |
+| Settings | `.claude/settings.json`, `.claude/settings.local.json` |
+| Slash Commands | `.claude/commands/*.md` |
+| Sub-Agents | `.claude/agents/*.md` |
+| Hooks | `.claude/hooks/*.py` |
+| Output Styles | `.claude/output-styles/*.md` |
+| Status Line | `.claude/statusline.sh` |
+| MCP Configs | `.claude/mcp/*.json`, `.mcp.json` |
+| Plugins | `.claude/plugins/*` |
+| Skills | `.claude/skills/*` |
+
+**Example workflow:**
+
+```bash
+# 1. You have an existing project with Claude Code setup
+cd ~/projects/my-existing-project
+
+# 2. Create a preset from it
+claudefig presets create-from-repo my-project-setup \
+  -d "My standard project setup with custom commands and agents"
+
+# 3. Use the preset in a new project
+cd ~/projects/new-project
+claudefig presets apply my-project-setup
+claudefig init
+```
 
 ### User Presets (Global)
 

@@ -236,14 +236,6 @@ git push origin feature/your-feature-name
 
 4. Wait for review and address feedback
 
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
-
-### Reporting Issues
-
-If you experience or witness unacceptable behavior, please report it by contacting the project team.
-
 ## Questions?
 
 - **GitHub Discussions**: For questions and general discussion

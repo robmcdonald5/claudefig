@@ -32,6 +32,25 @@ class ConfigTemplateManager:
     that define complete project configurations.
     """
 
+    @staticmethod
+    def _sanitize_path_component(name: str) -> str:
+        """Sanitize a path component to prevent traversal attacks.
+
+        Args:
+            name: The name to sanitize (preset name or component name)
+
+        Returns:
+            Sanitized name safe for use in paths
+
+        Raises:
+            ValueError: If name is invalid after sanitization
+        """
+        sanitized = name.replace("/", "").replace("\\", "").replace("..", "")
+        sanitized = sanitized.strip().strip(".")
+        if not sanitized:
+            raise ValueError(f"Invalid name after sanitization: '{name}'")
+        return sanitized
+
     def __init__(self, global_presets_dir: Path | None = None):
         """Initialize config template manager.
 
@@ -491,6 +510,107 @@ class ConfigTemplateManager:
                 raise
             else:
                 raise FileOperationError(f"create preset '{name}'", str(e)) from e
+
+    def create_preset_from_discovery(
+        self,
+        preset_name: str,
+        description: str,
+        components: list,
+    ) -> None:
+        """Create a preset from discovered components.
+
+        Creates a preset directory with claudefig.toml file and component files
+        from a list of discovered components.
+
+        Args:
+            preset_name: Name of the preset to create
+            description: Optional description
+            components: List of DiscoveredComponent objects to include
+
+        Raises:
+            ValueError: If preset name is invalid or already exists
+            FileOperationError: If component copying fails
+        """
+        import tomli_w
+
+        from claudefig.exceptions import FileOperationError
+
+        if not preset_name:
+            raise ValueError("Preset name cannot be empty")
+        safe_preset_name = self._sanitize_path_component(preset_name)
+
+        preset_dir = self.global_presets_dir / safe_preset_name
+
+        try:
+            # Use exist_ok=False to prevent race condition (TOCTOU)
+            # This atomically checks existence and creates in one operation
+            preset_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as e:
+            raise ValueError(f"Preset '{preset_name}' already exists") from e
+
+        try:
+            components_dir = preset_dir / "components"
+            components_dir.mkdir(exist_ok=True)
+
+            # Build component list for preset definition
+            component_refs = []
+
+            # Copy each component to preset directory structure
+            for component in components:
+                safe_comp_name = self._sanitize_path_component(component.name)
+
+                comp_dir = components_dir / component.type.value / safe_comp_name
+                comp_dir.mkdir(parents=True, exist_ok=True)
+
+                # Copy component file(s)
+                if component.path.is_file():
+                    dest_file = comp_dir / component.path.name
+                    shutil.copy2(component.path, dest_file)
+                elif component.path.is_dir():
+                    shutil.copytree(component.path, comp_dir, dirs_exist_ok=True)
+
+                # Add component reference to preset definition
+                component_refs.append(
+                    {
+                        "type": component.type.value,
+                        "name": safe_comp_name,
+                        "path": str(component.relative_path),
+                        "enabled": True,
+                        "variables": {},
+                    }
+                )
+
+            # Build preset definition
+            preset_data: dict[str, Any] = {
+                "preset": {
+                    "name": safe_preset_name,
+                    "version": "1.0.0",
+                    "description": description
+                    or "Preset created from repository components",
+                },
+                "components": component_refs,
+            }
+
+            # Save preset TOML
+            toml_path = preset_dir / "claudefig.toml"
+            with open(toml_path, "wb") as f:
+                tomli_w.dump(preset_data, f)
+
+        except Exception as e:
+            # Cleanup preset directory if creation failed
+            if preset_dir.exists():
+                import contextlib
+
+                with contextlib.suppress(Exception):
+                    shutil.rmtree(preset_dir)
+
+            # Re-raise the original exception
+            if isinstance(e, (ValueError, FileNotFoundError)):
+                raise
+            else:
+                raise FileOperationError(
+                    f"create preset '{preset_name}'", str(e)
+                ) from e
 
     def delete_global_preset(self, name: str) -> None:
         """Delete a global preset directory.

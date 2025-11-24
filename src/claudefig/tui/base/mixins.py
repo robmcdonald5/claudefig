@@ -275,6 +275,7 @@ class ScrollNavigationMixin:
                     "tab-actions" in current.classes
                     or "instance-actions" in current.classes
                     or "dialog-actions" in current.classes
+                    or "wizard-actions" in current.classes
                 )
             ):
                 return current

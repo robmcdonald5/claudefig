@@ -20,7 +20,8 @@ Universal configuration manager for Claude Code projects with preset templates a
 
 ### Core Features
 - **Preset System** - Choose from built-in templates or create your own
-- **Interactive TUI** - User-friendly terminal interface for managing configurations
+- **Repository Scanning** - Create presets from existing Claude Code configurations (`presets create-from-repo`)
+- **Interactive TUI** - User-friendly terminal interface with preset wizard for managing configurations
 - **File Instances** - Fine-grained control over which files to generate
 - **Validation** - Automatic validation with helpful error/warning messages
 - **Flexible Configuration** - Stored in `claudefig.toml` (project) or `~/.claudefig/` (global home directory)
@@ -97,6 +98,7 @@ claudefig
 
 The TUI lets you:
 - Browse and apply presets
+- Create presets from existing repositories (Preset Wizard with component selection)
 - Manage file instances (add, edit, enable/disable)
 - Preview configurations before generating
 - Navigate with keyboard shortcuts
@@ -129,7 +131,8 @@ All claudefig inline features can be used directly by the CLI
 - [Installation Guide](#installation) - Installation instructions
 - [Quick Start](#quick-start) - Get up and running quickly
 - [Usage Examples](#usage) - Common workflows and examples
-- [Architecture Documentation](ARCHITECTURE.md) - System architecture and design patterns
+- [Architecture Documentation](docs/ARCHITECTURE.md) - System architecture and design patterns
+- [MCP Security Guide](docs/MCP_SECURITY_GUIDE.md) - Security best practices for MCP servers
 - [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
 - [Changelog](CHANGELOG.md) - Version history
 
@@ -147,8 +150,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Development setup
 - Code style guidelines
 - Testing requirements
-
-Please also review our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

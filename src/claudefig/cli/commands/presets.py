@@ -226,7 +226,7 @@ def presets_create(preset_name, description, path):
             format_cli_error(ErrorMessages.config_file_not_found(str(repo_path)))
         )
         console.print("[dim]Initialize a config first with 'claudefig init'[/dim]")
-        raise click.Abort()
+        raise click.Abort() from None
 
     manager = ConfigTemplateManager()
 
@@ -242,6 +242,123 @@ def presets_create(preset_name, description, path):
     console.print(
         f"[dim]Location: {manager.global_presets_dir / preset_name / 'claudefig.toml'}[/dim]"
     )
+
+
+@presets_group.command("create-from-repo")
+@click.argument("preset_name")
+@click.option(
+    "--description",
+    "-d",
+    default="",
+    help="Description of the preset",
+)
+@click.option(
+    "--path",
+    "-p",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Repository path to scan (default: current directory)",
+)
+@handle_errors(
+    "creating preset from repository",
+    extra_handlers={
+        ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+        FileNotFoundError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+    },
+)
+def presets_create_from_repo(preset_name, description, path):
+    """Create a preset from discovered components in a repository.
+
+    This command scans the repository for Claude Code components and
+    automatically includes ALL discovered components in the new preset.
+
+    For interactive component selection, use the TUI:
+    claudefig tui → Presets → Create from Repo
+
+    PRESET_NAME: Name for the new preset
+    """
+    from claudefig.services.component_discovery_service import ComponentDiscoveryService
+
+    repo_path = Path(path).resolve()
+
+    console.print(f"\n[cyan]Scanning repository:[/cyan] {repo_path}")
+
+    # Discover components
+    discovery_service = ComponentDiscoveryService()
+    try:
+        result = discovery_service.discover_components(repo_path)
+    except Exception as e:
+        console.print(f"[red]Error scanning repository:[/red] {e}")
+        raise click.Abort() from e
+
+    # Check if any components found
+    if result.total_found == 0:
+        console.print("\n[yellow]No usable components detected in repository[/yellow]")
+        console.print("\n[dim]The scanner looked for:[/dim]")
+        console.print("[dim]  • CLAUDE.md files[/dim]")
+        console.print("[dim]  • .claude/ directory contents[/dim]")
+        console.print("[dim]  • .gitignore files[/dim]")
+        console.print("[dim]  • MCP configurations[/dim]")
+        console.print("[dim]  • And more...[/dim]")
+        raise click.Abort()
+
+    # Show discovery results
+    console.print(
+        f"\n[green]Found {result.total_found} components[/green] "
+        f"[dim](scanned in {result.scan_time_ms:.1f}ms)[/dim]\n"
+    )
+
+    # Display component list
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Component", style="cyan", width=30)
+    table.add_column("Type", style="yellow", width=20)
+    table.add_column("Path", style="white", width=40)
+
+    for comp in result.components:
+        table.add_row(
+            comp.name,
+            comp.type.display_name,
+            str(comp.relative_path),
+        )
+
+    console.print(table)
+
+    # Show warnings if any
+    if result.has_warnings:
+        console.print("\n[yellow]Warnings:[/yellow]")
+        for warning in result.warnings:
+            console.print(f"  [yellow]![/yellow] {warning}")
+        console.print(
+            "\n[dim]Note: Duplicate names will be disambiguated using folder prefixes.[/dim]"
+        )
+        console.print(
+            "[dim]Review the component list to ensure correct files are included.[/dim]"
+        )
+
+    # Create preset with ALL components
+    console.print(
+        f"\n[cyan]Creating preset '{preset_name}' with all discovered components...[/cyan]"
+    )
+
+    manager = ConfigTemplateManager()
+    try:
+        manager.create_preset_from_discovery(
+            preset_name=preset_name,
+            description=description or "Preset created from repository components",
+            components=result.components,  # ALL components
+        )
+    except ValueError as e:
+        console.print(f"[red]Error creating preset:[/red] {e}")
+        raise click.Abort() from e
+    except Exception as e:
+        console.print(f"[red]Unexpected error:[/red] {e}")
+        raise click.Abort() from e
+
+    console.print(
+        f"\n[green]SUCCESS:[/green] Preset '[cyan]{preset_name}[/cyan]' created successfully!"
+    )
+    console.print(f"[dim]Location: {manager.global_presets_dir / preset_name}[/dim]")
+    console.print(f"[dim]Components: {result.total_found}[/dim]")
 
 
 @presets_group.command("delete")

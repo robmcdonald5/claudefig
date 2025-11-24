@@ -2,7 +2,7 @@
 
 **Purpose:** Track feature parity between TUI and CLI interfaces as required by CLAUDE.md.
 
-**Last Updated:** 2025-11-14
+**Last Updated:** 2025-11-21
 
 ## Table of Contents
 
@@ -67,13 +67,21 @@ Per CLAUDE.md line 36-37:
 | List available presets | ✓ (Presets Panel) | ✓ (`presets list`) | Full parity |
 | Filter presets by type | ✓ (Presets Panel dropdown) | ✓ (`presets list --type`) | Full parity |
 | Show preset details | ✓ (Presets Panel selection) | ✓ (`presets show`) | Full parity |
-| Create new preset | ❌ | ✓ (`presets create`) | **CLI-only** |
+| Create preset from config | ❌ | ✓ (`presets create`) | **CLI-only** |
+| Create preset from repo | ✓ (Preset Wizard - interactive) | ✓ (`presets create-from-repo`) | Full parity (v1.2.0+) |
+| Component selection for preset | ✓ (Preset Wizard checkboxes) | ❌ (includes all) | **TUI-only** |
 | Edit preset | ❌ | ✓ (`presets edit`) | **CLI-only** |
 | Delete preset | ❌ | ✓ (`presets delete`) | **CLI-only** |
 | Open presets directory | ❌ | ✓ (`presets open`) | **CLI-only** |
 | Apply preset to add file instance | ✓ (Presets Panel apply) | ✓ (via `files add --preset`) | Full parity |
 
-**Status:** ⚠️ **Partial Parity** - CLI has 4 features not in TUI
+**Status:** ⚠️ **Partial Parity** - CLI has 4 features not in TUI, TUI has 1 feature not in CLI
+
+**Notes:**
+- As of v1.2.0, both TUI and CLI support creating presets from repository scanning
+- TUI Preset Wizard provides interactive component selection (checkboxes)
+- CLI `create-from-repo` includes all discovered components automatically
+- For selective component inclusion via CLI, use TUI wizard
 
 ### 4. Template Management
 
@@ -141,12 +149,12 @@ Per CLAUDE.md line 36-37:
 |----------|-------------------|-------------------|---------------|
 | Project Initialization | 0 | 0 | ✅ Full |
 | File Instance Management | 2 | 0 | ⚠️ Partial |
-| Preset Management | 0 | 4 | ⚠️ Partial |
+| Preset Management | 1 | 4 | ⚠️ Partial |
 | Template Management | 0 | 7 | ❌ None |
 | Configuration | 0 | 2 | ⚠️ Partial |
 | Validation & Overview | 2 | 0 | ⚠️ Partial |
 | MCP Management | 0 | 1* | ✅ Near Full |
-| **TOTAL** | **4** | **14*** | **⚠️ Incomplete** |
+| **TOTAL** | **5** | **14*** | **⚠️ Incomplete** |
 
 *Manual `setup-mcp` command is CLI-only but optional (auto-setup provides equivalent functionality)
 
@@ -228,6 +236,19 @@ Estimated effort: 1-2 hours
 **17-25 hours** of development work
 
 ## Decision Log
+
+### 2025-11-21: Preset Creation from Repository
+
+- **Added**: TUI Preset Wizard for creating presets from repository scanning
+- **Added**: CLI `presets create-from-repo` command for same functionality
+- **Added**: Component discovery service with rglob-based scanning
+- **Added**: Interactive component selection in TUI (checkbox-based)
+- **Decision**: TUI provides selective component inclusion, CLI includes all components
+  - TUI wizard allows users to choose which components to include in preset
+  - CLI command includes all discovered components automatically
+  - Users who need selective CLI inclusion can use TUI wizard
+  - This approach respects interface strengths (TUI for interaction, CLI for automation)
+- **Result**: Preset Management gains repo-based creation in both interfaces
 
 ### 2025-11-14: MCP Auto-Setup Implementation
 

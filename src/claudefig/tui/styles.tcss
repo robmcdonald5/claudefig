@@ -81,6 +81,7 @@ Screen {
 /* Base button styles for content panels and modals */
 #content-panel Button,
 .dialog-actions Button,
+.wizard-actions Button,
 .button-row Button {
     min-height: 3;
     padding: 0 2;
@@ -99,6 +100,7 @@ Screen {
 
 #content-panel Button:hover,
 .dialog-actions Button:hover,
+.wizard-actions Button:hover,
 .instance-actions Button:hover,
 .button-row Button:hover {
     background: $primary;
@@ -107,6 +109,7 @@ Screen {
 
 #content-panel Button:focus,
 .dialog-actions Button:focus,
+.wizard-actions Button:focus,
 .instance-actions Button:focus,
 .button-row Button:focus {
     border: none;
@@ -116,6 +119,7 @@ Screen {
 
 #content-panel Button:focus:hover,
 .dialog-actions Button:focus:hover,
+.wizard-actions Button:focus:hover,
 .instance-actions Button:focus:hover,
 .button-row Button:focus:hover {
     border: none;
@@ -490,6 +494,8 @@ VerticalScroll Horizontal {
 #content-panel Button.primary,
 .dialog-actions Button.-primary,
 .dialog-actions Button.primary,
+.wizard-actions Button.-primary,
+.wizard-actions Button.primary,
 .instance-actions Button.-primary,
 .instance-actions Button.primary,
 .button-row Button.-primary,
@@ -503,6 +509,8 @@ VerticalScroll Horizontal {
 #content-panel Button.primary:hover,
 .dialog-actions Button.-primary:hover,
 .dialog-actions Button.primary:hover,
+.wizard-actions Button.-primary:hover,
+.wizard-actions Button.primary:hover,
 .instance-actions Button.-primary:hover,
 .instance-actions Button.primary:hover,
 .button-row Button.-primary:hover,
@@ -515,6 +523,8 @@ VerticalScroll Horizontal {
 #content-panel Button.primary:focus,
 .dialog-actions Button.-primary:focus,
 .dialog-actions Button.primary:focus,
+.wizard-actions Button.-primary:focus,
+.wizard-actions Button.primary:focus,
 .instance-actions Button.-primary:focus,
 .instance-actions Button.primary:focus,
 .button-row Button.-primary:focus,
@@ -528,6 +538,8 @@ VerticalScroll Horizontal {
 #content-panel Button.primary:focus:hover,
 .dialog-actions Button.-primary:focus:hover,
 .dialog-actions Button.primary:focus:hover,
+.wizard-actions Button.-primary:focus:hover,
+.wizard-actions Button.primary:focus:hover,
 .instance-actions Button.-primary:focus:hover,
 .instance-actions Button.primary:focus:hover,
 .button-row Button.-primary:focus:hover,
@@ -539,6 +551,7 @@ VerticalScroll Horizontal {
 
 #content-panel Button:disabled,
 .dialog-actions Button:disabled,
+.wizard-actions Button:disabled,
 .instance-actions Button:disabled,
 .button-row Button:disabled {
     opacity: 0.5;
@@ -549,6 +562,7 @@ VerticalScroll Horizontal {
 
 #content-panel Button:disabled:hover,
 .dialog-actions Button:disabled:hover,
+.wizard-actions Button:disabled:hover,
 .instance-actions Button:disabled:hover,
 .button-row Button:disabled:hover {
     background: $panel;
@@ -1299,4 +1313,116 @@ Input.hidden {
     color: $text-muted;
     text-align: center;
     margin: 1;
+}
+
+/* ============================================================================ */
+/* Component Selection Styles */
+/* ============================================================================ */
+
+/* Component group header for file type sections */
+.component-group-header {
+    color: $text-muted;
+    text-style: bold dim;
+    margin: 1 0;
+    text-align: left;
+}
+
+/* ============================================================================ */
+/* Wizard Styles */
+/* ============================================================================ */
+
+.wizard-step-indicator {
+    color: $text-muted;
+    text-align: left;
+    margin: 1 0;
+}
+
+.wizard-content {
+    width: 100%;
+    height: auto;
+    padding: 2;
+}
+
+.wizard-label {
+    margin-top: 1;
+    margin-bottom: 0;
+    color: $text;
+    text-style: bold;
+}
+
+.wizard-actions {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-top: 2;
+}
+
+.wizard-actions Button {
+    width: auto;
+    margin: 0 1;
+    min-width: 15;
+}
+
+.wizard-status {
+    color: $text;
+    text-align: center;
+    margin: 2 0;
+}
+
+.wizard-status-success {
+    color: $success;
+    text-style: bold;
+    margin: 1 0;
+}
+
+.wizard-error {
+    color: $error;
+    text-style: bold;
+    text-align: center;
+    margin: 2 0;
+}
+
+.wizard-help-text {
+    color: $text-muted;
+    text-align: left;
+    margin: 1 0;
+}
+
+.wizard-warning-header {
+    color: $warning;
+    text-style: bold;
+    margin-top: 1;
+}
+
+.wizard-warning-text {
+    color: $warning;
+    margin-left: 2;
+}
+
+.wizard-review-section {
+    width: 100%;
+    height: auto;
+    padding: 1;
+    margin: 1 0;
+    border: solid $primary-lighten-1;
+    background: $panel;
+}
+
+.wizard-review-item {
+    color: $text;
+    margin: 0 1;
+}
+
+.wizard-component-list {
+    width: 100%;
+    height: auto;
+    border: solid $primary-lighten-1;
+    background: $surface;
+    padding: 1;
+    margin-top: 1;
+}
+
+.wizard-component-item {
+    color: $text;
+    margin: 0 1;
 }

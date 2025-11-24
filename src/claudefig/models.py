@@ -457,3 +457,82 @@ class ComponentReference:
         if self.variables:
             result["variables"] = self.variables
         return result
+
+
+@dataclass
+class DiscoveredComponent:
+    """Represents a component discovered during repository scanning.
+
+    Used by the component discovery service to identify Claude Code
+    components in a repository before creating a preset.
+    """
+
+    name: str  # Component name (using naming strategy)
+    type: FileType  # Component type enum
+    path: Path  # Full absolute path to file/directory
+    relative_path: Path  # Path relative to repo root
+    parent_folder: str  # Parent directory name
+    is_duplicate: bool = False  # True if duplicate name detected
+    # Use list for mutability during discovery, but document that it should
+    # not be modified after creation
+    duplicate_paths: list[Path] = field(
+        default_factory=list
+    )  # Other files with same name
+
+    def __post_init__(self) -> None:
+        """Validate component data after initialization."""
+        if not self.name or not self.name.strip():
+            raise ValueError("Component name cannot be empty")
+
+        if not self.path.is_absolute():
+            raise ValueError(f"path must be absolute: {self.path}")
+
+        if self.relative_path.is_absolute():
+            raise ValueError(f"relative_path must be relative: {self.relative_path}")
+
+    def __repr__(self) -> str:
+        """String representation of discovered component."""
+        dup_indicator = " (duplicate)" if self.is_duplicate else ""
+        return (
+            f"DiscoveredComponent(name={self.name}, "
+            f"type={self.type.value}, "
+            f"path={self.relative_path}{dup_indicator})"
+        )
+
+
+@dataclass
+class ComponentDiscoveryResult:
+    """Result of component discovery scan.
+
+    Contains all discovered components plus metadata about the scan
+    including performance metrics and warnings.
+    """
+
+    components: list[DiscoveredComponent]  # All discovered components
+    total_found: int  # Total number of components found
+    warnings: list[str] = field(default_factory=list)  # Duplicate warnings, etc.
+    scan_time_ms: float = 0.0  # Performance tracking in milliseconds
+
+    @property
+    def has_warnings(self) -> bool:
+        """Check if scan produced any warnings."""
+        return len(self.warnings) > 0
+
+    def get_components_by_type(self, file_type: FileType) -> list[DiscoveredComponent]:
+        """Get all components of a specific type.
+
+        Args:
+            file_type: FileType to filter by
+
+        Returns:
+            List of discovered components matching the type
+        """
+        return [c for c in self.components if c.type == file_type]
+
+    def __repr__(self) -> str:
+        """String representation of discovery result."""
+        return (
+            f"ComponentDiscoveryResult(found={self.total_found}, "
+            f"warnings={len(self.warnings)}, "
+            f"time={self.scan_time_ms:.1f}ms)"
+        )

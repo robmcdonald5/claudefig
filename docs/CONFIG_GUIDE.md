@@ -150,6 +150,8 @@ claudefig supports these file types:
 | `output_styles` | Output styles (directory) | `.claude/output-styles/` |
 | `statusline` | Status line script | `.claude/statusline.sh` |
 | `mcp` | MCP server configs (directory) | `.claude/mcp/` |
+| `plugins` | Claude Code plugins (directory) | `.claude/plugins/` |
+| `skills` | Claude Code skills (directory) | `.claude/skills/` |
 
 ### Multiple Instances
 
@@ -503,6 +505,45 @@ claudefig performs multiple validation checks:
 3. **Preset Validation** - Referenced presets exist
 4. **Path Validation** - Paths are safe and valid
 5. **Conflict Detection** - No path conflicts
+
+### Path Validation Rules
+
+claudefig enforces strict path validation to ensure security and prevent accidental file overwrites outside your project:
+
+**Allowed paths:**
+- Relative paths within the repository (e.g., `CLAUDE.md`, `docs/BACKEND.md`)
+- Paths starting with `.claude/` for Claude Code configuration files
+- Paths using forward slashes (auto-converted on Windows)
+
+**Prohibited paths:**
+- Absolute paths (e.g., `/etc/config`, `C:\Windows\`)
+- Directory traversal patterns (e.g., `../`, `..\\`)
+- Paths outside the repository boundary
+- Paths with null bytes or control characters
+
+**Examples:**
+
+```toml
+# Valid paths
+path = "CLAUDE.md"
+path = "docs/BACKEND.md"
+path = ".claude/commands/review.md"
+path = "src/services/auth/CLAUDE.md"
+
+# Invalid paths (will fail validation)
+path = "../CLAUDE.md"              # Directory traversal
+path = "/etc/claude/config.md"     # Absolute path
+path = "C:\\Users\\config.md"      # Absolute Windows path
+path = "../../sensitive-data.txt"  # Traversal outside repo
+```
+
+**Error example:**
+
+```
+Error: Path validation failed for 'claude_md-main'
+  Path '../CLAUDE.md' contains directory traversal patterns
+  Hint: Use relative paths within the repository only
+```
 
 ### Common Validation Errors
 
