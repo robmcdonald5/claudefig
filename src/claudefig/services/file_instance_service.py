@@ -248,6 +248,10 @@ def validate_instance(
     # Special validation for plugins: check component references
     if instance.type == FileType.PLUGINS:
         # Get component directories to search
+        # Dynamic import to avoid circular dependency at module load time:
+        # file_instance_service -> user_config -> structure_validator
+        # This import is deferred to runtime when validate_instance() is called
+        # for PLUGINS file type validation.
         from claudefig.user_config import get_components_dir, get_user_config_dir
 
         components_dirs = []
@@ -329,7 +333,7 @@ def validate_path(path: str, file_type: FileType, repo_path: Path) -> Validation
 
         # Check if file would be created outside repo
         full_path = (repo_path / path_obj).resolve()
-        if not str(full_path).startswith(str(repo_path.resolve())):
+        if not full_path.is_relative_to(repo_path.resolve()):
             result.add_error("Path would create file outside repository")
 
         # Warn if file already exists (unless in append mode)
