@@ -74,6 +74,23 @@ def is_linux() -> bool:
     return _get_system() == "Linux"
 
 
+def secure_mkdir(path: Path, mode: int = 0o700) -> None:
+    """Create directory with secure permissions on Unix, default on Windows.
+
+    On Unix systems, creates directories with the specified mode (default 0o700,
+    user-only access). On Windows, permissions are managed by the OS and the
+    mode parameter is ignored.
+
+    Args:
+        path: Directory path to create
+        mode: Unix permission mode (default 0o700, ignored on Windows)
+    """
+    if is_windows():
+        path.mkdir(parents=True, exist_ok=True)
+    else:
+        path.mkdir(parents=True, exist_ok=True, mode=mode)
+
+
 def open_file_in_editor(file_path: Path | str) -> bool:
     """Open a file in the system's default editor.
 

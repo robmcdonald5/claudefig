@@ -46,3 +46,21 @@ def is_git_repository(path: Path) -> bool:
         current = current.parent
 
     return False
+
+
+def validate_not_symlink(path: Path, context: str = "") -> None:
+    """Raise error if path is a symbolic link.
+
+    For security, symbolic links are rejected in file copy operations to prevent
+    path traversal attacks where symlinks could point outside expected directories.
+
+    Args:
+        path: Path to check
+        context: Optional context for error message (e.g., function name)
+
+    Raises:
+        ValueError: If path is a symlink
+    """
+    if path.is_symlink():
+        ctx = f" ({context})" if context else ""
+        raise ValueError(f"Symbolic links are not allowed{ctx}: {path}")
