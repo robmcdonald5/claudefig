@@ -1,0 +1,162 @@
+# Built-in presets for claudefig
+# These presets are shipped with the package and loaded at runtime
+
+# CLAUDE.md presets
+[[presets]]
+id = "claude_md:default"
+type = "claude_md"
+name = "Default"
+description = "Standard Claude Code configuration file"
+tags = ["standard", "general"]
+
+[[presets]]
+id = "claude_md:minimal"
+type = "claude_md"
+name = "Minimal"
+description = "Minimal Claude Code configuration"
+tags = ["minimal", "simple"]
+
+[[presets]]
+id = "claude_md:backend"
+type = "claude_md"
+name = "Backend Focused"
+description = "Backend development focused configuration"
+tags = ["backend", "api"]
+
+[[presets]]
+id = "claude_md:frontend"
+type = "claude_md"
+name = "Frontend Focused"
+description = "Frontend development focused configuration"
+tags = ["frontend", "ui"]
+
+# Settings presets
+[[presets]]
+id = "settings_json:default"
+type = "settings_json"
+name = "Default"
+description = "Standard team settings"
+tags = ["standard", "team"]
+
+[[presets]]
+id = "settings_json:strict"
+type = "settings_json"
+name = "Strict"
+description = "Strict permissions and validation"
+tags = ["strict", "secure"]
+
+# Settings local presets
+[[presets]]
+id = "settings_local_json:default"
+type = "settings_local_json"
+name = "Default"
+description = "Personal project settings"
+tags = ["personal", "local"]
+
+# Gitignore presets
+[[presets]]
+id = "gitignore:default"
+type = "gitignore"
+name = "Default"
+description = "Default Claude Code gitignore entries"
+tags = ["default", "standard"]
+
+[[presets]]
+id = "gitignore:standard"
+type = "gitignore"
+name = "Standard"
+description = "Standard Claude Code gitignore entries"
+tags = ["standard"]
+
+[[presets]]
+id = "gitignore:python"
+type = "gitignore"
+name = "Python"
+description = "Python-specific gitignore patterns"
+tags = ["python", "language"]
+
+# Commands preset
+[[presets]]
+id = "commands:default"
+type = "commands"
+name = "Default"
+description = "Standard slash command examples"
+tags = ["standard", "examples"]
+
+# Agents preset
+[[presets]]
+id = "agents:default"
+type = "agents"
+name = "Default"
+description = "Standard sub-agent examples"
+tags = ["standard", "examples"]
+
+# Hooks preset
+[[presets]]
+id = "hooks:default"
+type = "hooks"
+name = "Default"
+description = "Standard hook examples"
+tags = ["standard", "examples"]
+
+# Output styles preset
+[[presets]]
+id = "output_styles:default"
+type = "output_styles"
+name = "Default"
+description = "Standard output style examples"
+tags = ["standard", "examples"]
+
+# Statusline preset
+[[presets]]
+id = "statusline:default"
+type = "statusline"
+name = "Default"
+description = "Standard statusline script"
+tags = ["standard"]
+
+# MCP presets
+[[presets]]
+id = "mcp:stdio-local"
+type = "mcp"
+name = "STDIO Local"
+description = "Local MCP servers (npm packages, command-line tools)"
+tags = ["stdio", "local", "development"]
+
+[[presets]]
+id = "mcp:http-oauth"
+type = "mcp"
+name = "HTTP OAuth"
+description = "Cloud MCP servers with OAuth 2.1 authentication"
+tags = ["http", "oauth", "cloud", "production"]
+
+[[presets]]
+id = "mcp:http-apikey"
+type = "mcp"
+name = "HTTP API Key"
+description = "Cloud MCP servers with API key authentication"
+tags = ["http", "apikey", "cloud"]
+
+# Backward compatibility: mcp:default -> stdio-local
+[[presets]]
+id = "mcp:default"
+type = "mcp"
+name = "Default (STDIO Local)"
+description = "Alias for stdio-local (backward compatibility)"
+tags = ["stdio", "local", "development", "deprecated"]
+
+# Plugins preset
+[[presets]]
+id = "plugins:default"
+type = "plugins"
+name = "Default"
+description = "Standard plugin examples"
+tags = ["standard", "examples"]
+
+# Skills preset
+[[presets]]
+id = "skills:default"
+type = "skills"
+name = "Default"
+description = "Standard skill examples"
+tags = ["standard", "examples"]

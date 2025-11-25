@@ -15,6 +15,7 @@ from claudefig.exceptions import (
     FileOperationError,
     FileReadError,
     FileWriteError,
+    InvalidPresetNameError,
     PresetExistsError,
     PresetNotFoundError,
     TemplateNotFoundError,
@@ -96,7 +97,11 @@ class TomlPresetRepository(AbstractPresetRepository):
 
         Returns:
             Preset object if found, None otherwise.
+
+        Raises:
+            InvalidPresetNameError: If preset ID contains dangerous characters.
         """
+        self._validate_preset_id(preset_id)
         self._ensure_cache_loaded()
         return self._preset_cache.get(preset_id)
 
@@ -108,10 +113,13 @@ class TomlPresetRepository(AbstractPresetRepository):
             source: Target source (USER or PROJECT only).
 
         Raises:
+            InvalidPresetNameError: If preset ID contains dangerous characters.
             BuiltInModificationError: If source is BUILT_IN.
             PresetExistsError: If preset already exists.
             FileWriteError: If write operation fails.
         """
+        self._validate_preset_id(preset.id)
+
         if source == PresetSource.BUILT_IN:
             raise BuiltInModificationError("preset", "add")
 
@@ -147,10 +155,12 @@ class TomlPresetRepository(AbstractPresetRepository):
             preset: Updated preset object.
 
         Raises:
+            InvalidPresetNameError: If preset ID contains dangerous characters.
             PresetNotFoundError: If preset doesn't exist.
             BuiltInModificationError: If trying to update a BUILT_IN preset.
             FileWriteError: If write operation fails.
         """
+        self._validate_preset_id(preset.id)
         self._ensure_cache_loaded()
 
         if preset.id not in self._preset_cache:
@@ -169,7 +179,7 @@ class TomlPresetRepository(AbstractPresetRepository):
 
         preset_file = storage_dir / f"{preset.id.replace(':', '_')}.toml"
         if not preset_file.exists():
-            raise FileNotFoundError(f"Preset file not found: {preset_file}")
+            raise PresetNotFoundError(preset.id)
 
         # Save updated preset
         try:
@@ -188,10 +198,12 @@ class TomlPresetRepository(AbstractPresetRepository):
             preset_id: Preset identifier to delete.
 
         Raises:
+            InvalidPresetNameError: If preset ID contains dangerous characters.
             PresetNotFoundError: If preset doesn't exist.
             BuiltInModificationError: If trying to delete a BUILT_IN preset.
             FileOperationError: If deletion fails.
         """
+        self._validate_preset_id(preset_id)
         self._ensure_cache_loaded()
 
         preset = self._preset_cache.get(preset_id)
@@ -365,7 +377,7 @@ class TomlPresetRepository(AbstractPresetRepository):
 
             return component_path if component_path.exists() else None
 
-        except Exception:
+        except (ImportError, AttributeError, FileNotFoundError, TypeError):
             return None
 
     def _resolve_user_component(
@@ -441,6 +453,22 @@ class TomlPresetRepository(AbstractPresetRepository):
         if not self._cache_loaded:
             self._load_all_presets()
 
+    def _validate_preset_id(self, preset_id: str) -> None:
+        """Validate preset ID doesn't contain path traversal characters.
+
+        Args:
+            preset_id: Preset identifier to validate.
+
+        Raises:
+            InvalidPresetNameError: If preset ID contains dangerous characters.
+        """
+        dangerous_patterns = ["/", "\\", "..", "\0"]
+        if any(pattern in preset_id for pattern in dangerous_patterns):
+            raise InvalidPresetNameError(
+                preset_id,
+                "Preset ID cannot contain path separators or traversal sequences",
+            )
+
     def _load_all_presets(self) -> None:
         """Load presets from all sources into cache."""
         # Built-in presets are loaded first (lowest priority)
@@ -461,194 +489,26 @@ class TomlPresetRepository(AbstractPresetRepository):
         self._cache_loaded = True
 
     def _load_builtin_presets(self) -> None:
-        """Load built-in presets shipped with claudefig."""
+        """Load built-in presets from package data TOML file."""
+        from importlib.resources import files
 
-        builtin_presets = [
-            # CLAUDE.md presets
-            Preset(
-                id="claude_md:default",
-                type=FileType.CLAUDE_MD,
-                name="Default",
-                description="Standard Claude Code configuration file",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "general"],
-            ),
-            Preset(
-                id="claude_md:minimal",
-                type=FileType.CLAUDE_MD,
-                name="Minimal",
-                description="Minimal Claude Code configuration",
-                source=PresetSource.BUILT_IN,
-                tags=["minimal", "simple"],
-            ),
-            Preset(
-                id="claude_md:backend",
-                type=FileType.CLAUDE_MD,
-                name="Backend Focused",
-                description="Backend development focused configuration",
-                source=PresetSource.BUILT_IN,
-                tags=["backend", "api"],
-            ),
-            Preset(
-                id="claude_md:frontend",
-                type=FileType.CLAUDE_MD,
-                name="Frontend Focused",
-                description="Frontend development focused configuration",
-                source=PresetSource.BUILT_IN,
-                tags=["frontend", "ui"],
-            ),
-            # Settings presets
-            Preset(
-                id="settings_json:default",
-                type=FileType.SETTINGS_JSON,
-                name="Default",
-                description="Standard team settings",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "team"],
-            ),
-            Preset(
-                id="settings_json:strict",
-                type=FileType.SETTINGS_JSON,
-                name="Strict",
-                description="Strict permissions and validation",
-                source=PresetSource.BUILT_IN,
-                tags=["strict", "secure"],
-            ),
-            # Settings local presets
-            Preset(
-                id="settings_local_json:default",
-                type=FileType.SETTINGS_LOCAL_JSON,
-                name="Default",
-                description="Personal project settings",
-                source=PresetSource.BUILT_IN,
-                tags=["personal", "local"],
-            ),
-            # Gitignore presets
-            Preset(
-                id="gitignore:default",
-                type=FileType.GITIGNORE,
-                name="Default",
-                description="Default Claude Code gitignore entries",
-                source=PresetSource.BUILT_IN,
-                tags=["default", "standard"],
-            ),
-            Preset(
-                id="gitignore:standard",
-                type=FileType.GITIGNORE,
-                name="Standard",
-                description="Standard Claude Code gitignore entries",
-                source=PresetSource.BUILT_IN,
-                tags=["standard"],
-            ),
-            Preset(
-                id="gitignore:python",
-                type=FileType.GITIGNORE,
-                name="Python",
-                description="Python-specific gitignore patterns",
-                source=PresetSource.BUILT_IN,
-                tags=["python", "language"],
-            ),
-            # Commands preset
-            Preset(
-                id="commands:default",
-                type=FileType.COMMANDS,
-                name="Default",
-                description="Standard slash command examples",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
-            ),
-            # Agents preset
-            Preset(
-                id="agents:default",
-                type=FileType.AGENTS,
-                name="Default",
-                description="Standard sub-agent examples",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
-            ),
-            # Hooks preset
-            Preset(
-                id="hooks:default",
-                type=FileType.HOOKS,
-                name="Default",
-                description="Standard hook examples",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
-            ),
-            # Output styles preset
-            Preset(
-                id="output_styles:default",
-                type=FileType.OUTPUT_STYLES,
-                name="Default",
-                description="Standard output style examples",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
-            ),
-            # Statusline preset
-            Preset(
-                id="statusline:default",
-                type=FileType.STATUSLINE,
-                name="Default",
-                description="Standard statusline script",
-                source=PresetSource.BUILT_IN,
-                tags=["standard"],
-            ),
-            # MCP presets
-            Preset(
-                id="mcp:stdio-local",
-                type=FileType.MCP,
-                name="STDIO Local",
-                description="Local MCP servers (npm packages, command-line tools)",
-                source=PresetSource.BUILT_IN,
-                tags=["stdio", "local", "development"],
-            ),
-            Preset(
-                id="mcp:http-oauth",
-                type=FileType.MCP,
-                name="HTTP OAuth",
-                description="Cloud MCP servers with OAuth 2.1 authentication",
-                source=PresetSource.BUILT_IN,
-                tags=["http", "oauth", "cloud", "production"],
-            ),
-            Preset(
-                id="mcp:http-apikey",
-                type=FileType.MCP,
-                name="HTTP API Key",
-                description="Cloud MCP servers with API key authentication",
-                source=PresetSource.BUILT_IN,
-                tags=["http", "apikey", "cloud"],
-            ),
-            # Backward compatibility: mcp:default -> stdio-local
-            Preset(
-                id="mcp:default",
-                type=FileType.MCP,
-                name="Default (STDIO Local)",
-                description="Alias for stdio-local (backward compatibility)",
-                source=PresetSource.BUILT_IN,
-                tags=["stdio", "local", "development", "deprecated"],
-            ),
-            # Plugins preset
-            Preset(
-                id="plugins:default",
-                type=FileType.PLUGINS,
-                name="Default",
-                description="Standard plugin examples",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
-            ),
-            # Skills preset
-            Preset(
-                id="skills:default",
-                type=FileType.SKILLS,
-                name="Default",
-                description="Standard skill examples",
-                source=PresetSource.BUILT_IN,
-                tags=["standard", "examples"],
-            ),
-        ]
+        try:
+            builtin_file = files("presets").joinpath("builtin_presets.toml")
+            with builtin_file.open("rb") as f:
+                data = tomllib.load(f)
 
-        for preset in builtin_presets:
-            self._preset_cache[preset.id] = preset
+            for preset_data in data.get("presets", []):
+                # Validate required keys
+                required_keys = ["id", "type", "name"]
+                if not all(key in preset_data for key in required_keys):
+                    continue
+
+                preset = Preset.from_dict(preset_data)
+                preset.source = PresetSource.BUILT_IN
+                self._preset_cache[preset.id] = preset
+
+        except (ImportError, AttributeError, FileNotFoundError, TypeError) as e:
+            self._load_errors.append(f"Failed to load built-in presets: {e}")
 
     def _load_from_directory(self, directory: Path, source: PresetSource) -> None:
         """Load all preset TOML files from a directory.
@@ -667,6 +527,14 @@ class TomlPresetRepository(AbstractPresetRepository):
                     continue
 
                 preset_data = data.get("preset", {})
+
+                # Validate required keys before deserialization
+                required_keys = ["id", "type", "name"]
+                if not all(key in preset_data for key in required_keys):
+                    error_msg = f"Missing required keys in {preset_file}"
+                    self._load_errors.append(error_msg)
+                    continue
+
                 preset = Preset.from_dict(preset_data)
                 preset.source = source
 
@@ -729,10 +597,10 @@ class FakePresetRepository(AbstractPresetRepository):
     def add_preset(self, preset: Preset, source: PresetSource) -> None:
         """Add a new preset to memory."""
         if source == PresetSource.BUILT_IN:
-            raise ValueError("Cannot add built-in presets")
+            raise BuiltInModificationError(preset.id, "add")
 
         if preset.id in self._presets:
-            raise ValueError(f"Preset '{preset.id}' already exists")
+            raise PresetExistsError(preset.id)
 
         preset.source = source
         self._presets[preset.id] = preset
@@ -740,22 +608,22 @@ class FakePresetRepository(AbstractPresetRepository):
     def update_preset(self, preset: Preset) -> None:
         """Update an existing preset in memory."""
         if preset.id not in self._presets:
-            raise FileNotFoundError(f"Preset not found: {preset.id}")
+            raise PresetNotFoundError(preset.id)
 
         existing = self._presets[preset.id]
         if existing.source == PresetSource.BUILT_IN:
-            raise ValueError("Cannot update built-in presets")
+            raise BuiltInModificationError(preset.id, "update")
 
         self._presets[preset.id] = preset
 
     def delete_preset(self, preset_id: str) -> None:
         """Delete a preset from memory."""
         if preset_id not in self._presets:
-            raise FileNotFoundError(f"Preset not found: {preset_id}")
+            raise PresetNotFoundError(preset_id)
 
         preset = self._presets[preset_id]
         if preset.source == PresetSource.BUILT_IN:
-            raise ValueError("Cannot delete built-in presets")
+            raise BuiltInModificationError(preset_id, "delete")
 
         del self._presets[preset_id]
 
