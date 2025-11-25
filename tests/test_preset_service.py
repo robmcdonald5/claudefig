@@ -7,6 +7,7 @@ import pytest
 
 from claudefig.exceptions import (
     BuiltInModificationError,
+    CircularDependencyError,
     PresetExistsError,
     PresetNotFoundError,
 )
@@ -506,3 +507,63 @@ class TestResolvePresetVariables:
 
         # Child should win
         assert result["var"] == "c_value"
+
+    def test_detects_direct_circular_dependency(self):
+        """Test raises CircularDependencyError for direct self-reference."""
+        # Preset extends itself
+        preset = PresetFactory(
+            name="self_ref",
+            variables={"var": "value"},
+        )
+        preset.extends = preset.id  # Self-reference
+        repo = FakePresetRepository([preset])
+
+        with pytest.raises(CircularDependencyError) as exc_info:
+            preset_service.resolve_preset_variables(repo, preset)
+
+        assert preset.id in str(exc_info.value)
+
+    def test_detects_two_way_circular_dependency(self):
+        """Test raises CircularDependencyError for A -> B -> A cycle."""
+        preset_a = PresetFactory(name="preset_a", variables={"a": "1"})
+        preset_b = PresetFactory(name="preset_b", variables={"b": "2"})
+        preset_a.extends = preset_b.id
+        preset_b.extends = preset_a.id
+        repo = FakePresetRepository([preset_a, preset_b])
+
+        with pytest.raises(CircularDependencyError) as exc_info:
+            preset_service.resolve_preset_variables(repo, preset_a)
+
+        # Both presets should be mentioned in the cycle
+        error_message = str(exc_info.value)
+        assert "preset_a" in error_message or preset_a.id in error_message
+        assert "preset_b" in error_message or preset_b.id in error_message
+
+    def test_detects_three_way_circular_dependency(self):
+        """Test raises CircularDependencyError for A -> B -> C -> A cycle."""
+        preset_a = PresetFactory(name="preset_a", variables={"a": "1"})
+        preset_b = PresetFactory(name="preset_b", variables={"b": "2"})
+        preset_c = PresetFactory(name="preset_c", variables={"c": "3"})
+        preset_a.extends = preset_b.id
+        preset_b.extends = preset_c.id
+        preset_c.extends = preset_a.id
+        repo = FakePresetRepository([preset_a, preset_b, preset_c])
+
+        with pytest.raises(CircularDependencyError):
+            preset_service.resolve_preset_variables(repo, preset_a)
+
+    def test_no_error_for_valid_inheritance_chain(self):
+        """Test no error raised for valid non-circular inheritance."""
+        grandparent = PresetFactory(name="grandparent", variables={"gp": "1"})
+        parent = PresetFactory(
+            name="parent", variables={"p": "2"}, extends=grandparent.id
+        )
+        child = PresetFactory(name="child", variables={"c": "3"}, extends=parent.id)
+        repo = FakePresetRepository([grandparent, parent, child])
+
+        # Should not raise
+        result = preset_service.resolve_preset_variables(repo, child)
+
+        assert "gp" in result
+        assert "p" in result
+        assert "c" in result

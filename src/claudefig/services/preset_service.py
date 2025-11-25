@@ -9,6 +9,7 @@ from typing import Any
 
 from claudefig.exceptions import (
     BuiltInModificationError,
+    CircularDependencyError,
     FileReadError,
     PresetExistsError,
     TemplateNotFoundError,
@@ -232,7 +233,9 @@ def validate_preset_variables(
 
 
 def resolve_preset_variables(
-    repo: AbstractPresetRepository, preset: Preset
+    repo: AbstractPresetRepository,
+    preset: Preset,
+    _visited: set[str] | None = None,
 ) -> dict[str, Any]:
     """Resolve preset variables including inheritance chain.
 
@@ -242,19 +245,24 @@ def resolve_preset_variables(
     Args:
         repo: Preset repository (to load parent presets).
         preset: Preset to resolve variables for.
+        _visited: Internal tracking set for cycle detection (do not pass).
 
     Returns:
         Merged variables dictionary.
 
     Raises:
-        ValueError: If circular dependency detected.
-
-    Note:
-        This is a simplified version. Full implementation would:
-        - Check for circular dependencies
-        - Walk entire inheritance chain
-        - Handle missing parent presets gracefully
+        CircularDependencyError: If circular inheritance is detected.
     """
+    # Initialize visited set for cycle detection
+    if _visited is None:
+        _visited = set()
+
+    # Check for circular dependency
+    if preset.id in _visited:
+        raise CircularDependencyError([*_visited, preset.id])
+
+    _visited.add(preset.id)
+
     if not preset.extends:
         # No inheritance, return preset's own variables
         return preset.variables.copy()
@@ -265,8 +273,8 @@ def resolve_preset_variables(
         # Parent not found, return own variables
         return preset.variables.copy()
 
-    # Recursively resolve parent variables
-    parent_vars = resolve_preset_variables(repo, parent)
+    # Recursively resolve parent variables (pass visited set)
+    parent_vars = resolve_preset_variables(repo, parent, _visited)
 
     # Merge: parent variables + child variables (child overrides)
     merged = parent_vars.copy()
