@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Key
@@ -30,6 +31,12 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
     Inherits standard navigation bindings from BaseScreen with ScrollNavigationMixin
     support for smart vertical/horizontal navigation.
     """
+
+    # Class variables for state persistence across recompose
+    _last_active_tab: str | None = None  # Tab ID e.g., "tab-claude_md"
+    _last_focused_instance_id: str | None = None  # Instance ID for focused item
+    _last_focused_widget_type: str = "select"  # "select", "button", or "instance"
+    _last_focused_button_id: str | None = None  # For "Open Folder" button tracking
 
     def __init__(
         self,
@@ -67,6 +74,106 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
 
         # Save config to disk
         config_service.save_config(self.config_data, self.config_repo)
+
+    def on_mount(self) -> None:
+        """Called when the widget is mounted. Restore focus state after recompose."""
+        self.call_after_refresh(self.restore_focus)
+
+    def on_descendant_focus(self, event) -> None:
+        """Track which widget has focus for restoration after recompose."""
+        import contextlib
+
+        focused = event.widget
+
+        # Track active tab
+        with contextlib.suppress(Exception):
+            tabs = self.query_one("#file-instances-tabs", TabbedContent)
+            FileInstancesScreen._last_active_tab = tabs.active
+
+        # Track if Select dropdown is focused
+        if isinstance(focused, Select):
+            FileInstancesScreen._last_focused_widget_type = "select"
+
+        # Track if a button is focused
+        elif isinstance(focused, Button):
+            if focused.id and focused.id.startswith("btn-open-components-"):
+                # Open Folder button
+                FileInstancesScreen._last_focused_widget_type = "button"
+                FileInstancesScreen._last_focused_button_id = focused.id
+            elif focused.id and any(
+                focused.id.startswith(p)
+                for p in ["edit-", "path-", "remove-", "toggle-"]
+            ):
+                # FileInstanceItem button - extract instance ID
+                FileInstancesScreen._last_focused_widget_type = "instance"
+                for prefix in ["edit-", "path-", "remove-", "toggle-"]:
+                    if focused.id.startswith(prefix):
+                        FileInstancesScreen._last_focused_instance_id = focused.id[
+                            len(prefix) :
+                        ]
+                        break
+            elif focused.id == "btn-back":
+                FileInstancesScreen._last_focused_widget_type = "back"
+
+    def restore_focus(self) -> None:
+        """Restore focus to the last focused widget after recompose."""
+        import contextlib
+
+        try:
+            # First restore the active tab
+            if FileInstancesScreen._last_active_tab:
+                with contextlib.suppress(Exception):
+                    tabs = self.query_one("#file-instances-tabs", TabbedContent)
+                    tabs.active = FileInstancesScreen._last_active_tab
+
+            # Then restore focus based on widget type
+            if FileInstancesScreen._last_focused_widget_type == "select":
+                # Find and focus the select in the active tab
+                if FileInstancesScreen._last_active_tab:
+                    file_type_value = FileInstancesScreen._last_active_tab.replace(
+                        "tab-", ""
+                    )
+                    select_id = f"select-add-{file_type_value}"
+                    with contextlib.suppress(Exception):
+                        select = self.query_one(f"#{select_id}", Select)
+                        select.focus()
+                        return
+
+            elif FileInstancesScreen._last_focused_widget_type == "button":
+                if FileInstancesScreen._last_focused_button_id:
+                    with contextlib.suppress(Exception):
+                        button = self.query_one(
+                            f"#{FileInstancesScreen._last_focused_button_id}", Button
+                        )
+                        button.focus()
+                        return
+
+            elif FileInstancesScreen._last_focused_widget_type == "instance":
+                if FileInstancesScreen._last_focused_instance_id:
+                    # Try to find a button in the instance item
+                    instance_id = FileInstancesScreen._last_focused_instance_id
+                    for item in self.query(FileInstanceItem):
+                        if item.instance_id == instance_id:
+                            # Focus the first button in this item
+                            buttons = list(item.query(Button))
+                            if buttons:
+                                buttons[0].focus()
+                                return
+                            break
+
+            elif FileInstancesScreen._last_focused_widget_type == "back":
+                with contextlib.suppress(Exception):
+                    self.query_one("#btn-back", Button).focus()
+                    return
+
+            # Fallback: focus the back button
+            with contextlib.suppress(Exception):
+                self.query_one("#btn-back", Button).focus()
+
+        except Exception:
+            # Ultimate fallback
+            with contextlib.suppress(Exception):
+                self.query_one("#btn-back", Button).focus()
 
     def action_pop_screen(self) -> None:
         """Pop the current screen to return to config menu."""
@@ -487,6 +594,12 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                         container.mount(FileInstanceItem(instance=instance))
 
                 except Exception:
+                    # Track current state before fallback recompose
+                    try:
+                        tabs = self.query_one("#file-instances-tabs", TabbedContent)
+                        FileInstancesScreen._last_active_tab = tabs.active
+                    except Exception:
+                        pass
                     # If dynamic mounting fails, fallback to recompose
                     self.refresh(recompose=True)
             else:
@@ -589,14 +702,13 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         self.open_file_in_editor(file_to_open)
 
     def _show_file_path_selector(self, instance_id: str) -> None:
-        """Open OS file picker to select path for CLAUDE.md or .gitignore instances.
+        """Open OS file picker to select path for file instances.
+
+        Uses a thread worker to prevent blocking the TUI.
 
         Args:
             instance_id: ID of the instance to edit path for
         """
-        import tkinter as tk
-        from tkinter import filedialog
-
         # Get the instance
         instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         if not instance:
@@ -605,32 +717,67 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             )
             return
 
+        # Prepare dialog parameters
+        project_dir = self.config_repo.config_path.parent.resolve()
+        default_filename = Path(instance.path).name
+
+        # Set initial directory
+        current_full_path = project_dir / instance.path
+        if current_full_path.parent.exists():
+            initial_dir = str(current_full_path.parent)
+        else:
+            initial_dir = str(project_dir)
+
+        # Show loading indicator
+        self.notify("Opening file selector...", severity="information", timeout=2)
+
+        # Start the file dialog worker
+        self._run_file_dialog(
+            instance_id=instance_id,
+            project_dir=str(project_dir),
+            initial_dir=initial_dir,
+            default_filename=default_filename,
+            file_type_display_name=instance.type.display_name,
+        )
+
+    @work(thread=True, exclusive=True)
+    def _run_file_dialog(
+        self,
+        instance_id: str,
+        project_dir: str,
+        initial_dir: str,
+        default_filename: str,
+        file_type_display_name: str,
+    ) -> None:
+        """Run tkinter file dialog in a separate thread.
+
+        Args:
+            instance_id: ID of the instance being edited
+            project_dir: Project directory for relative path calculation
+            initial_dir: Initial directory for the dialog
+            default_filename: Default filename filter
+            file_type_display_name: Display name for the file type
+        """
+        import tkinter as tk
+        from tkinter import filedialog
+
+        from textual.worker import get_current_worker
+
+        # Check if worker was cancelled before starting
+        worker = get_current_worker()
+        if worker.is_cancelled:
+            return
+
         try:
             # Create a hidden tkinter root window
             root = tk.Tk()
-            root.withdraw()  # Hide the root window
-            root.attributes("-topmost", True)  # Bring dialog to front
+            root.withdraw()
+            root.attributes("-topmost", True)
 
-            # Get the project directory as the initial directory
-            # The project directory is the parent of the config file
-            project_dir = self.config_repo.config_path.parent.resolve()
-
-            # Determine the filename based on file type
-            default_filename = Path(instance.path).name
-
-            # Set initial directory to the directory containing the current path
-            current_full_path = project_dir / instance.path
-            if current_full_path.parent.exists():
-                initial_dir = str(current_full_path.parent)
-            else:
-                initial_dir = str(project_dir)
-
-            # Open file dialog - use askopenfilename to avoid overwrite warnings
-            # since we're just selecting a path, not actually writing to the file
-            # Users can select existing file OR type a new path
+            # Open file dialog
             selected_path = filedialog.askopenfilename(
                 parent=root,
-                title=f"Select or type location for {instance.type.display_name}",
+                title=f"Select or type location for {file_type_display_name}",
                 initialdir=initial_dir,
                 filetypes=[
                     (f"{default_filename}", default_filename),
@@ -641,38 +788,80 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             # Clean up tkinter
             root.destroy()
 
+            # Check cancellation again before processing
+            if worker.is_cancelled:
+                return
+
             if selected_path:
-                # Convert to path relative to project directory
-                selected_path_obj = Path(selected_path)
-                try:
-                    # Try to make it relative to project dir
-                    relative_path = selected_path_obj.relative_to(project_dir)
-                    new_path = str(relative_path)
-                except ValueError:
-                    # If path is outside project, use absolute path
-                    new_path = str(selected_path_obj)
-
-                # Update the instance path
-                instance.path = new_path
-                file_instance_service.update_instance(
-                    self.instances_dict,
-                    instance,
-                    self.preset_repo,
-                    self.config_repo.config_path.parent,
+                # Safely call UI update from thread
+                self.app.call_from_thread(
+                    self._process_file_selection,
+                    selected_path,
+                    instance_id,
+                    project_dir,
                 )
 
-                # Sync to config and save
-                self.sync_instances_to_config()
+        except Exception as e:
+            # Safely notify error from thread
+            self.app.call_from_thread(
+                self.notify,
+                ErrorMessages.operation_failed("selecting path", str(e)),
+                "error",
+            )
+
+    def _process_file_selection(
+        self, selected_path: str, instance_id: str, project_dir: str
+    ) -> None:
+        """Process a selected file path from the dialog.
+
+        Args:
+            selected_path: The path selected by the user
+            instance_id: ID of the instance to update
+            project_dir: Project directory for relative path calculation
+        """
+        try:
+            instance = file_instance_service.get_instance(
+                self.instances_dict, instance_id
+            )
+            if not instance:
                 self.notify(
-                    f"Updated path for {instance.type.display_name} instance",
-                    severity="information",
+                    ErrorMessages.not_found("file instance", instance_id),
+                    severity="error",
                 )
+                return
 
-                # Update the widget's reactive attribute - triggers watch method for smooth update
-                for item in self.query(FileInstanceItem):
-                    if item.instance_id == instance_id:
-                        item.file_path = new_path
-                        break
+            project_dir_path = Path(project_dir)
+            selected_path_obj = Path(selected_path)
+
+            try:
+                # Try to make it relative to project dir
+                relative_path = selected_path_obj.relative_to(project_dir_path)
+                new_path = str(relative_path)
+            except ValueError:
+                # If path is outside project, use absolute path
+                new_path = str(selected_path_obj)
+
+            # Update the instance path
+            instance.path = new_path
+            file_instance_service.update_instance(
+                self.instances_dict,
+                instance,
+                self.preset_repo,
+                self.config_repo.config_path.parent,
+            )
+
+            # Sync to config and save
+            self.sync_instances_to_config()
+            self.notify(
+                f"Updated path for {instance.type.display_name} instance",
+                severity="information",
+            )
+
+            # Update the widget's reactive attribute
+            for item in self.query(FileInstanceItem):
+                if item.instance_id == instance_id:
+                    item.file_path = new_path
+                    break
 
         except InstanceNotFoundError as e:
             self.notify(str(e), severity="error")
@@ -681,9 +870,8 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         except FileOperationError as e:
             self.notify(str(e), severity="error")
         except Exception as e:
-            # Catch any other unexpected errors (e.g., tkinter issues)
             self.notify(
-                ErrorMessages.operation_failed("selecting path", str(e)),
+                ErrorMessages.operation_failed("updating path", str(e)),
                 severity="error",
             )
 
@@ -716,6 +904,12 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                         item.remove()
                         break
             except Exception:
+                # Track current state before fallback recompose
+                try:
+                    tabs = self.query_one("#file-instances-tabs", TabbedContent)
+                    FileInstancesScreen._last_active_tab = tabs.active
+                except Exception:
+                    pass
                 # If dynamic removal fails, fallback to recompose
                 self.refresh(recompose=True)
         else:
