@@ -25,7 +25,7 @@ from .exceptions import (
     InvalidFileTypeError,
     InvalidPresetNameError,
     MissingVariableError,
-    PermissionError,
+    AccessDeniedError,
     PresetExistsError,
     PresetNotFoundError,
     ResourceConflictError,
@@ -59,7 +59,7 @@ __all__ = [
     "InstanceExistsError",
     "ConfigFileExistsError",
     # Permission errors
-    "PermissionError",
+    "AccessDeniedError",
     "BuiltInModificationError",
     "DefaultPresetProtectionError",
     # Template errors
