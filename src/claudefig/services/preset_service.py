@@ -108,6 +108,10 @@ def render_preset(
 ) -> str:
     """Render a preset template with variable substitution.
 
+    Supports escape sequences for literal braces:
+        {{ -> literal {
+        }} -> literal }
+
     Variables are merged with priority:
     1. Provided variables (highest)
     2. Preset default variables
@@ -133,11 +137,20 @@ def render_preset(
     if variables:
         merged_vars.update(variables)
 
+    # First, replace escaped braces with temporary placeholders
+    # Use null bytes which cannot appear in text files
+    escape_open = "\x00OPEN\x00"
+    escape_close = "\x00CLOSE\x00"
+
+    rendered = template_content.replace("{{", escape_open).replace("}}", escape_close)
+
     # Simple variable substitution: {variable_name} -> value
-    rendered = template_content
     for var_name, var_value in merged_vars.items():
         placeholder = f"{{{var_name}}}"
         rendered = rendered.replace(placeholder, str(var_value))
+
+    # Restore escaped braces as literal braces
+    rendered = rendered.replace(escape_open, "{").replace(escape_close, "}")
 
     return rendered
 
@@ -145,7 +158,7 @@ def render_preset(
 def extract_template_variables(template_content: str) -> set[str]:
     """Extract variable names from template content.
 
-    Finds all {variable_name} patterns.
+    Finds all {variable_name} patterns, ignoring escaped braces ({{ and }}).
 
     Args:
         template_content: Template content to analyze.
@@ -156,10 +169,16 @@ def extract_template_variables(template_content: str) -> set[str]:
     Example:
         >>> extract_template_variables("Hello {name}, you are {age} years old")
         {'name', 'age'}
+        >>> extract_template_variables("Literal {{braces}} and {var}")
+        {'var'}
     """
+    # First, remove escaped braces to avoid false matches
+    # Replace {{ and }} with placeholders that won't match the pattern
+    content_for_search = template_content.replace("{{", "  ").replace("}}", "  ")
+
     # Find all {variable_name} patterns
     pattern = r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}"
-    matches = re.findall(pattern, template_content)
+    matches = re.findall(pattern, content_for_search)
     return set(matches)
 
 
