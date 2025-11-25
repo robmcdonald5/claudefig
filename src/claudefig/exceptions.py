@@ -45,9 +45,11 @@ class ClaudefigError(Exception):
 
 
 class ValidationError(ClaudefigError):
-    """Base class for validation errors."""
+    """Base class for all validation-related errors.
 
-    pass
+    Raised when input validation fails, such as invalid preset names,
+    unsupported file types, or circular dependencies.
+    """
 
 
 class InvalidPresetNameError(ValidationError):
@@ -140,9 +142,11 @@ class CircularDependencyError(ValidationError):
 
 
 class ResourceNotFoundError(ClaudefigError):
-    """Base class for resource not found errors."""
+    """Base class for resource not found errors.
 
-    pass
+    Raised when a requested resource cannot be located, such as
+    presets, templates, file instances, or configuration files.
+    """
 
 
 class PresetNotFoundError(ResourceNotFoundError):
@@ -220,9 +224,11 @@ class ConfigFileNotFoundError(ResourceNotFoundError):
 
 
 class ResourceConflictError(ClaudefigError):
-    """Base class for resource conflict errors."""
+    """Base class for resource conflict errors.
 
-    pass
+    Raised when an operation would create a duplicate or conflict,
+    such as creating a preset or instance that already exists.
+    """
 
 
 class PresetExistsError(ResourceConflictError):
@@ -276,13 +282,15 @@ class ConfigFileExistsError(ResourceConflictError):
 # === Permission/Access Errors ===
 
 
-class PermissionError(ClaudefigError):
-    """Base class for permission/access errors."""
+class AccessDeniedError(ClaudefigError):
+    """Base class for permission and access-related errors.
 
-    pass
+    Raised when operations are denied due to access restrictions,
+    such as modifying built-in presets or protected resources.
+    """
 
 
-class BuiltInModificationError(PermissionError):
+class BuiltInModificationError(AccessDeniedError):
     """Raised when trying to modify or delete built-in presets."""
 
     def __init__(self, preset_id: str, operation: str = "modify"):
@@ -299,7 +307,7 @@ class BuiltInModificationError(PermissionError):
         )
 
 
-class DefaultPresetProtectionError(PermissionError):
+class DefaultPresetProtectionError(AccessDeniedError):
     """Raised when trying to delete the 'default' preset."""
 
     def __init__(self):
@@ -314,9 +322,11 @@ class DefaultPresetProtectionError(PermissionError):
 
 
 class TemplateError(ClaudefigError):
-    """Base class for template-related errors."""
+    """Base class for template-related errors.
 
-    pass
+    Raised when template operations fail, such as rendering errors
+    or missing required template variables.
+    """
 
 
 class TemplateRenderError(TemplateError):
@@ -357,9 +367,11 @@ class MissingVariableError(TemplateError):
 
 
 class FileOperationError(ClaudefigError):
-    """Base class for file operation errors."""
+    """Base class for file operation errors.
 
-    pass
+    Raised when file system operations fail, such as reading
+    or writing files to disk.
+    """
 
 
 class FileWriteError(FileOperationError):
@@ -400,9 +412,11 @@ class FileReadError(FileOperationError):
 
 
 class InitializationError(ClaudefigError):
-    """Base class for initialization errors."""
+    """Base class for initialization errors.
 
-    pass
+    Raised when project or component initialization fails,
+    including rollback scenarios where partial initialization is undone.
+    """
 
 
 class InitializationRollbackError(InitializationError):
