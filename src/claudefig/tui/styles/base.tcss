@@ -1,0 +1,183 @@
+/* ============================================================================ */
+/* BASE STYLES - Core layout, menu, inputs, and foundational styling            */
+/* ============================================================================ */
+
+Screen {
+    background: $surface;
+}
+
+#main-container {
+    width: 100%;
+    height: 100%;
+}
+
+#menu-panel {
+    width: 40;
+    max-width: 40;
+    height: 100%;
+    padding: 1 2;
+    overflow: hidden;
+}
+
+#title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 0;
+    margin-top: 1;
+}
+
+#version {
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+#menu-scroll {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+#menu-buttons {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border: round $primary;
+    padding: 1;
+    overflow: hidden;
+}
+
+/* Menu navigation buttons (main tree) - Keep original styles */
+#menu-buttons Button {
+    width: 100%;
+    margin: 0;
+    height: 3;
+    padding: 0 1;
+    background: $panel;
+    border: none;
+}
+
+#menu-buttons Button:hover {
+    background: $primary;
+    border: none;
+}
+
+#menu-buttons Button:focus {
+    text-style: bold;
+    border: solid $accent;
+    background: $panel;
+}
+
+#menu-buttons Button.active {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+    border: none;
+}
+
+#menu-buttons Button.active:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+    border: solid $primary-lighten-2;
+}
+
+/* Base button styles for content panels and modals */
+#content-panel Button,
+.dialog-actions Button,
+.wizard-actions Button,
+.button-row Button {
+    min-height: 3;
+    padding: 0 2;
+    background: $panel;
+    border: none;
+    min-width: 10;
+}
+
+.instance-actions Button {
+    min-height: 2;
+    padding: 0 1;
+    background: $panel;
+    border: none;
+    min-width: 8;
+}
+
+#content-panel Button:hover,
+.dialog-actions Button:hover,
+.wizard-actions Button:hover,
+.instance-actions Button:hover,
+.button-row Button:hover {
+    background: $primary;
+    border: none;
+}
+
+#content-panel Button:focus,
+.dialog-actions Button:focus,
+.wizard-actions Button:focus,
+.instance-actions Button:focus,
+.button-row Button:focus {
+    border: none;
+    background: $primary;
+    text-style: bold;
+}
+
+#content-panel Button:focus:hover,
+.dialog-actions Button:focus:hover,
+.wizard-actions Button:focus:hover,
+.instance-actions Button:focus:hover,
+.button-row Button:focus:hover {
+    border: none;
+    background: $primary;
+    text-style: bold;
+}
+
+#content-panel {
+    display: none;
+    width: 1fr;
+    max-width: 1fr;
+    height: 100%;
+    border-left: solid $primary;
+    padding: 2 4;
+    overflow-x: hidden;
+}
+
+#content-panel.visible {
+    display: block;
+}
+
+/* Fix for Textual issue #2694: Horizontal containers inside VerticalScroll need explicit height */
+VerticalScroll Horizontal {
+    height: auto;
+}
+
+/* ============================================================================ */
+/* Input and Select Styles                                                       */
+/* ============================================================================ */
+
+Input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+Select {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#validation-feedback {
+    margin-top: 2;
+    padding: 1;
+    border: round $primary-lighten-1;
+    min-height: 3;
+}
+
+/* Hidden input for maintaining form logic */
+Input.hidden {
+    display: none;
+}
+
+/* Disabled instance visual indicator */
+.instance-path.instance-disabled {
+    color: $text-muted;
+    text-style: italic;
+}

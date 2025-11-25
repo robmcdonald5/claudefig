@@ -26,8 +26,13 @@ class MainScreen(App):
     config_data: dict[str, Any]
     config_repo: TomlConfigRepository
 
-    # Load CSS from external file
-    CSS_PATH = Path(__file__).parent / "styles.tcss"
+    # Load CSS from external files (split by feature)
+    CSS_PATH = [
+        Path(__file__).parent / "styles" / "base.tcss",
+        Path(__file__).parent / "styles" / "panels.tcss",
+        Path(__file__).parent / "styles" / "screens.tcss",
+        Path(__file__).parent / "styles" / "widgets.tcss",
+    ]
 
     BINDINGS = [
         ("q", "quit", "Quit"),
