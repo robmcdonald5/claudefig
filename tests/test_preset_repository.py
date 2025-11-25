@@ -349,10 +349,10 @@ class TestFakePresetRepository:
 
         repo = FakePresetRepository([preset])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(PresetExistsError) as exc_info:
             repo.add_preset(preset, PresetSource.USER)
 
-        assert "already exists" in str(exc_info.value)
+        assert "claude_md:test" in str(exc_info.value)
 
     def test_add_preset_builtin_raises_error(self):
         """Test adding to built-in source raises error."""
@@ -365,10 +365,10 @@ class TestFakePresetRepository:
             source=PresetSource.BUILT_IN,
         )
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(BuiltInModificationError) as exc_info:
             repo.add_preset(preset, PresetSource.BUILT_IN)
 
-        assert "Cannot add built-in" in str(exc_info.value)
+        assert "claude_md:test" in str(exc_info.value)
 
     def test_delete_preset_success(self):
         """Test deleting a preset."""
@@ -385,7 +385,7 @@ class TestFakePresetRepository:
         """Test deleting non-existent preset raises error."""
         repo = FakePresetRepository()
 
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(PresetNotFoundError):
             repo.delete_preset("nonexistent:preset")
 
     def test_get_template_content(self):

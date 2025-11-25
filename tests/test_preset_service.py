@@ -8,6 +8,7 @@ import pytest
 from claudefig.exceptions import (
     BuiltInModificationError,
     PresetExistsError,
+    PresetNotFoundError,
 )
 from claudefig.models import FileType, PresetSource
 from claudefig.repositories.preset_repository import FakePresetRepository
@@ -169,7 +170,7 @@ class TestDeletePreset:
         """Test raises error when deleting non-existent preset."""
         repo = FakePresetRepository()
 
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(PresetNotFoundError):
             preset_service.delete_preset(repo, "nonexistent:preset")
 
 
