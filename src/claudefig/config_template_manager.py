@@ -443,7 +443,9 @@ class ConfigTemplateManager:
 
         return preset_data
 
-    def save_global_preset(self, name: str, description: str = "") -> None:
+    def save_global_preset(
+        self, name: str, description: str = "", config_path: Path | None = None
+    ) -> None:
         """Save current project config as a new global preset directory.
 
         Creates a preset directory with claudefig.toml file and component files.
@@ -458,10 +460,11 @@ class ConfigTemplateManager:
         Args:
             name: Preset name
             description: Optional description
+            config_path: Path to config file. If None, uses default Config() behavior.
 
         Raises:
             ValueError: If preset name already exists or is invalid
-            FileNotFoundError: If no claudefig.toml in current directory
+            FileNotFoundError: If no claudefig.toml found
             FileOperationError: If component copying fails
         """
         import tomli_w
@@ -478,10 +481,10 @@ class ConfigTemplateManager:
         if preset_dir.exists():
             raise ValueError(f"Preset '{name}' already exists")
 
-        # Load current project config
-        config = Config()
+        # Load project config (from explicit path or default discovery)
+        config = Config(config_path=config_path)
         if not config.config_path or not config.config_path.exists():
-            raise FileNotFoundError("No claudefig.toml found in current directory")
+            raise FileNotFoundError("No claudefig.toml found")
 
         try:
             # Collect components from current config
