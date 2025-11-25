@@ -6,7 +6,11 @@ from unittest.mock import patch
 import pytest
 
 from claudefig.models import PresetDefinition
-from claudefig.services.preset_definition_loader import PresetDefinitionLoader
+from claudefig.services.preset_definition_loader import (
+    PresetDefinitionLoader,
+    _load_from_path,
+    _scan_presets_dir,
+)
 
 
 @pytest.fixture
@@ -152,37 +156,29 @@ class TestPresetDefinitionLoaderInit:
 
 
 class TestLoadFromPath:
-    """Tests for _load_from_path method."""
+    """Tests for _load_from_path function."""
 
     def test_load_from_path_success(self, library_presets_dir):
         """Test successful loading from path."""
-        loader = PresetDefinitionLoader(library_presets_path=library_presets_dir)
-
-        result = loader._load_from_path("default", library_presets_dir, "Library")
+        result = _load_from_path("default", library_presets_dir, "Library")
 
         assert isinstance(result, PresetDefinition)
         assert result.name == "default-preset"
 
     def test_load_from_path_missing_base_path(self):
         """Test loading when base path doesn't exist."""
-        loader = PresetDefinitionLoader()
-
         with pytest.raises(FileNotFoundError, match="Library presets path not found"):
-            loader._load_from_path("test", Path("/nonexistent"), "Library")
+            _load_from_path("test", Path("/nonexistent"), "Library")
 
     def test_load_from_path_none_base_path(self):
         """Test loading when base path is None."""
-        loader = PresetDefinitionLoader()
-
         with pytest.raises(FileNotFoundError, match="Library presets path not found"):
-            loader._load_from_path("test", None, "Library")
+            _load_from_path("test", None, "Library")
 
     def test_load_from_path_missing_preset(self, library_presets_dir):
         """Test loading non-existent preset."""
-        loader = PresetDefinitionLoader(library_presets_path=library_presets_dir)
-
         with pytest.raises(FileNotFoundError, match="Preset 'nonexistent' not found"):
-            loader._load_from_path("nonexistent", library_presets_dir, "Library")
+            _load_from_path("nonexistent", library_presets_dir, "Library")
 
     def test_load_from_path_missing_toml_file(self, library_presets_dir):
         """Test loading when preset directory exists but claudefig.toml missing."""
@@ -190,17 +186,13 @@ class TestLoadFromPath:
         incomplete = library_presets_dir / "incomplete"
         incomplete.mkdir()
 
-        loader = PresetDefinitionLoader(library_presets_path=library_presets_dir)
-
         with pytest.raises(FileNotFoundError):
-            loader._load_from_path("incomplete", library_presets_dir, "Library")
+            _load_from_path("incomplete", library_presets_dir, "Library")
 
     def test_load_from_path_error_message_includes_location(self, tmp_path):
         """Test that error messages include location name."""
-        loader = PresetDefinitionLoader()
-
         try:
-            loader._load_from_path("test", tmp_path, "User")
+            _load_from_path("test", tmp_path, "User")
         except FileNotFoundError as e:
             assert "user presets" in str(e).lower()
 
@@ -439,13 +431,11 @@ class TestLoadPreset:
 
 
 class TestScanPresetsDir:
-    """Tests for _scan_presets_dir method."""
+    """Tests for _scan_presets_dir function."""
 
     def test_scan_valid_directory(self, library_presets_dir):
         """Test scanning directory with valid presets."""
-        loader = PresetDefinitionLoader()
-
-        result = loader._scan_presets_dir(library_presets_dir)
+        result = _scan_presets_dir(library_presets_dir)
 
         assert "default" in result
         assert isinstance(result, set)
@@ -455,9 +445,7 @@ class TestScanPresetsDir:
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
 
-        loader = PresetDefinitionLoader()
-
-        result = loader._scan_presets_dir(empty_dir)
+        result = _scan_presets_dir(empty_dir)
 
         assert len(result) == 0
         assert isinstance(result, set)
@@ -466,17 +454,13 @@ class TestScanPresetsDir:
         """Test scanning non-existent directory."""
         missing_dir = tmp_path / "missing"
 
-        loader = PresetDefinitionLoader()
-
-        result = loader._scan_presets_dir(missing_dir)
+        result = _scan_presets_dir(missing_dir)
 
         assert len(result) == 0
 
     def test_scan_none_path(self):
         """Test scanning with None path."""
-        loader = PresetDefinitionLoader()
-
-        result = loader._scan_presets_dir(None)
+        result = _scan_presets_dir(None)
 
         assert len(result) == 0
 
@@ -492,31 +476,25 @@ class TestScanPresetsDir:
         # Invalid preset (no toml)
         (scan_dir / "invalid").mkdir()
 
-        loader = PresetDefinitionLoader()
-
-        result = loader._scan_presets_dir(scan_dir)
+        result = _scan_presets_dir(scan_dir)
 
         assert "valid" in result
         assert "invalid" not in result
 
     def test_scan_handles_permission_error(self, tmp_path):
         """Test scanning handles permission errors gracefully."""
-        loader = PresetDefinitionLoader()
-
         # Mock iterdir to raise PermissionError
         with patch.object(Path, "iterdir", side_effect=PermissionError("No access")):
-            result = loader._scan_presets_dir(tmp_path)
+            result = _scan_presets_dir(tmp_path)
 
             # Should return empty set, not raise
             assert len(result) == 0
 
     def test_scan_handles_os_error(self, tmp_path):
         """Test scanning handles OS errors gracefully."""
-        loader = PresetDefinitionLoader()
-
         # Mock iterdir to raise OSError
         with patch.object(Path, "iterdir", side_effect=OSError("Disk error")):
-            result = loader._scan_presets_dir(tmp_path)
+            result = _scan_presets_dir(tmp_path)
 
             # Should return empty set, not raise
             assert len(result) == 0
@@ -533,9 +511,7 @@ class TestScanPresetsDir:
         (scan_dir / "preset").mkdir()
         (scan_dir / "preset" / "claudefig.toml").write_text("[project]\nname = 'test'")
 
-        loader = PresetDefinitionLoader()
-
-        result = loader._scan_presets_dir(scan_dir)
+        result = _scan_presets_dir(scan_dir)
 
         assert "preset" in result
         assert "file.txt" not in result
