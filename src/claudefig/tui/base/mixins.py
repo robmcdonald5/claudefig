@@ -508,6 +508,110 @@ class ScrollNavigationMixin:
         except Exception:
             pass
 
+    # =========================================================================
+    # Boundary Navigation Helpers
+    # These methods help panels/screens handle navigation at focus chain edges
+    # =========================================================================
+
+    def _scroll_to_top_boundary(
+        self, scroll_container_selector: str = "VerticalScroll"
+    ) -> bool:
+        """Scroll container to top when at navigation boundary.
+
+        Use this when the user presses up at the first focusable element
+        to scroll and reveal content above (like title labels).
+
+        Args:
+            scroll_container_selector: CSS selector for the scroll container
+
+        Returns:
+            True if scroll was triggered, False otherwise
+        """
+        try:
+            scroll_container = self.query_one(scroll_container_selector)  # type: ignore[attr-defined]
+            scroll_container.scroll_home(animate=True)
+            return True
+        except Exception:
+            return False
+
+    def _scroll_to_bottom_boundary(
+        self, scroll_container_selector: str = "VerticalScroll"
+    ) -> bool:
+        """Scroll container to bottom when at navigation boundary.
+
+        Use this when the user presses down at the last focusable element
+        to scroll and reveal any content below.
+
+        Args:
+            scroll_container_selector: CSS selector for the scroll container
+
+        Returns:
+            True if scroll was triggered, False otherwise
+        """
+        try:
+            scroll_container = self.query_one(scroll_container_selector)  # type: ignore[attr-defined]
+            scroll_container.scroll_end(animate=True)
+            return True
+        except Exception:
+            return False
+
+    def handle_boundary_navigation(
+        self,
+        event,
+        focusables: list,
+        current_index: int,
+        scroll_container_selector: str = "VerticalScroll",
+    ) -> bool:
+        """Handle navigation at focus chain boundaries with scroll behavior.
+
+        This helper method consolidates the common pattern of:
+        - At top (index 0) + up key: Scroll to top, prevent default
+        - At bottom (max index) + down key: Scroll to bottom, prevent default
+
+        Use this in on_key() handlers to simplify boundary navigation logic.
+
+        Args:
+            event: The key event (must have key, prevent_default, stop attributes)
+            focusables: List of focusable widgets in the current scope
+            current_index: Current position in the focusables list
+            scroll_container_selector: CSS selector for scroll container
+
+        Returns:
+            True if boundary was handled (event should be stopped), False otherwise
+
+        Example:
+            def on_key(self, event: Key) -> None:
+                focused = self.screen.focused
+                buttons = [w for w in self.query("Button") if w.focusable]
+
+                if focused in buttons:
+                    current_index = buttons.index(focused)
+                    if self.handle_boundary_navigation(event, buttons, current_index):
+                        return  # Boundary handled
+
+                # ... other key handling
+        """
+        if not focusables:
+            return False
+
+        max_index = len(focusables) - 1
+
+        if event.key == "up" and current_index == 0:
+            # At top - scroll to reveal content above
+            self._scroll_to_top_boundary(scroll_container_selector)
+            event.prevent_default()
+            event.stop()
+            return True
+
+        elif event.key == "down" and current_index == max_index:
+            # At bottom - scroll to reveal content below
+            self._scroll_to_bottom_boundary(scroll_container_selector)
+            event.prevent_default()
+            event.stop()
+            return True
+
+        return False
+
     def action_focus_left(self) -> None:
         """Navigate left within a horizontal group.
 
