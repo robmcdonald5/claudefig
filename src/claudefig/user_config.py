@@ -7,7 +7,32 @@ from pathlib import Path
 
 from rich.console import Console
 
+from claudefig.utils.paths import validate_not_symlink
+from claudefig.utils.platform import secure_mkdir
+
 console = Console()
+
+
+def _validate_home_directory() -> Path:
+    """Validate home directory is reasonable and not a root path.
+
+    Returns:
+        Validated home directory Path.
+
+    Raises:
+        ValueError: If home directory is root or invalid.
+    """
+    home = Path.home()
+
+    # Check for root directories (security measure)
+    invalid_roots = {Path("/"), Path("C:\\"), Path("C:/")}
+    if home in invalid_roots or str(home) in ("/", "C:\\", "C:/"):
+        raise ValueError(
+            f"Home directory appears invalid: {home}. "
+            "Cannot create config in root directory."
+        )
+
+    return home
 
 
 def get_user_config_dir() -> Path:
@@ -20,8 +45,12 @@ def get_user_config_dir() -> Path:
 
     Returns:
         Path to user config directory.
+
+    Raises:
+        ValueError: If home directory is invalid (root path).
     """
-    return Path.home() / ".claudefig"
+    home = _validate_home_directory()
+    return home / ".claudefig"
 
 
 def get_cache_dir() -> Path:
@@ -74,7 +103,7 @@ def is_initialized(auto_heal: bool = True) -> bool:
     if not config_dir.exists():
         if auto_heal:
             try:
-                config_dir.mkdir(parents=True, exist_ok=True)
+                secure_mkdir(config_dir)
             except Exception:
                 return False
         else:
@@ -181,14 +210,14 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
         verbose: Whether to print progress messages.
     """
     try:
-        # Create directory structure
-        config_dir.mkdir(parents=True, exist_ok=True)
-        (config_dir / "presets").mkdir(parents=True, exist_ok=True)
-        (config_dir / "cache").mkdir(parents=True, exist_ok=True)
+        # Create directory structure with secure permissions (0o700 on Unix)
+        secure_mkdir(config_dir)
+        secure_mkdir(config_dir / "presets")
+        secure_mkdir(config_dir / "cache")
 
         # Create components directory with subdirectories for each file type
         components_dir = config_dir / "components"
-        components_dir.mkdir(parents=True, exist_ok=True)
+        secure_mkdir(components_dir)
 
         # Create subdirectories for each file type component
         component_types = [
@@ -206,7 +235,7 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
             "statusline",
         ]
         for component_type in component_types:
-            (components_dir / component_type).mkdir(parents=True, exist_ok=True)
+            secure_mkdir(components_dir / component_type)
 
         if verbose:
             console.print(f"[green]+[/green] Created directory: {config_dir}")
@@ -330,8 +359,17 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
                 )
             return
 
-        # Copy the entire default preset directory
-        shutil.copytree(source_path, dest_dir, dirs_exist_ok=True)
+        # Security: Validate source is not a symlink
+        validate_not_symlink(source_path, context="preset source")
+
+        # Copy the entire default preset directory (symlinks=False for security)
+        shutil.copytree(
+            source_path,
+            dest_dir,
+            dirs_exist_ok=True,
+            symlinks=False,
+            ignore_dangling_symlinks=True,
+        )
 
         if verbose:
             console.print(f"[green]+[/green] Copied default preset to {dest_dir}")
