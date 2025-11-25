@@ -281,7 +281,7 @@ class TestExceptionInheritance:
             exceptions.ValidationError,
             exceptions.ResourceNotFoundError,
             exceptions.ResourceConflictError,
-            exceptions.PermissionError,
+            exceptions.AccessDeniedError,
             exceptions.TemplateError,
             exceptions.FileOperationError,
             exceptions.InitializationError,
@@ -314,7 +314,7 @@ class TestExceptionInheritance:
 
         # Permission errors
         assert issubclass(
-            exceptions.BuiltInModificationError, exceptions.PermissionError
+            exceptions.BuiltInModificationError, exceptions.AccessDeniedError
         )
 
         # Template errors
