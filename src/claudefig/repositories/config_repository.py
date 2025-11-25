@@ -5,7 +5,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -58,8 +58,6 @@ class TomlConfigRepository(AbstractConfigRepository):
 
         try:
             with open(self.config_path, "rb") as f:
-                from typing import cast
-
                 return cast(dict[str, Any], tomllib.load(f))
         except tomllib.TOMLDecodeError as e:
             raise ValueError(
