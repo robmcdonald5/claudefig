@@ -12,7 +12,12 @@ from claudefig.repositories.config_repository import TomlConfigRepository
 from claudefig.repositories.preset_repository import TomlPresetRepository
 from claudefig.services import config_service, file_instance_service
 from claudefig.template_manager import FileTemplateManager
-from claudefig.utils.paths import ensure_directory, is_git_repository
+from claudefig.utils.paths import (
+    ensure_directory,
+    is_git_repository,
+    validate_not_symlink,
+)
+from claudefig.utils.platform import is_windows
 
 console = Console()
 
@@ -356,8 +361,8 @@ class Initializer:
             self._track_file(dest_path)  # Track for rollback
             console.print(f"[green]+[/green] Created: {dest_path}")
 
-            # Make statusline executable
-            if instance.type == FileType.STATUSLINE:
+            # Make statusline executable (Unix only)
+            if instance.type == FileType.STATUSLINE and not is_windows():
                 dest_path.chmod(0o755)
 
             return True
@@ -465,6 +470,9 @@ class Initializer:
             copied_count = 0
             for item in component_folder.iterdir():
                 if item.is_file():
+                    # Security: Reject symlinks
+                    validate_not_symlink(item, context="component file")
+
                     dest_file = dest_path / item.name
                     if dest_file.exists() and not force:
                         console.print(
@@ -640,8 +648,8 @@ class Initializer:
                 with open(json_file, encoding="utf-8") as f:
                     json_content = f.read().strip()
 
-                # Parse and validate JSON
-                config = json.loads(json_content)
+                # Validate JSON structure before subprocess execution
+                config = self._validate_mcp_json_schema(json_content, json_file.name)
 
                 # Validate transport type if present
                 self._validate_mcp_transport(config, json_file.name)
@@ -688,6 +696,32 @@ class Initializer:
         else:
             console.print("\n[yellow]No MCP servers were added[/yellow]")
             return False
+
+    def _validate_mcp_json_schema(self, json_content: str, filename: str) -> dict:
+        """Validate MCP config JSON structure before subprocess execution.
+
+        Args:
+            json_content: Raw JSON string from file
+            filename: Source filename for error messages
+
+        Returns:
+            Parsed config dict if valid
+
+        Raises:
+            json.JSONDecodeError: If JSON is malformed
+            ValueError: If JSON structure is invalid
+        """
+        import json
+
+        config = json.loads(json_content)
+
+        # MCP config must be a JSON object
+        if not isinstance(config, dict):
+            raise ValueError(
+                f"MCP config must be a JSON object, got {type(config).__name__}"
+            )
+
+        return config
 
     def _validate_mcp_transport(self, config: dict, filename: str) -> None:
         """Validate MCP transport configuration.
@@ -884,6 +918,10 @@ class Initializer:
             copied_count = 0
             for item in source_path.iterdir():
                 if item.is_file():
+                    # Security: Reject symlinks
+                    item_path = Path(str(item))
+                    validate_not_symlink(item_path, context="template file")
+
                     dest_file = dest_dir / item.name
                     if dest_file.exists() and not force:
                         console.print(
