@@ -17,6 +17,33 @@ from .. import console
 logger = get_logger("cli.config")
 
 
+def parse_config_value(value: str) -> str | bool | int | float:
+    """Parse a config value string to appropriate type.
+
+    Handles:
+    - Booleans: 'true', 'false' (case-insensitive)
+    - Integers: '42', '-7'
+    - Floats: '3.14', '-2.5'
+    - Strings: everything else
+
+    Args:
+        value: String value from CLI input
+
+    Returns:
+        Parsed value as appropriate Python type
+    """
+    lower = value.lower()
+    if lower in ("true", "false"):
+        return lower == "true"
+
+    try:
+        if "." in value:
+            return float(value)
+        return int(value)
+    except ValueError:
+        return value
+
+
 @click.group(name="config")
 def config_group():
     """Manage claudefig configuration settings."""
@@ -65,11 +92,14 @@ def config_set(key, value, path, config_data, config_repo):
     VALUE: Value to set (use 'true', 'false' for booleans)
     """
     # Parse value
-    parsed_value = value
-    if value.lower() in ("true", "false"):
-        parsed_value = value.lower() == "true"
-    elif value.isdigit():
-        parsed_value = int(value)
+    parsed_value = parse_config_value(value)
+
+    # Validate key and type
+    validation = config_service.validate_config_key(key, parsed_value)
+    if not validation.valid:
+        for error in validation.errors:
+            console.print(f"[red]Error:[/red] {error}")
+        raise click.Abort()
 
     # Set value
     config_service.set_value(config_data, key, parsed_value)
