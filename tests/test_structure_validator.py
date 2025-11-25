@@ -6,7 +6,6 @@ from claudefig.services.structure_validator import (
     StructureValidationResult,
     check_initialization_marker,
     create_initialization_marker,
-    repair_preset_directory,
     validate_preset_integrity,
     validate_user_directory,
 )
@@ -224,62 +223,6 @@ required_files = ["CLAUDE.md"]
 
         assert result.is_valid is True
         assert len(result.errors) == 0
-
-
-class TestRepairPresetDirectory:
-    """Tests for repair_preset_directory function."""
-
-    def test_repair_preset_from_nonexistent_source(self, tmp_path):
-        """Test repair fails when source doesn't exist."""
-        preset_dir = tmp_path / "preset"
-        builtin_source = tmp_path / "nonexistent_source"
-
-        result = repair_preset_directory(preset_dir, builtin_source, verbose=False)
-
-        assert result.is_valid is False
-        assert len(result.errors) > 0
-        assert any("source not found" in error.lower() for error in result.errors)
-
-    def test_repair_preset_creates_backup(self, tmp_path):
-        """Test repair backs up existing preset."""
-        preset_dir = tmp_path / "preset"
-        preset_dir.mkdir()
-        (preset_dir / "existing_file.txt").write_text("old content", encoding="utf-8")
-
-        builtin_source = tmp_path / "source"
-        builtin_source.mkdir()
-        (builtin_source / "claudefig.toml").write_text(
-            "[claudefig]\nversion = '2.0'\n[components]", encoding="utf-8"
-        )
-
-        repair_preset_directory(preset_dir, builtin_source, verbose=False)
-
-        # Check backup was created
-        backup_dir = tmp_path / "preset.backup"
-        assert backup_dir.exists()
-        assert (backup_dir / "existing_file.txt").exists()
-
-    def test_repair_preset_copies_content(self, tmp_path):
-        """Test repair copies content from source."""
-        preset_dir = tmp_path / "preset"
-        builtin_source = tmp_path / "source"
-        builtin_source.mkdir()
-
-        # Create source preset structure
-        (builtin_source / "claudefig.toml").write_text(
-            "[claudefig]\nversion = '2.0'\n[components]", encoding="utf-8"
-        )
-        (builtin_source / "components").mkdir()
-        (builtin_source / "README.md").write_text("source readme", encoding="utf-8")
-
-        result = repair_preset_directory(preset_dir, builtin_source, verbose=False)
-
-        # Check content was copied
-        assert preset_dir.exists()
-        assert (preset_dir / "claudefig.toml").exists()
-        assert (preset_dir / "components").exists()
-        assert (preset_dir / "README.md").read_text(encoding="utf-8") == "source readme"
-        assert result.was_repaired is True
 
 
 class TestInitializationMarker:

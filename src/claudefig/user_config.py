@@ -378,6 +378,78 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
             )
 
 
+def repair_user_config(verbose: bool = True) -> bool:
+    """Repair user-level configuration directory.
+
+    This function ensures the .claudefig directory is functional by:
+    1. Creating any missing directories in the folder structure
+    2. Creating the config.toml file if missing
+    3. Restoring the default preset from the library if missing/incomplete
+
+    This is a non-destructive operation - it only creates missing items
+    and does not modify or overwrite existing files.
+
+    Args:
+        verbose: If True, print progress messages.
+
+    Returns:
+        True if repair completed successfully, False if errors occurred.
+    """
+    from claudefig.services.structure_validator import validate_user_directory
+
+    config_dir = get_user_config_dir()
+    has_errors = False
+
+    if verbose:
+        console.print("[bold blue]Repairing user configuration...[/bold blue]\n")
+
+    # Step 1: Validate and repair directory structure
+    if verbose:
+        console.print("[dim]Checking directory structure...[/dim]")
+
+    validation_result = validate_user_directory(
+        config_dir, auto_heal=True, verbose=verbose
+    )
+
+    if validation_result.errors:
+        for error in validation_result.errors:
+            if "does not exist" not in error:  # Skip "created" messages
+                console.print(f"[red]Error:[/red] {error}")
+                has_errors = True
+
+    if validation_result.was_repaired and verbose:
+        console.print(
+            f"[green]+[/green] Repaired {len(validation_result.repaired_dirs)} directories"
+        )
+
+    # Step 2: Ensure config.toml exists
+    config_path = config_dir / "config.toml"
+    if not config_path.exists():
+        if verbose:
+            console.print("[dim]Creating default config.toml...[/dim]")
+        try:
+            create_default_user_config(config_path, verbose=verbose)
+        except Exception as e:
+            console.print(f"[red]Error creating config.toml:[/red] {e}")
+            has_errors = True
+
+    # Step 3: Ensure default preset exists and is complete
+    presets_dir = config_dir / "presets"
+    if presets_dir.exists():
+        if verbose:
+            console.print("[dim]Checking default preset...[/dim]")
+        _copy_default_preset_to_user(presets_dir, verbose=verbose)
+
+    # Summary
+    if verbose:
+        if has_errors:
+            console.print("\n[yellow]Repair completed with errors[/yellow]")
+        else:
+            console.print("\n[green]Repair completed successfully[/green]")
+
+    return not has_errors
+
+
 def reset_user_config(force: bool = False) -> bool:
     """Reset user-level configuration (dangerous operation).
 

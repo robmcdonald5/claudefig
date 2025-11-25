@@ -232,3 +232,67 @@ def config_list(path, config_data, config_repo):
         console.print("[yellow]No file instances configured[/yellow]")
 
     console.print("\n[dim]Use 'claudefig files list' for more details[/dim]")
+
+
+@config_group.command("repair")
+@handle_errors("repairing config")
+def config_repair():
+    """Repair the user configuration directory.
+
+    This command ensures the ~/.claudefig directory is functional by:
+
+    \b
+    - Creating any missing directories in the folder structure
+    - Creating the config.toml file if missing
+    - Restoring the default preset from the library if missing/incomplete
+
+    This is a non-destructive operation - it only creates missing items
+    and does not modify or overwrite existing files.
+    """
+    from claudefig.user_config import repair_user_config
+
+    success = repair_user_config(verbose=True)
+
+    if not success:
+        raise click.ClickException("Repair completed with errors")
+
+
+@config_group.command("reset")
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+@handle_errors("resetting config")
+def config_reset(yes):
+    """Reset the user configuration to factory defaults.
+
+    This command deletes the entire ~/.claudefig directory and all custom
+    configuration, presets, and components. After reset, run any claudefig
+    command to reinitialize with defaults.
+
+    \b
+    WARNING: This operation cannot be undone!
+    """
+    from claudefig.user_config import get_user_config_dir, reset_user_config
+
+    config_dir = get_user_config_dir()
+
+    if not config_dir.exists():
+        console.print("[yellow]No user configuration to reset[/yellow]")
+        return
+
+    if not yes:
+        console.print(
+            f"[bold red]Warning:[/bold red] This will delete [cyan]{config_dir}[/cyan] "
+            "and all custom configuration!\n"
+        )
+        if not click.confirm("Are you sure you want to reset?", default=False):
+            console.print("[yellow]Reset cancelled[/yellow]")
+            return
+
+    success = reset_user_config(force=True)
+
+    if not success:
+        raise click.ClickException("Reset failed")
