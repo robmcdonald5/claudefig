@@ -20,6 +20,7 @@ else:
 from claudefig.models import PresetDefinition
 from claudefig.preset_validator import PresetValidator
 from claudefig.services.preset_definition_loader import PresetDefinitionLoader
+from claudefig.utils.paths import validate_not_symlink
 
 if TYPE_CHECKING:
     from claudefig.config import Config
@@ -377,12 +378,21 @@ class ConfigTemplateManager:
         dest_path = preset_dir / "components" / component_type / name
 
         try:
+            # Security: Reject symlinks
+            validate_not_symlink(source_path, context="component source")
+
             # Create parent directories
             dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Copy entire component directory
+            # Copy entire component directory (symlinks=False for security)
             if source_path.is_dir():
-                shutil.copytree(source_path, dest_path, dirs_exist_ok=True)
+                shutil.copytree(
+                    source_path,
+                    dest_path,
+                    dirs_exist_ok=True,
+                    symlinks=False,
+                    ignore_dangling_symlinks=True,
+                )
             else:
                 # If source is a file (shouldn't happen), copy it
                 dest_path.mkdir(parents=True, exist_ok=True)
@@ -562,12 +572,21 @@ class ConfigTemplateManager:
                 comp_dir = components_dir / component.type.value / safe_comp_name
                 comp_dir.mkdir(parents=True, exist_ok=True)
 
-                # Copy component file(s)
+                # Security: Reject symlinks
+                validate_not_symlink(component.path, context="discovered component")
+
+                # Copy component file(s) (symlinks=False for security)
                 if component.path.is_file():
                     dest_file = comp_dir / component.path.name
                     shutil.copy2(component.path, dest_file)
                 elif component.path.is_dir():
-                    shutil.copytree(component.path, comp_dir, dirs_exist_ok=True)
+                    shutil.copytree(
+                        component.path,
+                        comp_dir,
+                        dirs_exist_ok=True,
+                        symlinks=False,
+                        ignore_dangling_symlinks=True,
+                    )
 
                 # Add component reference to preset definition
                 component_refs.append(
