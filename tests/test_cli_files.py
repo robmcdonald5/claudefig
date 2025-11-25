@@ -221,7 +221,8 @@ class TestFilesList:
             main, ["files", "list", "--path", str(tmp_path), "--type", "invalid_type"]
         )
 
-        assert result.exit_code == 1
+        # Click returns exit code 2 for UsageError (bad parameter)
+        assert result.exit_code == 2
         assert "invalid_type" in result.output.lower()
 
 
@@ -345,7 +346,8 @@ class TestFilesAdd:
             ["files", "add", "invalid_type", "--repo-path", str(tmp_path)],
         )
 
-        assert result.exit_code == 1
+        # Click returns exit code 2 for UsageError (bad parameter)
+        assert result.exit_code == 2
         assert "Invalid file type" in result.output
 
     @patch("claudefig.services.config_service.save_config")

@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -399,7 +399,7 @@ class TestPresetsCreate:
         assert "Created preset" in result.output
         assert "my_preset" in result.output
         mock_manager.save_global_preset.assert_called_once_with(
-            "my_preset", "Test preset"
+            "my_preset", "Test preset", config_path=ANY
         )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
@@ -433,11 +433,15 @@ class TestPresetsCreate:
         )
 
         assert result.exit_code == 0
-        mock_manager.save_global_preset.assert_called_once_with("my_preset", "")
+        mock_manager.save_global_preset.assert_called_once_with(
+            "my_preset", "", config_path=ANY
+        )
 
     @patch("claudefig.cli.commands.presets.ConfigTemplateManager")
-    def test_create_changes_directory(self, mock_manager_class, cli_runner, tmp_path):
-        """Test that create temporarily changes to project directory."""
+    def test_create_does_not_change_directory(
+        self, mock_manager_class, cli_runner, tmp_path
+    ):
+        """Test that create does not change the current working directory."""
         config_file = tmp_path / "claudefig.toml"
         config_file.write_text("[project]\nname = 'test'")
 
@@ -449,7 +453,7 @@ class TestPresetsCreate:
 
         result = cli_runner.invoke(presets_create, ["test", "--path", str(tmp_path)])
 
-        # Should restore original directory
+        # Current directory should never change
         assert os.getcwd() == original_cwd
         assert result.exit_code == 0
 
