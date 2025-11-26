@@ -628,6 +628,8 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         Args:
             instance_id: ID of the instance to edit
         """
+        from claudefig.user_config import get_user_config_dir
+
         # Get the instance
         instance = file_instance_service.get_instance(self.instances_dict, instance_id)
         if not instance:
@@ -636,28 +638,51 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             )
             return
 
-        # Determine the file to open based on component type
-        # All component types are now folder-based (consistent with line 389)
+        # Get component name from variables or extract from preset
+        component_name = instance.variables.get("component_name")
+        if not component_name and ":" in instance.preset:
+            component_name = instance.preset.split(":")[-1]
+
+        if not component_name:
+            self.notify(
+                f"Cannot determine component name from preset '{instance.preset}'",
+                severity="error",
+            )
+            return
+
+        # Get cached component folder, but verify it still exists
         component_folder = instance.variables.get("component_folder")
+        folder_path = Path(component_folder) if component_folder else None
 
-        # If component_folder is missing, try to find it from component_name variable
-        if not component_folder:
-            component_name = instance.variables.get("component_name")
+        # If no cached folder or cached folder doesn't exist, search for it
+        if not folder_path or not folder_path.exists():
+            # Search for component folder in multiple locations:
+            # 1. Global components: ~/.claudefig/components/{type}/{name}
+            # 2. Preset components: ~/.claudefig/presets/default/components/{type}/{name}
+            possible_paths = [
+                # Global components directory
+                get_components_dir() / instance.type.value / component_name,
+                # Default preset components directory
+                get_user_config_dir()
+                / "presets"
+                / "default"
+                / "components"
+                / instance.type.value
+                / component_name,
+            ]
 
-            # If component_name is also missing, try to extract from preset
-            # Preset format: "claude_md:default" or "gitignore:standard"
-            if not component_name and ":" in instance.preset:
-                component_name = instance.preset.split(":")[-1]
+            # Find the first existing path
+            folder_path = None
+            for path in possible_paths:
+                if path.exists() and path.is_dir():
+                    folder_path = path
+                    break
 
-            if component_name:
-                # Reconstruct the component folder path
-                components_dir = get_components_dir()
-                type_dir = components_dir / instance.type.value
-                component_folder = str(type_dir / component_name)
-                # Update the instance to cache both values for next time
+            if folder_path:
+                # Update the instance to cache the correct path
                 instance.variables = instance.variables or {}
                 instance.variables["component_name"] = component_name
-                instance.variables["component_folder"] = component_folder
+                instance.variables["component_folder"] = str(folder_path)
                 file_instance_service.update_instance(
                     self.instances_dict,
                     instance,
@@ -666,19 +691,13 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                 )
                 self.sync_instances_to_config()
             else:
+                # List searched paths in error message
+                searched = ", ".join(str(p) for p in possible_paths)
                 self.notify(
-                    f"Cannot determine component folder - no component_name or component_folder in variables, and cannot extract from preset '{instance.preset}'. Available: {list(instance.variables.keys())}",
+                    f"Component folder not found. Searched: {searched}",
                     severity="error",
                 )
                 return
-
-        folder_path = Path(component_folder)
-        if not folder_path.exists():
-            self.notify(
-                f"Component folder does not exist: {folder_path}",
-                severity="error",
-            )
-            return
 
         if not folder_path.is_dir():
             self.notify(
@@ -687,16 +706,52 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
             )
             return
 
-        # Find the actual file in the folder (uses the filename from the path)
+        # Find the file to open
+        # For file-based types (claude_md, gitignore, etc.): use Path(instance.path).name
+        # For directory-based types (commands, hooks, etc.): find the primary content file
         actual_filename = Path(instance.path).name
         file_to_open = folder_path / actual_filename
 
-        if not file_to_open.exists():
-            self.notify(
-                f"Component file does not exist: {file_to_open}",
-                severity="error",
-            )
-            return
+        # If direct filename match doesn't exist, find the primary content file
+        # This handles directory-based component types where path ends with /
+        if not file_to_open.exists() or not file_to_open.is_file():
+            # Priority order for finding the primary file
+            priority_extensions = [".md", ".json", ".py", ".sh", ".txt", ".yaml", ".yml"]
+            priority_names = ["content", "README", "CLAUDE", "config", "example"]
+
+            # Get all files in the folder (excluding hidden and __pycache__)
+            content_files = [
+                f
+                for f in folder_path.iterdir()
+                if f.is_file()
+                and not f.name.startswith(".")
+                and f.name != "component.toml"
+                and "__pycache__" not in str(f)
+            ]
+
+            if not content_files:
+                self.notify(
+                    f"No content files found in component folder: {folder_path}",
+                    severity="error",
+                )
+                return
+
+            # Sort by priority: prefer known names, then by extension
+            def sort_key(f: Path) -> tuple:
+                name_priority = 99
+                for i, name in enumerate(priority_names):
+                    if name.lower() in f.stem.lower():
+                        name_priority = i
+                        break
+                ext_priority = 99
+                for i, ext in enumerate(priority_extensions):
+                    if f.suffix.lower() == ext:
+                        ext_priority = i
+                        break
+                return (name_priority, ext_priority, f.name)
+
+            content_files.sort(key=sort_key)
+            file_to_open = content_files[0]
 
         # Open file using SystemUtilityMixin method
         self.open_file_in_editor(file_to_open)
