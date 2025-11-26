@@ -716,7 +716,15 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         # This handles directory-based component types where path ends with /
         if not file_to_open.exists() or not file_to_open.is_file():
             # Priority order for finding the primary file
-            priority_extensions = [".md", ".json", ".py", ".sh", ".txt", ".yaml", ".yml"]
+            priority_extensions = [
+                ".md",
+                ".json",
+                ".py",
+                ".sh",
+                ".txt",
+                ".yaml",
+                ".yml",
+            ]
             priority_names = ["content", "README", "CLAUDE", "config", "example"]
 
             # Get all files in the folder (excluding hidden and __pycache__)

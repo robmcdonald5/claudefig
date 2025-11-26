@@ -131,7 +131,9 @@ class TestConfigSet:
             assert result.exit_code == 0
             assert "Set" in result.output or "false" in result.output.lower()
 
-    def test_set_integer_to_string_key_rejected(self, cli_runner, tmp_path, config_file):
+    def test_set_integer_to_string_key_rejected(
+        self, cli_runner, tmp_path, config_file
+    ):
         """Test that setting an integer value to a string key is rejected."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             # custom.template_dir expects str, but "5" is parsed as int
@@ -322,7 +324,10 @@ class TestConfigIntegration:
                 main, ["config", "get", "custom.template_dir"]
             )
             assert get_result.exit_code == 0
-            assert "/test/templates" in get_result.output or "template_dir" in get_result.output
+            assert (
+                "/test/templates" in get_result.output
+                or "template_dir" in get_result.output
+            )
 
     def test_set_init_then_list(self, cli_runner, tmp_path, config_file):
         """Test setting init options then listing them."""

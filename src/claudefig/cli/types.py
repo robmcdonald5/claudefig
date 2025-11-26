@@ -24,7 +24,10 @@ class FileTypeParamType(click.ParamType):
     name = "file_type"
 
     def convert(
-        self, value: str | FileType, param: click.Parameter | None, ctx: click.Context | None
+        self,
+        value: str | FileType,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
     ) -> FileType:
         """Convert string value to FileType enum.
 
@@ -47,8 +50,7 @@ class FileTypeParamType(click.ParamType):
         except ValueError:
             valid_types = [ft.value for ft in FileType]
             self.fail(
-                f"Invalid file type: '{value}'. "
-                f"Valid types: {', '.join(valid_types)}",
+                f"Invalid file type: '{value}'. Valid types: {', '.join(valid_types)}",
                 param,
                 ctx,
             )

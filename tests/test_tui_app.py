@@ -12,13 +12,9 @@ Test Categories:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from textual.widgets import Button, Select
-
-from claudefig.models import FileInstance, FileType
-
 
 # =============================================================================
 # FIXTURES
@@ -34,7 +30,7 @@ def mock_cwd_with_config(tmp_path: Path, monkeypatch):
     # Create config file
     config_path = tmp_path / "claudefig.toml"
     config_path.write_text(
-        '''[claudefig]
+        """[claudefig]
 schema_version = "2.0"
 template_source = "built-in"
 
@@ -44,7 +40,7 @@ type = "claude_md"
 preset = "claude_md:default"
 path = "CLAUDE.md"
 enabled = true
-''',
+""",
         encoding="utf-8",
     )
 
@@ -77,7 +73,7 @@ class TestAppStartup:
 
         app = ClaudefigApp()
 
-        async with app.run_test() as pilot:
+        async with app.run_test() as _pilot:
             # App should start without crashing
             assert app.is_running
 
@@ -387,7 +383,9 @@ class TestContentPanelTransitions:
             assert app.focused != init_btn
 
     @pytest.mark.asyncio
-    async def test_right_arrow_does_nothing_when_no_section_active(self, mock_user_home):
+    async def test_right_arrow_does_nothing_when_no_section_active(
+        self, mock_user_home
+    ):
         """Test right arrow stays in menu when no section is active."""
         from claudefig.tui import ClaudefigApp
 
@@ -797,7 +795,6 @@ class TestStatePersistence:
     ):
         """Test ConfigPanel restores focus to last focused button."""
         from claudefig.tui import ClaudefigApp
-        from claudefig.tui.panels.config_panel import ConfigPanel
 
         app = ClaudefigApp()
 
@@ -847,7 +844,7 @@ class TestStatePersistence:
             await pilot.pause()
 
             # The Select should have a value (default or blank)
-            preset_select = app.query_one("#preset-select", Select)
+            _preset_select = app.query_one("#preset-select", Select)
 
             # If presets exist and default is available, it should be selected
             # The reactive attribute should match
@@ -875,7 +872,9 @@ class TestReactiveAttributes:
     """Test reactive attribute behavior in widgets."""
 
     @pytest.mark.asyncio
-    async def test_presets_apply_button_disabled_without_selection(self, mock_user_home):
+    async def test_presets_apply_button_disabled_without_selection(
+        self, mock_user_home
+    ):
         """Test Apply button is disabled when no preset selected."""
         from claudefig.tui import ClaudefigApp
         from claudefig.tui.panels.presets_panel import PresetsPanel

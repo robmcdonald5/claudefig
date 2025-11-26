@@ -48,7 +48,9 @@ def files_group():
 )
 @with_config()
 @handle_errors("listing file instances")
-def files_list(path, file_type: FileType | None, enabled_only, config_data, config_repo):
+def files_list(
+    path, file_type: FileType | None, enabled_only, config_data, config_repo
+):
     """List all configured file instances."""
 
     # Load instances from config
@@ -164,7 +166,8 @@ def files_add(
         manager = FileTemplateManager()
         components = manager.list_components("default", type=file_type_enum.value)
         component_exists = any(
-            c["name"] == component and c["type"] == file_type_enum.value for c in components
+            c["name"] == component and c["type"] == file_type_enum.value
+            for c in components
         )
 
         if not component_exists:

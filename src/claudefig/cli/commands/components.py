@@ -31,7 +31,7 @@ else:
     try:
         import tomli as tomllib
     except ImportError:
-        tomllib = None  # type: ignore
+        tomllib = None
 
 logger = get_logger("cli.components")
 
@@ -55,7 +55,8 @@ def _load_component_metadata(component_path: Path) -> dict | None:
 
     try:
         with open(metadata_file, "rb") as f:
-            return tomllib.load(f)
+            result: dict = tomllib.load(f)
+            return result
     except Exception as e:
         logger.debug(f"Failed to load component metadata from {metadata_file}: {e}")
         return None
@@ -109,7 +110,7 @@ def components_list(file_type: FileType | None, preset):
         return
 
     # Group components by type
-    by_type = {}
+    by_type: dict[str, list] = {}
     for comp in components:
         comp_type = comp["type"]
         if comp_type not in by_type:
@@ -205,7 +206,9 @@ def components_show(file_type: FileType, component_name, preset):
     if not component:
         console.print(
             format_cli_warning(
-                ErrorMessages.not_found("component", f"{file_type_str}/{component_name}")
+                ErrorMessages.not_found(
+                    "component", f"{file_type_str}/{component_name}"
+                )
             )
         )
         console.print(
@@ -357,7 +360,9 @@ def components_edit(file_type: FileType, component_name, preset):
     if not component:
         console.print(
             format_cli_warning(
-                ErrorMessages.not_found("component", f"{file_type_str}/{component_name}")
+                ErrorMessages.not_found(
+                    "component", f"{file_type_str}/{component_name}"
+                )
             )
         )
         console.print(

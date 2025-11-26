@@ -7,6 +7,7 @@ except ImportError:
 
 # Import custom exceptions for convenience
 from .exceptions import (
+    AccessDeniedError,
     BuiltInModificationError,
     CircularDependencyError,
     ClaudefigError,
@@ -25,7 +26,6 @@ from .exceptions import (
     InvalidFileTypeError,
     InvalidPresetNameError,
     MissingVariableError,
-    AccessDeniedError,
     PresetExistsError,
     PresetNotFoundError,
     ResourceConflictError,
