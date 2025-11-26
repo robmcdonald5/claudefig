@@ -140,7 +140,7 @@ def presets_show(preset_name):
             enabled = file_inst.get("enabled", True)
 
             status = "[green]enabled[/green]" if enabled else "[dim]disabled[/dim]"
-            console.print(f"  • {file_type}: {path} ({status})")
+            console.print(f"  - {file_type}: {path} ({status})")
             console.print(f"      Preset: {preset}")
     else:
         console.print("  [dim]No file instances[/dim]")
@@ -258,7 +258,7 @@ def presets_create_from_repo(preset_name, description, path):
     automatically includes ALL discovered components in the new preset.
 
     For interactive component selection, use the TUI:
-    claudefig tui → Presets → Create from Repo
+    claudefig tui -> Presets -> Create from Repo
 
     PRESET_NAME: Name for the new preset
     """
@@ -280,11 +280,11 @@ def presets_create_from_repo(preset_name, description, path):
     if result.total_found == 0:
         console.print("\n[yellow]No usable components detected in repository[/yellow]")
         console.print("\n[dim]The scanner looked for:[/dim]")
-        console.print("[dim]  • CLAUDE.md files[/dim]")
-        console.print("[dim]  • .claude/ directory contents[/dim]")
-        console.print("[dim]  • .gitignore files[/dim]")
-        console.print("[dim]  • MCP configurations[/dim]")
-        console.print("[dim]  • And more...[/dim]")
+        console.print("[dim]  - CLAUDE.md files[/dim]")
+        console.print("[dim]  - .claude/ directory contents[/dim]")
+        console.print("[dim]  - .gitignore files[/dim]")
+        console.print("[dim]  - MCP configurations[/dim]")
+        console.print("[dim]  - And more...[/dim]")
         raise click.Abort()
 
     # Show discovery results

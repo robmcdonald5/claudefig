@@ -253,7 +253,7 @@ def config_list(path, config_data, config_repo):
                     if instance.enabled
                     else "[dim]disabled[/dim]"
                 )
-                console.print(f"  • {instance.id} ({status})")
+                console.print(f"  - {instance.id} ({status})")
                 console.print(f"      Path: {instance.path}")
                 console.print(f"      Preset: {instance.preset}")
         else:

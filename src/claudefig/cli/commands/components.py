@@ -152,10 +152,10 @@ def components_list(file_type: FileType | None, preset):
                 description = metadata["component"].get("description", "")
 
             if description:
-                console.print(f"  • [bold]{comp_name}[/bold] {source_label}")
+                console.print(f"  - [bold]{comp_name}[/bold] {source_label}")
                 console.print(f"    [dim]{description}[/dim]")
             else:
-                console.print(f"  • [bold]{comp_name}[/bold] {source_label}")
+                console.print(f"  - [bold]{comp_name}[/bold] {source_label}")
 
         console.print()
 
@@ -249,12 +249,12 @@ def components_show(file_type: FileType, component_name, preset):
             if deps.get("requires"):
                 console.print("\n[bold]Requires:[/bold]")
                 for req in deps["requires"]:
-                    console.print(f"  • {req}")
+                    console.print(f"  - {req}")
 
             if deps.get("recommends"):
                 console.print("\n[bold]Recommends:[/bold]")
                 for rec in deps["recommends"]:
-                    console.print(f"  • {rec}")
+                    console.print(f"  - {rec}")
 
         # Show files
         console.print("\n[bold]Files:[/bold]")
@@ -263,7 +263,7 @@ def components_show(file_type: FileType, component_name, preset):
             if file.is_file() and not file.name.startswith("."):
                 size = file.stat().st_size
                 size_kb = size / 1024
-                console.print(f"  • {file.name} ({size_kb:.1f} KB)")
+                console.print(f"  - {file.name} ({size_kb:.1f} KB)")
 
     else:
         # No metadata file, just list files
@@ -271,7 +271,7 @@ def components_show(file_type: FileType, component_name, preset):
         comp_path = component["path"]
         for file in comp_path.iterdir():
             if file.is_file():
-                console.print(f"  • {file.name}")
+                console.print(f"  - {file.name}")
 
 
 @components_group.command("open")

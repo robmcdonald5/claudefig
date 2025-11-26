@@ -221,13 +221,13 @@ def files_add(
     if not result.valid:
         console.print("[red]Validation failed:[/red]")
         for error in result.errors:
-            console.print(f"  • {error}")
+            console.print(f"  - {error}")
         raise click.Abort()
 
     if result.has_warnings:
         console.print("[yellow]Warnings:[/yellow]")
         for warning in result.warnings:
-            console.print(f"  • {warning}")
+            console.print(f"  - {warning}")
 
     # Save instances back to config
     updated_instances_data = file_instance_service.save_instances_to_config(
@@ -411,13 +411,13 @@ def files_edit(
     if preset:
         old_preset = instance.preset
         instance.preset = f"{instance.type.value}:{preset}"
-        changes.append(f"preset: {old_preset} → {instance.preset}")
+        changes.append(f"preset: {old_preset} -> {instance.preset}")
 
     # Update path if provided
     if path_target:
         old_path = instance.path
         instance.path = path_target
-        changes.append(f"path: {old_path} → {instance.path}")
+        changes.append(f"path: {old_path} -> {instance.path}")
 
     # Update enabled state if provided
     if enable is not None:
@@ -425,7 +425,7 @@ def files_edit(
         instance.enabled = enable
         status = "enabled" if enable else "disabled"
         old_status = "enabled" if old_enabled else "disabled"
-        changes.append(f"status: {old_status} → {status}")
+        changes.append(f"status: {old_status} -> {status}")
 
     if not changes:
         console.print("[yellow]No changes specified[/yellow]")
@@ -443,13 +443,13 @@ def files_edit(
     if not result.valid:
         console.print("[red]Validation failed:[/red]")
         for error in result.errors:
-            console.print(f"  • {error}")
+            console.print(f"  - {error}")
         raise click.Abort()
 
     if result.has_warnings:
         console.print("[yellow]Warnings:[/yellow]")
         for warning in result.warnings:
-            console.print(f"  • {warning}")
+            console.print(f"  - {warning}")
 
     # Save instances back to config
     updated_instances_data = file_instance_service.save_instances_to_config(
