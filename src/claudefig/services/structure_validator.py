@@ -173,6 +173,25 @@ def validate_preset_integrity(
             result.add_error(f"Components directory missing: {components_dir}")
             return result
 
+        # Handle both dictionary format and array format for components
+        # Array format: [[components]] with type, name, path, enabled
+        # Dict format: [components.type] with variants, required_files
+        if isinstance(components_config, list):
+            # Array format - validate each component entry
+            for component in components_config:
+                if not isinstance(component, dict):
+                    continue
+                comp_type = component.get("type")
+                comp_name = component.get("name")
+                if comp_type and comp_name:
+                    variant_dir = components_dir / comp_type / comp_name
+                    if not variant_dir.exists():
+                        result.missing_dirs.append(variant_dir)
+                        result.add_error(
+                            f"Component variant missing: {comp_type}/{comp_name}"
+                        )
+            return result
+
         for component_type, config in components_config.items():
             if not isinstance(config, dict):
                 continue
