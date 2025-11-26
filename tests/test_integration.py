@@ -9,6 +9,7 @@ from claudefig.cli import main
 from claudefig.user_config import get_user_config_dir
 
 
+@pytest.mark.slow
 class TestFullInitializationWorkflow:
     """Test complete initialization workflow."""
 
@@ -17,17 +18,16 @@ class TestFullInitializationWorkflow:
         """Create Click CLI test runner."""
         return CliRunner()
 
-    @pytest.mark.skip(
-        reason="Init command requires interactive input - needs non-interactive mode for testing"
-    )
     def test_init_command_creates_structure(self, cli_runner, mock_user_home, tmp_path):
         """Test that 'claudefig init' creates necessary files and directories."""
         # Create a test repo directory
         repo_dir = tmp_path / "test_repo"
         repo_dir.mkdir()
 
-        # Run init command
-        result = cli_runner.invoke(main, ["init", "--path", str(repo_dir)])
+        # Run init command with --non-interactive to skip prompts
+        result = cli_runner.invoke(
+            main, ["init", "--path", str(repo_dir), "--non-interactive"]
+        )
 
         # Check command succeeded
         if result.exit_code != 0:
@@ -40,9 +40,6 @@ class TestFullInitializationWorkflow:
         assert (repo_dir / ".claude").exists()
         assert (repo_dir / ".claude").is_dir()
 
-    @pytest.mark.skip(
-        reason="Init command requires interactive input - needs non-interactive mode for testing"
-    )
     def test_init_command_with_force(self, cli_runner, mock_user_home, tmp_path):
         """Test init command with --force flag overwrites existing files."""
         repo_dir = tmp_path / "test_repo"
@@ -54,8 +51,10 @@ class TestFullInitializationWorkflow:
         existing_file = claude_dir / "test.txt"
         existing_file.write_text("existing content", encoding="utf-8")
 
-        # Run init with force
-        result = cli_runner.invoke(main, ["init", "--path", str(repo_dir), "--force"])
+        # Run init with force and --non-interactive to skip prompts
+        result = cli_runner.invoke(
+            main, ["init", "--path", str(repo_dir), "--force", "--non-interactive"]
+        )
 
         assert result.exit_code == 0
         assert claude_dir.exists()

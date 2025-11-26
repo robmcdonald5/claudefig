@@ -1,5 +1,9 @@
 """Tests for file instance service layer."""
 
+import platform
+
+import pytest
+
 from claudefig.models import FileInstance, FileType, PresetSource
 from claudefig.repositories.preset_repository import FakePresetRepository
 from claudefig.services import file_instance_service
@@ -385,22 +389,21 @@ class TestValidateInstance:
 class TestValidatePathSecurity:
     """Test validate_path() function - SECURITY CRITICAL."""
 
-    def test_valid_relative_path(self, tmp_path):
-        """Test valid relative path passes validation."""
-        result = file_instance_service.validate_path(
-            "CLAUDE.md", FileType.CLAUDE_MD, tmp_path
-        )
+    @pytest.mark.parametrize(
+        "path,description",
+        [
+            ("CLAUDE.md", "simple relative"),
+            ("docs/CLAUDE.md", "nested relative"),
+            ("./CLAUDE.md", "current directory prefix"),
+            ("././././CLAUDE.md", "multiple current directory"),
+        ],
+        ids=lambda x: x if isinstance(x, str) and "." in x else None,
+    )
+    def test_accepts_valid_relative_paths(self, tmp_path, path, description):
+        """Test valid relative paths are accepted."""
+        result = file_instance_service.validate_path(path, FileType.CLAUDE_MD, tmp_path)
 
-        assert result.valid
-        assert not result.has_errors
-
-    def test_valid_nested_relative_path(self, tmp_path):
-        """Test valid nested relative path passes."""
-        result = file_instance_service.validate_path(
-            "docs/CLAUDE.md", FileType.CLAUDE_MD, tmp_path
-        )
-
-        assert result.valid
+        assert result.valid, f"Rejected valid path: {path} ({description})"
         assert not result.has_errors
 
     def test_rejects_empty_path(self, tmp_path):
@@ -430,8 +433,6 @@ class TestValidatePathSecurity:
         Note: On Unix, C:/Windows is treated as relative, so it may pass
         is_absolute() but should still be caught by other validation.
         """
-        import platform
-
         result = file_instance_service.validate_path(
             "C:/Windows/System32/config", FileType.CLAUDE_MD, tmp_path
         )
@@ -451,8 +452,6 @@ class TestValidatePathSecurity:
         Note: On Unix, backslashes in paths are literal characters, not separators.
         C:\Windows becomes a filename "C:\Windows", which is valid on Unix.
         """
-        import platform
-
         result = file_instance_service.validate_path(
             r"C:\Windows\System32\config", FileType.CLAUDE_MD, tmp_path
         )
@@ -466,73 +465,28 @@ class TestValidatePathSecurity:
             # This becomes a strange but technically valid relative path
             pass
 
-    def test_rejects_parent_directory_reference(self, tmp_path):
-        """Test path with ../ is rejected (path traversal attack)."""
-        result = file_instance_service.validate_path(
-            "../../../etc/passwd", FileType.CLAUDE_MD, tmp_path
-        )
-
-        assert not result.valid
-        assert "parent directory" in result.errors[0]
-
-    def test_rejects_single_parent_reference(self, tmp_path):
-        """Test single parent directory reference is rejected."""
-        result = file_instance_service.validate_path(
-            "../CLAUDE.md", FileType.CLAUDE_MD, tmp_path
-        )
-
-        assert not result.valid
-        assert "parent directory" in result.errors[0]
-
-    def test_rejects_nested_parent_reference(self, tmp_path):
-        """Test nested path with parent reference is rejected."""
-        result = file_instance_service.validate_path(
-            "docs/../../etc/passwd", FileType.CLAUDE_MD, tmp_path
-        )
-
-        assert not result.valid
-        assert "parent directory" in result.errors[0]
-
-    def test_rejects_hidden_parent_reference(self, tmp_path):
-        """Test hidden parent reference in middle of path is rejected."""
-        result = file_instance_service.validate_path(
-            "docs/../../../CLAUDE.md", FileType.CLAUDE_MD, tmp_path
-        )
-
-        assert not result.valid
-        assert "parent directory" in result.errors[0]
-
-    def test_rejects_path_escaping_repo_via_resolve(self, tmp_path):
-        """Test path that resolves outside repository via complex path is rejected."""
-        # Even complex paths that resolve outside should be caught
-        # This path has ../ which will be caught
-        result = file_instance_service.validate_path(
-            "../outside.txt", FileType.CLAUDE_MD, tmp_path
-        )
-
-        # This will be caught by the parent directory check
-        assert not result.valid
-        assert "parent directory" in result.errors[0]
-
-    def test_rejects_path_that_resolves_outside_repo(self, tmp_path):
-        """Test path that resolves outside repository is rejected."""
-        # Even if no ../ in parts, the resolve check should catch escapes
-        # This tests the resolve() security check at lines 331-333
-
-        # Create subdirectory
+    @pytest.mark.parametrize(
+        "path,description",
+        [
+            ("../../../etc/passwd", "triple parent traversal"),
+            ("../CLAUDE.md", "single parent reference"),
+            ("docs/../../etc/passwd", "nested parent in middle"),
+            ("docs/../../../CLAUDE.md", "hidden parent reference"),
+            ("../outside.txt", "simple parent escape"),
+            ("subdir/../../outside.txt", "subdirectory escape"),
+        ],
+        ids=lambda x: x if isinstance(x, str) and "/" in x else None,
+    )
+    def test_rejects_parent_directory_traversal(self, tmp_path, path, description):
+        """Test parent directory references are rejected (path traversal attack)."""
+        # Create subdirectory for tests that reference it
         subdir = tmp_path / "subdir"
-        subdir.mkdir()
+        subdir.mkdir(exist_ok=True)
 
-        # Try various escape attempts that might bypass simple checks
-        dangerous_paths = [
-            "subdir/../../outside.txt",
-        ]
+        result = file_instance_service.validate_path(path, FileType.CLAUDE_MD, tmp_path)
 
-        for dangerous_path in dangerous_paths:
-            result = file_instance_service.validate_path(
-                dangerous_path, FileType.CLAUDE_MD, tmp_path
-            )
-            assert not result.valid, f"Failed to reject: {dangerous_path}"
+        assert not result.valid, f"Failed to reject: {path} ({description})"
+        assert "parent directory" in result.errors[0]
 
     def test_warns_for_directory_type_without_trailing_slash(self, tmp_path):
         """Test directory types generate warning without trailing slash."""
@@ -595,28 +549,8 @@ class TestValidatePathSecurity:
         assert result is not None
         assert isinstance(result.valid, bool)
 
-    def test_rejects_current_directory_dot(self, tmp_path):
-        """Test explicit current directory reference is handled."""
-        result = file_instance_service.validate_path(
-            "./CLAUDE.md", FileType.CLAUDE_MD, tmp_path
-        )
-
-        # ./ is valid (normalizes to CLAUDE.md)
-        assert result.valid
-
-    def test_rejects_multiple_current_directory_dots(self, tmp_path):
-        """Test multiple ./ references are handled."""
-        result = file_instance_service.validate_path(
-            "././././CLAUDE.md", FileType.CLAUDE_MD, tmp_path
-        )
-
-        # Multiple ./ should normalize fine
-        assert result.valid
-
     def test_path_normalization_security(self, tmp_path):
         """Test path normalization doesn't introduce security holes."""
-        import platform
-
         # Test various obfuscated path traversal attempts
         # Note: Backslashes are only path separators on Windows
         if platform.system() == "Windows":
