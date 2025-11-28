@@ -11,6 +11,11 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+try:
+    import tomli_w
+except ImportError:
+    tomli_w = None  # type: ignore[assignment]
+
 
 class FileType(Enum):
     """Supported file types for configuration generation."""
@@ -353,7 +358,7 @@ class ValidationResult:
 
 
 # ============================================================================
-# Phase 1: New Models for Preset Refactor
+# Preset Definition Models
 # ============================================================================
 
 
@@ -406,8 +411,12 @@ class PresetDefinition:
 
         Args:
             path: Path where to save the file
+
+        Raises:
+            ImportError: If tomli_w is not installed
         """
-        import tomli_w
+        if tomli_w is None:
+            raise ImportError("tomli_w is required for writing TOML files")
 
         data = {
             "preset": {
@@ -433,10 +442,10 @@ class ComponentReference:
     name: str  # Component name (default, standard, etc.)
     path: str  # Target path in project
     enabled: bool = True
-    variables: dict = field(default_factory=dict)
+    variables: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ComponentReference":
+    def from_dict(cls, data: dict[str, Any]) -> "ComponentReference":
         """Create from dict (from TOML)."""
         return cls(
             type=data.get("type", ""),
@@ -446,7 +455,7 @@ class ComponentReference:
             variables=data.get("variables", {}),
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dict (for TOML)."""
         result = {
             "type": self.type,

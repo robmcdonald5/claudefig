@@ -4,13 +4,23 @@ This module contains commands for managing project presets
 (list, create, delete, apply, show, open).
 """
 
-import os
 from pathlib import Path
 
 import click
 from rich.table import Table
 
 from claudefig.cli.decorators import handle_errors
+from claudefig.cli.handlers import (
+    handle_config_file_exists,
+    handle_editor_error,
+    handle_file_exists_error,
+    handle_preset_delete_file_not_found,
+    handle_preset_delete_not_found,
+    handle_preset_file_not_found,
+    handle_preset_not_found,
+    handle_preset_value_error,
+    handle_template_not_found,
+)
 from claudefig.config_template_manager import ConfigTemplateManager
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_warning
 from claudefig.exceptions import (
@@ -130,7 +140,7 @@ def presets_show(preset_name):
             enabled = file_inst.get("enabled", True)
 
             status = "[green]enabled[/green]" if enabled else "[dim]disabled[/dim]"
-            console.print(f"  • {file_type}: {path} ({status})")
+            console.print(f"  - {file_type}: {path} ({status})")
             console.print(f"      Preset: {preset}")
     else:
         console.print("  [dim]No file instances[/dim]")
@@ -147,30 +157,10 @@ def presets_show(preset_name):
 @handle_errors(
     "applying preset",
     extra_handlers={
-        TemplateNotFoundError: lambda e: (
-            console.print(f"[red]Preset not found:[/red] {e}"),  # type: ignore[func-returns-value]
-            console.print(
-                "\n[dim]Use 'claudefig presets list' to see available presets[/dim]"
-            ),  # type: ignore[func-returns-value]
-        )[-1],
-        FileNotFoundError: lambda e: (
-            console.print(f"[red]Preset not found:[/red] {e}"),  # type: ignore[func-returns-value]
-            console.print(
-                "\n[dim]Use 'claudefig presets list' to see available presets[/dim]"
-            ),  # type: ignore[func-returns-value]
-        )[-1],
-        ConfigFileExistsError: lambda e: (
-            console.print(f"[red]Error:[/red] {e}"),  # type: ignore[func-returns-value]
-            console.print(
-                "[dim]Remove existing config or choose a different directory[/dim]"
-            ),  # type: ignore[func-returns-value]
-        )[-1],
-        FileExistsError: lambda e: (
-            console.print("[red]Error:[/red] claudefig.toml already exists"),  # type: ignore[func-returns-value]
-            console.print(
-                "[dim]Remove existing config or choose a different directory[/dim]"
-            ),  # type: ignore[func-returns-value]
-        )[-1],
+        TemplateNotFoundError: handle_template_not_found,
+        FileNotFoundError: handle_preset_not_found,
+        ConfigFileExistsError: handle_config_file_exists,
+        FileExistsError: handle_file_exists_error,
     },
 )
 def presets_apply(preset_name, path):
@@ -208,8 +198,8 @@ def presets_apply(preset_name, path):
 @handle_errors(
     "creating preset",
     extra_handlers={
-        ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
-        FileNotFoundError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+        ValueError: handle_preset_value_error,
+        FileNotFoundError: handle_preset_file_not_found,
     },
 )
 def presets_create(preset_name, description, path):
@@ -230,13 +220,8 @@ def presets_create(preset_name, description, path):
 
     manager = ConfigTemplateManager()
 
-    # Temporarily change to project dir to read its config
-    original_cwd = os.getcwd()
-    try:
-        os.chdir(repo_path)
-        manager.save_global_preset(preset_name, description)
-    finally:
-        os.chdir(original_cwd)
+    # Pass config_path explicitly (no os.chdir needed)
+    manager.save_global_preset(preset_name, description, config_path=config_path)
 
     console.print(f"\n[green]+[/green] Created preset: [cyan]{preset_name}[/cyan]")
     console.print(
@@ -262,8 +247,8 @@ def presets_create(preset_name, description, path):
 @handle_errors(
     "creating preset from repository",
     extra_handlers={
-        ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
-        FileNotFoundError: lambda e: console.print(f"[red]Error:[/red] {e}"),
+        ValueError: handle_preset_value_error,
+        FileNotFoundError: handle_preset_file_not_found,
     },
 )
 def presets_create_from_repo(preset_name, description, path):
@@ -273,7 +258,7 @@ def presets_create_from_repo(preset_name, description, path):
     automatically includes ALL discovered components in the new preset.
 
     For interactive component selection, use the TUI:
-    claudefig tui → Presets → Create from Repo
+    claudefig tui -> Presets -> Create from Repo
 
     PRESET_NAME: Name for the new preset
     """
@@ -295,11 +280,11 @@ def presets_create_from_repo(preset_name, description, path):
     if result.total_found == 0:
         console.print("\n[yellow]No usable components detected in repository[/yellow]")
         console.print("\n[dim]The scanner looked for:[/dim]")
-        console.print("[dim]  • CLAUDE.md files[/dim]")
-        console.print("[dim]  • .claude/ directory contents[/dim]")
-        console.print("[dim]  • .gitignore files[/dim]")
-        console.print("[dim]  • MCP configurations[/dim]")
-        console.print("[dim]  • And more...[/dim]")
+        console.print("[dim]  - CLAUDE.md files[/dim]")
+        console.print("[dim]  - .claude/ directory contents[/dim]")
+        console.print("[dim]  - .gitignore files[/dim]")
+        console.print("[dim]  - MCP configurations[/dim]")
+        console.print("[dim]  - And more...[/dim]")
         raise click.Abort()
 
     # Show discovery results
@@ -367,11 +352,9 @@ def presets_create_from_repo(preset_name, description, path):
 @handle_errors(
     "deleting preset",
     extra_handlers={
-        TemplateNotFoundError: lambda e: console.print(
-            f"[yellow]Preset not found:[/yellow] {e}"
-        ),
-        ValueError: lambda e: console.print(f"[red]Error:[/red] {e}"),
-        FileNotFoundError: lambda e: console.print("[yellow]Preset not found[/yellow]"),
+        TemplateNotFoundError: handle_preset_delete_not_found,
+        ValueError: handle_preset_value_error,
+        FileNotFoundError: handle_preset_delete_file_not_found,
     },
 )
 def presets_delete(preset_name):
@@ -391,7 +374,7 @@ def presets_delete(preset_name):
 @handle_errors(
     "editing preset",
     extra_handlers={
-        RuntimeError: lambda e: console.print(f"[red]Error opening editor:[/red] {e}"),
+        RuntimeError: handle_editor_error,
     },
 )
 def presets_edit(preset_name):

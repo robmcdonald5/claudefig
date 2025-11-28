@@ -1,0 +1,260 @@
+/* ============================================================================ */
+/* WIDGET STYLES - Custom widgets, instance items, and wizards                   */
+/* ============================================================================ */
+
+/* Instance Item Styles */
+.instance-item {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.instance-path {
+    text-style: bold;
+    color: $text;
+    margin-bottom: 0;
+}
+
+.instance-component {
+    color: $text-muted;
+    margin-bottom: 0;
+}
+
+.instance-status {
+    margin-bottom: 0;
+}
+
+.instance-enabled {
+    color: $success;
+}
+
+.instance-disabled {
+    color: $text-muted;
+}
+
+.instance-actions {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+}
+
+.instance-button {
+    width: auto;
+    margin-right: 1;
+    min-width: 8;
+    min-height: 2;
+}
+
+.add-instance-button {
+    width: 100%;
+    margin-top: 1;
+    min-height: 3;
+}
+
+/* ============================================================================ */
+/* Single Instance Control Styles                                                */
+/* ============================================================================ */
+
+.single-instance-control {
+    width: 100%;
+    height: auto;
+    padding: 2;
+    margin-bottom: 2;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.single-instance-control .setting-row {
+    margin-bottom: 1;
+}
+
+.single-instance-control Button {
+    margin-top: 2;
+}
+
+/* ============================================================================ */
+/* File Instances Screen Styles                                                  */
+/* ============================================================================ */
+
+#file-instances-tabs {
+    width: 100%;
+    height: auto;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+#file-instances-tabs ContentSwitcher {
+    width: 100%;
+    height: auto;
+}
+
+#file-instances-tabs TabPane {
+    width: 100%;
+    height: auto;
+    padding: 0 1;
+}
+
+.tab-actions {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.tab-actions Button {
+    min-height: 2;
+    padding: 0 1;
+}
+
+.component-select {
+    width: 1fr;
+    max-width: 60;
+}
+
+.component-select.empty-message {
+    text-align: left;
+}
+
+.component-folder-btn {
+    width: auto;
+    margin-left: 1;
+}
+
+.instance-list {
+    width: 100%;
+    height: auto;
+    padding: 0;
+}
+
+.instance-list FileInstanceItem {
+    width: 100%;
+    height: auto;
+    layout: vertical;
+    margin-bottom: 1;
+    padding: 1;
+    border: round $primary-lighten-1;
+    background: $panel;
+}
+
+.empty-message {
+    color: $text-muted;
+    text-align: center;
+    margin: 1;
+}
+
+/* ============================================================================ */
+/* Component Selection Styles                                                    */
+/* ============================================================================ */
+
+/* Component group header for file type sections */
+.component-group-header {
+    color: $text-muted;
+    text-style: bold dim;
+    margin: 1 0;
+    text-align: left;
+}
+
+/* ============================================================================ */
+/* Wizard Styles                                                                 */
+/* ============================================================================ */
+
+.wizard-step-indicator {
+    color: $text-muted;
+    text-align: left;
+    margin: 1 0;
+}
+
+.wizard-content {
+    width: 100%;
+    height: auto;
+    padding: 2;
+}
+
+.wizard-label {
+    margin-top: 1;
+    margin-bottom: 0;
+    color: $text;
+    text-style: bold;
+}
+
+.wizard-actions {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-top: 2;
+}
+
+.wizard-actions Button {
+    width: auto;
+    margin: 0 1;
+    min-width: 15;
+}
+
+.wizard-status {
+    color: $text;
+    text-align: center;
+    margin: 2 0;
+}
+
+.wizard-status-success {
+    color: $success;
+    text-style: bold;
+    margin: 1 0;
+}
+
+.wizard-error {
+    color: $error;
+    text-style: bold;
+    text-align: center;
+    margin: 2 0;
+}
+
+.wizard-help-text {
+    color: $text-muted;
+    text-align: left;
+    margin: 1 0;
+}
+
+.wizard-warning-header {
+    color: $warning;
+    text-style: bold;
+    margin-top: 1;
+}
+
+.wizard-warning-text {
+    color: $warning;
+    margin-left: 2;
+}
+
+.wizard-review-section {
+    width: 100%;
+    height: auto;
+    padding: 1;
+    margin: 1 0;
+    border: solid $primary-lighten-1;
+    background: $panel;
+}
+
+.wizard-review-item {
+    color: $text;
+    margin: 0 1;
+}
+
+.wizard-component-list {
+    width: 100%;
+    height: auto;
+    border: solid $primary-lighten-1;
+    background: $surface;
+    padding: 1;
+    margin-top: 1;
+}
+
+.wizard-component-item {
+    color: $text;
+    margin: 0 1;
+}

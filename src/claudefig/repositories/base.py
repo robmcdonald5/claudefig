@@ -32,7 +32,7 @@ class AbstractConfigRepository(ABC):
             Configuration data as nested dictionary.
 
         Raises:
-            FileNotFoundError: If configuration doesn't exist.
+            ConfigFileNotFoundError: If configuration doesn't exist.
             ValueError: If configuration is malformed or invalid.
         """
         raise NotImplementedError
@@ -45,7 +45,7 @@ class AbstractConfigRepository(ABC):
             data: Configuration data to persist.
 
         Raises:
-            IOError: If write operation fails.
+            FileWriteError: If write operation fails.
             ValueError: If data cannot be serialized.
         """
         raise NotImplementedError
@@ -79,8 +79,8 @@ class AbstractConfigRepository(ABC):
             Path to the created backup file.
 
         Raises:
-            FileNotFoundError: If no configuration exists to backup.
-            IOError: If backup creation fails.
+            ConfigFileNotFoundError: If no configuration exists to backup.
+            FileOperationError: If backup creation fails.
         """
         raise NotImplementedError
 
@@ -89,8 +89,8 @@ class AbstractConfigRepository(ABC):
         """Delete the configuration from storage.
 
         Raises:
-            FileNotFoundError: If configuration doesn't exist.
-            IOError: If deletion fails.
+            ConfigFileNotFoundError: If configuration doesn't exist.
+            FileOperationError: If deletion fails.
         """
         raise NotImplementedError
 
@@ -143,8 +143,9 @@ class AbstractPresetRepository(ABC):
             source: Target source (USER or PROJECT only, not BUILT_IN).
 
         Raises:
-            ValueError: If preset already exists or source is BUILT_IN.
-            IOError: If write operation fails.
+            BuiltInModificationError: If source is BUILT_IN.
+            PresetExistsError: If preset already exists.
+            FileWriteError: If write operation fails.
         """
         raise NotImplementedError
 
@@ -156,9 +157,9 @@ class AbstractPresetRepository(ABC):
             preset: Updated preset object.
 
         Raises:
-            FileNotFoundError: If preset doesn't exist.
-            ValueError: If trying to update a BUILT_IN preset.
-            IOError: If write operation fails.
+            PresetNotFoundError: If preset doesn't exist.
+            BuiltInModificationError: If trying to update a BUILT_IN preset.
+            FileWriteError: If write operation fails.
         """
         raise NotImplementedError
 
@@ -170,9 +171,9 @@ class AbstractPresetRepository(ABC):
             preset_id: Preset identifier to delete.
 
         Raises:
-            FileNotFoundError: If preset doesn't exist.
-            ValueError: If trying to delete a BUILT_IN preset.
-            IOError: If deletion fails.
+            PresetNotFoundError: If preset doesn't exist.
+            BuiltInModificationError: If trying to delete a BUILT_IN preset.
+            FileOperationError: If deletion fails.
         """
         raise NotImplementedError
 
@@ -199,8 +200,8 @@ class AbstractPresetRepository(ABC):
             Template content as string.
 
         Raises:
-            FileNotFoundError: If template file doesn't exist.
-            IOError: If read operation fails.
+            TemplateNotFoundError: If template file doesn't exist.
+            FileReadError: If read operation fails.
         """
         raise NotImplementedError
 

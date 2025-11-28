@@ -246,7 +246,8 @@ class TestComponentsList:
         """Test listing with invalid file type."""
         result = cli_runner.invoke(components_list, ["invalid_type"])
 
-        assert result.exit_code == 1
+        # Click returns exit code 2 for UsageError (bad parameter)
+        assert result.exit_code == 2
         assert "Invalid file type" in result.output
         # Should show valid types
         assert "claude_md" in result.output or "Valid types" in result.output
@@ -458,7 +459,8 @@ class TestComponentsShow:
         """Test showing component with invalid file type."""
         result = cli_runner.invoke(components_show, ["invalid_type", "test"])
 
-        assert result.exit_code == 1
+        # Click returns exit code 2 for UsageError (bad parameter)
+        assert result.exit_code == 2
         assert "Invalid file type" in result.output
 
     @patch("claudefig.cli.commands.components.FileTemplateManager")
@@ -597,7 +599,8 @@ class TestComponentsOpen:
 
         result = cli_runner.invoke(components_open, ["invalid_type"])
 
-        assert result.exit_code == 1
+        # Click returns exit code 2 for UsageError (bad parameter)
+        assert result.exit_code == 2
         assert "Invalid file type" in result.output
 
     @patch("claudefig.cli.commands.components.open_folder_in_explorer")
@@ -761,7 +764,8 @@ class TestComponentsEdit:
         """Test editing with invalid file type."""
         result = cli_runner.invoke(components_edit, ["invalid_type", "test"])
 
-        assert result.exit_code == 1
+        # Click returns exit code 2 for UsageError (bad parameter)
+        assert result.exit_code == 2
         assert "Invalid file type" in result.output
 
     @patch("claudefig.cli.commands.components.open_file_in_editor")

@@ -89,16 +89,16 @@ class TestConfigGet:
 class TestConfigSet:
     """Tests for 'claudefig config set' command."""
 
-    def test_set_new_key(self, cli_runner, tmp_path, config_file):
-        """Test setting a new configuration key."""
+    def test_set_unknown_key_rejected(self, cli_runner, tmp_path, config_file):
+        """Test that unknown configuration keys are rejected."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             result = cli_runner.invoke(
                 main, ["config", "set", "custom.new_key", "test_value"]
             )
 
-            assert result.exit_code == 0
-            assert "Set" in result.output or "set" in result.output.lower()
-            assert "new_key" in result.output or "test_value" in result.output
+            # Unknown keys should be rejected
+            assert result.exit_code == 1
+            assert "Unknown config key" in result.output or "new_key" in result.output
 
     def test_set_existing_key(self, cli_runner, tmp_path, config_file):
         """Test updating an existing configuration key."""
@@ -131,14 +131,19 @@ class TestConfigSet:
             assert result.exit_code == 0
             assert "Set" in result.output or "false" in result.output.lower()
 
-    def test_set_integer_value(self, cli_runner, tmp_path, config_file):
-        """Test setting an integer value."""
+    def test_set_integer_to_string_key_rejected(
+        self, cli_runner, tmp_path, config_file
+    ):
+        """Test that setting an integer value to a string key is rejected."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            result = cli_runner.invoke(main, ["config", "set", "custom.max_depth", "5"])
+            # custom.template_dir expects str, but "5" is parsed as int
+            result = cli_runner.invoke(
+                main, ["config", "set", "custom.template_dir", "5"]
+            )
 
-            assert result.exit_code == 0
-            # Should parse '5' as integer
-            assert "Set" in result.output or "5" in result.output
+            # Type validation should reject integer for string key
+            assert result.exit_code == 1
+            assert "Invalid type" in result.output or "expected str" in result.output
 
     def test_set_string_value(self, cli_runner, tmp_path, config_file):
         """Test setting a string value."""
@@ -308,16 +313,21 @@ class TestConfigIntegration:
     def test_set_then_get(self, cli_runner, tmp_path, config_file):
         """Test setting a value then retrieving it."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            # Set a value
+            # Set a value using valid key
             set_result = cli_runner.invoke(
-                main, ["config", "set", "custom.test_key", "test_value"]
+                main, ["config", "set", "custom.template_dir", "/test/templates"]
             )
             assert set_result.exit_code == 0
 
             # Get the same value
-            get_result = cli_runner.invoke(main, ["config", "get", "custom.test_key"])
+            get_result = cli_runner.invoke(
+                main, ["config", "get", "custom.template_dir"]
+            )
             assert get_result.exit_code == 0
-            assert "test_value" in get_result.output or "test_key" in get_result.output
+            assert (
+                "/test/templates" in get_result.output
+                or "template_dir" in get_result.output
+            )
 
     def test_set_init_then_list(self, cli_runner, tmp_path, config_file):
         """Test setting init options then listing them."""
@@ -338,10 +348,16 @@ class TestConfigIntegration:
     def test_multiple_sets(self, cli_runner, tmp_path, config_file):
         """Test setting multiple values in sequence."""
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
-            # Set multiple values
-            result1 = cli_runner.invoke(main, ["config", "set", "custom.key1", "val1"])
-            result2 = cli_runner.invoke(main, ["config", "set", "custom.key2", "val2"])
-            result3 = cli_runner.invoke(main, ["config", "set", "custom.key3", "val3"])
+            # Set multiple valid values
+            result1 = cli_runner.invoke(
+                main, ["config", "set", "custom.template_dir", "/templates"]
+            )
+            result2 = cli_runner.invoke(
+                main, ["config", "set", "custom.presets_dir", "/presets"]
+            )
+            result3 = cli_runner.invoke(
+                main, ["config", "set", "init.overwrite_existing", "true"]
+            )
 
             assert result1.exit_code == 0
             assert result2.exit_code == 0

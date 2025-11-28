@@ -10,6 +10,8 @@ from pathlib import Path
 import click
 
 from claudefig.cli.decorators import handle_errors
+from claudefig.cli.handlers import handle_editor_error
+from claudefig.cli.types import FILE_TYPE
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_warning
 from claudefig.logging_config import get_logger
 from claudefig.models import FileType
@@ -29,7 +31,7 @@ else:
     try:
         import tomli as tomllib
     except ImportError:
-        tomllib = None  # type: ignore
+        tomllib = None
 
 logger = get_logger("cli.components")
 
@@ -53,7 +55,8 @@ def _load_component_metadata(component_path: Path) -> dict | None:
 
     try:
         with open(metadata_file, "rb") as f:
-            return tomllib.load(f)
+            result: dict = tomllib.load(f)
+            return result
     except Exception as e:
         logger.debug(f"Failed to load component metadata from {metadata_file}: {e}")
         return None
@@ -70,14 +73,14 @@ def components_group():
 
 
 @components_group.command("list")
-@click.argument("file_type", required=False)
+@click.argument("file_type", required=False, type=FILE_TYPE)
 @click.option(
     "--preset",
     default="default",
     help="Preset to search for components (default: default)",
 )
 @handle_errors("listing components")
-def components_list(file_type, preset):
+def components_list(file_type: FileType | None, preset):
     """List available components.
 
     FILE_TYPE: Optional file type filter (e.g., claude_md, settings_json).
@@ -89,23 +92,15 @@ def components_list(file_type, preset):
 
         claudefig components list --preset my-preset
     """
-    # Validate file_type if provided
-    if file_type:
-        try:
-            FileType(file_type)
-        except ValueError:
-            console.print(format_cli_error(f"Invalid file type: {file_type}"))
-            console.print(
-                f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
-            )
-            raise click.Abort() from None
+    # file_type is already validated by FILE_TYPE ParamType
+    file_type_str = file_type.value if file_type else None
 
     manager = FileTemplateManager()
-    components = manager.list_components(preset, type=file_type)
+    components = manager.list_components(preset, type=file_type_str)
 
     if not components:
-        if file_type:
-            console.print(f"[yellow]No {file_type} components found[/yellow]")
+        if file_type_str:
+            console.print(f"[yellow]No {file_type_str} components found[/yellow]")
         else:
             console.print("[yellow]No components found[/yellow]")
 
@@ -115,7 +110,7 @@ def components_list(file_type, preset):
         return
 
     # Group components by type
-    by_type = {}
+    by_type: dict[str, list] = {}
     for comp in components:
         comp_type = comp["type"]
         if comp_type not in by_type:
@@ -123,9 +118,9 @@ def components_list(file_type, preset):
         by_type[comp_type].append(comp)
 
     # Display header
-    if file_type:
+    if file_type_str:
         console.print(
-            f"\n[bold blue]Available Components - {file_type}[/bold blue] ({len(components)})\n"
+            f"\n[bold blue]Available Components - {file_type_str}[/bold blue] ({len(components)})\n"
         )
     else:
         console.print(
@@ -158,10 +153,10 @@ def components_list(file_type, preset):
                 description = metadata["component"].get("description", "")
 
             if description:
-                console.print(f"  • [bold]{comp_name}[/bold] {source_label}")
+                console.print(f"  - [bold]{comp_name}[/bold] {source_label}")
                 console.print(f"    [dim]{description}[/dim]")
             else:
-                console.print(f"  • [bold]{comp_name}[/bold] {source_label}")
+                console.print(f"  - [bold]{comp_name}[/bold] {source_label}")
 
         console.print()
 
@@ -172,7 +167,7 @@ def components_list(file_type, preset):
 
 
 @components_group.command("show")
-@click.argument("file_type")
+@click.argument("file_type", type=FILE_TYPE)
 @click.argument("component_name")
 @click.option(
     "--preset",
@@ -180,7 +175,7 @@ def components_list(file_type, preset):
     help="Preset to search for components (default: default)",
 )
 @handle_errors("showing component")
-def components_show(file_type, component_name, preset):
+def components_show(file_type: FileType, component_name, preset):
     """Show detailed information about a component.
 
     FILE_TYPE: Component type (e.g., claude_md, settings_json)
@@ -192,25 +187,18 @@ def components_show(file_type, component_name, preset):
 
         claudefig components show claude_md fastapi --preset my-preset
     """
-    # Validate file_type
-    try:
-        FileType(file_type)
-    except ValueError:
-        console.print(format_cli_error(f"Invalid file type: {file_type}"))
-        console.print(
-            f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
-        )
-        raise click.Abort() from None
+    # file_type is already validated by FILE_TYPE ParamType
+    file_type_str = file_type.value
 
     manager = FileTemplateManager()
-    components = manager.list_components(preset, type=file_type)
+    components = manager.list_components(preset, type=file_type_str)
 
     # Find the specific component
     component = next(
         (
             c
             for c in components
-            if c["name"] == component_name and c["type"] == file_type
+            if c["name"] == component_name and c["type"] == file_type_str
         ),
         None,
     )
@@ -218,11 +206,13 @@ def components_show(file_type, component_name, preset):
     if not component:
         console.print(
             format_cli_warning(
-                ErrorMessages.not_found("component", f"{file_type}/{component_name}")
+                ErrorMessages.not_found(
+                    "component", f"{file_type_str}/{component_name}"
+                )
             )
         )
         console.print(
-            f"\n[dim]Use 'claudefig components list {file_type}' to see available components[/dim]"
+            f"\n[dim]Use 'claudefig components list {file_type_str}' to see available components[/dim]"
         )
         raise click.Abort()
 
@@ -234,7 +224,7 @@ def components_show(file_type, component_name, preset):
 
     source_display = "Preset-specific" if component["source"] == "preset" else "Global"
     console.print(f"[bold]Name:[/bold]        {component_name}")
-    console.print(f"[bold]Type:[/bold]        {file_type}")
+    console.print(f"[bold]Type:[/bold]        {file_type_str}")
     console.print(f"[bold]Source:[/bold]      {source_display}")
     console.print(f"[bold]Path:[/bold]        {component['path']}")
 
@@ -262,12 +252,12 @@ def components_show(file_type, component_name, preset):
             if deps.get("requires"):
                 console.print("\n[bold]Requires:[/bold]")
                 for req in deps["requires"]:
-                    console.print(f"  • {req}")
+                    console.print(f"  - {req}")
 
             if deps.get("recommends"):
                 console.print("\n[bold]Recommends:[/bold]")
                 for rec in deps["recommends"]:
-                    console.print(f"  • {rec}")
+                    console.print(f"  - {rec}")
 
         # Show files
         console.print("\n[bold]Files:[/bold]")
@@ -276,7 +266,7 @@ def components_show(file_type, component_name, preset):
             if file.is_file() and not file.name.startswith("."):
                 size = file.stat().st_size
                 size_kb = size / 1024
-                console.print(f"  • {file.name} ({size_kb:.1f} KB)")
+                console.print(f"  - {file.name} ({size_kb:.1f} KB)")
 
     else:
         # No metadata file, just list files
@@ -284,13 +274,13 @@ def components_show(file_type, component_name, preset):
         comp_path = component["path"]
         for file in comp_path.iterdir():
             if file.is_file():
-                console.print(f"  • {file.name}")
+                console.print(f"  - {file.name}")
 
 
 @components_group.command("open")
-@click.argument("file_type", required=False)
+@click.argument("file_type", required=False, type=FILE_TYPE)
 @handle_errors("opening components directory")
-def components_open(file_type):
+def components_open(file_type: FileType | None):
     """Open the components directory in file explorer.
 
     FILE_TYPE: Optional file type to open specific type folder
@@ -305,18 +295,9 @@ def components_open(file_type):
     """
     components_dir = get_components_dir()
 
+    # file_type is already validated by FILE_TYPE ParamType
     if file_type:
-        # Validate file_type
-        try:
-            FileType(file_type)
-        except ValueError:
-            console.print(format_cli_error(f"Invalid file type: {file_type}"))
-            console.print(
-                f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
-            )
-            raise click.Abort() from None
-
-        target_dir = components_dir / file_type
+        target_dir = components_dir / file_type.value
         target_dir.mkdir(parents=True, exist_ok=True)
     else:
         target_dir = components_dir
@@ -335,7 +316,7 @@ def components_open(file_type):
 
 
 @components_group.command("edit")
-@click.argument("file_type")
+@click.argument("file_type", type=FILE_TYPE)
 @click.argument("component_name")
 @click.option(
     "--preset",
@@ -345,10 +326,10 @@ def components_open(file_type):
 @handle_errors(
     "editing component",
     extra_handlers={
-        RuntimeError: lambda e: console.print(f"[red]Error opening editor:[/red] {e}"),
+        RuntimeError: handle_editor_error,
     },
 )
-def components_edit(file_type, component_name, preset):
+def components_edit(file_type: FileType, component_name, preset):
     """Edit a component's primary content file in your default editor.
 
     FILE_TYPE: Component type (e.g., claude_md, settings_json)
@@ -360,25 +341,18 @@ def components_edit(file_type, component_name, preset):
 
         claudefig components edit claude_md fastapi
     """
-    # Validate file_type
-    try:
-        FileType(file_type)
-    except ValueError:
-        console.print(format_cli_error(f"Invalid file type: {file_type}"))
-        console.print(
-            f"\n[dim]Valid types: {', '.join([ft.value for ft in FileType])}[/dim]"
-        )
-        raise click.Abort() from None
+    # file_type is already validated by FILE_TYPE ParamType
+    file_type_str = file_type.value
 
     manager = FileTemplateManager()
-    components = manager.list_components(preset, type=file_type)
+    components = manager.list_components(preset, type=file_type_str)
 
     # Find the specific component
     component = next(
         (
             c
             for c in components
-            if c["name"] == component_name and c["type"] == file_type
+            if c["name"] == component_name and c["type"] == file_type_str
         ),
         None,
     )
@@ -386,11 +360,13 @@ def components_edit(file_type, component_name, preset):
     if not component:
         console.print(
             format_cli_warning(
-                ErrorMessages.not_found("component", f"{file_type}/{component_name}")
+                ErrorMessages.not_found(
+                    "component", f"{file_type_str}/{component_name}"
+                )
             )
         )
         console.print(
-            f"\n[dim]Use 'claudefig components list {file_type}' to see available components[/dim]"
+            f"\n[dim]Use 'claudefig components list {file_type_str}' to see available components[/dim]"
         )
         raise click.Abort()
 

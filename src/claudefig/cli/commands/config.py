@@ -17,6 +17,33 @@ from .. import console
 logger = get_logger("cli.config")
 
 
+def parse_config_value(value: str) -> str | bool | int | float:
+    """Parse a config value string to appropriate type.
+
+    Handles:
+    - Booleans: 'true', 'false' (case-insensitive)
+    - Integers: '42', '-7'
+    - Floats: '3.14', '-2.5'
+    - Strings: everything else
+
+    Args:
+        value: String value from CLI input
+
+    Returns:
+        Parsed value as appropriate Python type
+    """
+    lower = value.lower()
+    if lower in ("true", "false"):
+        return lower == "true"
+
+    try:
+        if "." in value:
+            return float(value)
+        return int(value)
+    except ValueError:
+        return value
+
+
 @click.group(name="config")
 def config_group():
     """Manage claudefig configuration settings."""
@@ -65,11 +92,14 @@ def config_set(key, value, path, config_data, config_repo):
     VALUE: Value to set (use 'true', 'false' for booleans)
     """
     # Parse value
-    parsed_value = value
-    if value.lower() in ("true", "false"):
-        parsed_value = value.lower() == "true"
-    elif value.isdigit():
-        parsed_value = int(value)
+    parsed_value = parse_config_value(value)
+
+    # Validate key and type
+    validation = config_service.validate_config_key(key, parsed_value)
+    if not validation.valid:
+        for error in validation.errors:
+            console.print(f"[red]Error:[/red] {error}")
+        raise click.Abort()
 
     # Set value
     config_service.set_value(config_data, key, parsed_value)
@@ -223,7 +253,7 @@ def config_list(path, config_data, config_repo):
                     if instance.enabled
                     else "[dim]disabled[/dim]"
                 )
-                console.print(f"  • {instance.id} ({status})")
+                console.print(f"  - {instance.id} ({status})")
                 console.print(f"      Path: {instance.path}")
                 console.print(f"      Preset: {instance.preset}")
         else:
@@ -232,3 +262,67 @@ def config_list(path, config_data, config_repo):
         console.print("[yellow]No file instances configured[/yellow]")
 
     console.print("\n[dim]Use 'claudefig files list' for more details[/dim]")
+
+
+@config_group.command("repair")
+@handle_errors("repairing config")
+def config_repair():
+    """Repair the user configuration directory.
+
+    This command ensures the ~/.claudefig directory is functional by:
+
+    \b
+    - Creating any missing directories in the folder structure
+    - Creating the config.toml file if missing
+    - Restoring the default preset from the library if missing/incomplete
+
+    This is a non-destructive operation - it only creates missing items
+    and does not modify or overwrite existing files.
+    """
+    from claudefig.user_config import repair_user_config
+
+    success = repair_user_config(verbose=True)
+
+    if not success:
+        raise click.ClickException("Repair completed with errors")
+
+
+@config_group.command("reset")
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+@handle_errors("resetting config")
+def config_reset(yes):
+    """Reset the user configuration to factory defaults.
+
+    This command deletes the entire ~/.claudefig directory and all custom
+    configuration, presets, and components. After reset, run any claudefig
+    command to reinitialize with defaults.
+
+    \b
+    WARNING: This operation cannot be undone!
+    """
+    from claudefig.user_config import get_user_config_dir, reset_user_config
+
+    config_dir = get_user_config_dir()
+
+    if not config_dir.exists():
+        console.print("[yellow]No user configuration to reset[/yellow]")
+        return
+
+    if not yes:
+        console.print(
+            f"[bold red]Warning:[/bold red] This will delete [cyan]{config_dir}[/cyan] "
+            "and all custom configuration!\n"
+        )
+        if not click.confirm("Are you sure you want to reset?", default=False):
+            console.print("[yellow]Reset cancelled[/yellow]")
+            return
+
+    success = reset_user_config(force=True)
+
+    if not success:
+        raise click.ClickException("Reset failed")

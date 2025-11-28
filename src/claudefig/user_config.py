@@ -7,7 +7,32 @@ from pathlib import Path
 
 from rich.console import Console
 
+from claudefig.utils.paths import validate_not_symlink
+from claudefig.utils.platform import secure_mkdir
+
 console = Console()
+
+
+def _validate_home_directory() -> Path:
+    """Validate home directory is reasonable and not a root path.
+
+    Returns:
+        Validated home directory Path.
+
+    Raises:
+        ValueError: If home directory is root or invalid.
+    """
+    home = Path.home()
+
+    # Check for root directories (security measure)
+    invalid_roots = {Path("/"), Path("C:\\"), Path("C:/")}
+    if home in invalid_roots or str(home) in ("/", "C:\\", "C:/"):
+        raise ValueError(
+            f"Home directory appears invalid: {home}. "
+            "Cannot create config in root directory."
+        )
+
+    return home
 
 
 def get_user_config_dir() -> Path:
@@ -20,8 +45,12 @@ def get_user_config_dir() -> Path:
 
     Returns:
         Path to user config directory.
+
+    Raises:
+        ValueError: If home directory is invalid (root path).
     """
-    return Path.home() / ".claudefig"
+    home = _validate_home_directory()
+    return home / ".claudefig"
 
 
 def get_cache_dir() -> Path:
@@ -74,7 +103,7 @@ def is_initialized(auto_heal: bool = True) -> bool:
     if not config_dir.exists():
         if auto_heal:
             try:
-                config_dir.mkdir(parents=True, exist_ok=True)
+                secure_mkdir(config_dir)
             except Exception:
                 return False
         else:
@@ -181,14 +210,14 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
         verbose: Whether to print progress messages.
     """
     try:
-        # Create directory structure
-        config_dir.mkdir(parents=True, exist_ok=True)
-        (config_dir / "presets").mkdir(parents=True, exist_ok=True)
-        (config_dir / "cache").mkdir(parents=True, exist_ok=True)
+        # Create directory structure with secure permissions (0o700 on Unix)
+        secure_mkdir(config_dir)
+        secure_mkdir(config_dir / "presets")
+        secure_mkdir(config_dir / "cache")
 
         # Create components directory with subdirectories for each file type
         components_dir = config_dir / "components"
-        components_dir.mkdir(parents=True, exist_ok=True)
+        secure_mkdir(components_dir)
 
         # Create subdirectories for each file type component
         component_types = [
@@ -206,7 +235,7 @@ def initialize_user_directory(config_dir: Path, verbose: bool = True) -> None:
             "statusline",
         ]
         for component_type in component_types:
-            (components_dir / component_type).mkdir(parents=True, exist_ok=True)
+            secure_mkdir(components_dir / component_type)
 
         if verbose:
             console.print(f"[green]+[/green] Created directory: {config_dir}")
@@ -330,8 +359,17 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
                 )
             return
 
-        # Copy the entire default preset directory
-        shutil.copytree(source_path, dest_dir, dirs_exist_ok=True)
+        # Security: Validate source is not a symlink
+        validate_not_symlink(source_path, context="preset source")
+
+        # Copy the entire default preset directory (symlinks=False for security)
+        shutil.copytree(
+            source_path,
+            dest_dir,
+            dirs_exist_ok=True,
+            symlinks=False,
+            ignore_dangling_symlinks=True,
+        )
 
         if verbose:
             console.print(f"[green]+[/green] Copied default preset to {dest_dir}")
@@ -376,6 +414,78 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
             console.print(
                 f"[yellow]Warning:[/yellow] Could not copy default preset: {e}"
             )
+
+
+def repair_user_config(verbose: bool = True) -> bool:
+    """Repair user-level configuration directory.
+
+    This function ensures the .claudefig directory is functional by:
+    1. Creating any missing directories in the folder structure
+    2. Creating the config.toml file if missing
+    3. Restoring the default preset from the library if missing/incomplete
+
+    This is a non-destructive operation - it only creates missing items
+    and does not modify or overwrite existing files.
+
+    Args:
+        verbose: If True, print progress messages.
+
+    Returns:
+        True if repair completed successfully, False if errors occurred.
+    """
+    from claudefig.services.structure_validator import validate_user_directory
+
+    config_dir = get_user_config_dir()
+    has_errors = False
+
+    if verbose:
+        console.print("[bold blue]Repairing user configuration...[/bold blue]\n")
+
+    # Step 1: Validate and repair directory structure
+    if verbose:
+        console.print("[dim]Checking directory structure...[/dim]")
+
+    validation_result = validate_user_directory(
+        config_dir, auto_heal=True, verbose=verbose
+    )
+
+    if validation_result.errors:
+        for error in validation_result.errors:
+            if "does not exist" not in error:  # Skip "created" messages
+                console.print(f"[red]Error:[/red] {error}")
+                has_errors = True
+
+    if validation_result.was_repaired and verbose:
+        console.print(
+            f"[green]+[/green] Repaired {len(validation_result.repaired_dirs)} directories"
+        )
+
+    # Step 2: Ensure config.toml exists
+    config_path = config_dir / "config.toml"
+    if not config_path.exists():
+        if verbose:
+            console.print("[dim]Creating default config.toml...[/dim]")
+        try:
+            create_default_user_config(config_path, verbose=verbose)
+        except Exception as e:
+            console.print(f"[red]Error creating config.toml:[/red] {e}")
+            has_errors = True
+
+    # Step 3: Ensure default preset exists and is complete
+    presets_dir = config_dir / "presets"
+    if presets_dir.exists():
+        if verbose:
+            console.print("[dim]Checking default preset...[/dim]")
+        _copy_default_preset_to_user(presets_dir, verbose=verbose)
+
+    # Summary
+    if verbose:
+        if has_errors:
+            console.print("\n[yellow]Repair completed with errors[/yellow]")
+        else:
+            console.print("\n[green]Repair completed successfully[/green]")
+
+    return not has_errors
 
 
 def reset_user_config(force: bool = False) -> bool:

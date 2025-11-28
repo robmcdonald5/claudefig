@@ -36,6 +36,54 @@ DEFAULT_CONFIG = {
     },
 }
 
+# Valid config keys with expected types for CLI validation
+# Keys must match dot-notation used in get_value/set_value
+VALID_CONFIG_KEYS: dict[str, type] = {
+    "claudefig.version": str,
+    "claudefig.schema_version": str,
+    "claudefig.template_source": str,
+    "init.overwrite_existing": bool,
+    "init.create_backup": bool,
+    "custom.template_dir": str,
+    "custom.presets_dir": str,
+}
+
+
+def validate_config_key(key: str, value: Any) -> ValidationResult:
+    """Validate a config key and value before setting.
+
+    This ensures CLI users cannot set arbitrary keys that would corrupt
+    the config file or cause unexpected behavior.
+
+    Args:
+        key: Dot-notation config key (e.g., "init.overwrite_existing")
+        value: Value to set (already parsed to appropriate type)
+
+    Returns:
+        ValidationResult with any errors
+
+    Example:
+        >>> validate_config_key("init.overwrite_existing", True)
+        ValidationResult(valid=True, errors=[], warnings=[])
+        >>> validate_config_key("unknown.key", "value")
+        ValidationResult(valid=False, errors=["Unknown config key: 'unknown.key'..."], ...)
+    """
+    result = ValidationResult(valid=True)
+
+    if key not in VALID_CONFIG_KEYS:
+        valid_keys = ", ".join(sorted(VALID_CONFIG_KEYS.keys()))
+        result.add_error(f"Unknown config key: '{key}'. Valid keys: {valid_keys}")
+        return result
+
+    expected_type = VALID_CONFIG_KEYS[key]
+    if not isinstance(value, expected_type):
+        result.add_error(
+            f"Invalid type for '{key}': expected {expected_type.__name__}, "
+            f"got {type(value).__name__}"
+        )
+
+    return result
+
 
 def find_config_path() -> Path | None:
     """Search for claudefig.toml in current directory and home directory.

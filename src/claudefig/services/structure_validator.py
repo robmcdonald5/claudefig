@@ -173,6 +173,25 @@ def validate_preset_integrity(
             result.add_error(f"Components directory missing: {components_dir}")
             return result
 
+        # Handle both dictionary format and array format for components
+        # Array format: [[components]] with type, name, path, enabled
+        # Dict format: [components.type] with variants, required_files
+        if isinstance(components_config, list):
+            # Array format - validate each component entry
+            for component in components_config:
+                if not isinstance(component, dict):
+                    continue
+                comp_type = component.get("type")
+                comp_name = component.get("name")
+                if comp_type and comp_name:
+                    variant_dir = components_dir / comp_type / comp_name
+                    if not variant_dir.exists():
+                        result.missing_dirs.append(variant_dir)
+                        result.add_error(
+                            f"Component variant missing: {comp_type}/{comp_name}"
+                        )
+            return result
+
         for component_type, config in components_config.items():
             if not isinstance(config, dict):
                 continue
@@ -206,67 +225,11 @@ def validate_preset_integrity(
                 if isinstance(config, dict)
             )
             console.print(
-                f"[green][/green] Preset integrity validated ({total_components} components)"
+                f"[green]✓[/green] Preset integrity validated ({total_components} components)"
             )
 
     except Exception as e:
         result.add_error(f"Failed to validate preset config: {e}")
-
-    return result
-
-
-def repair_preset_directory(
-    preset_dir: Path,
-    builtin_source: Path,
-    verbose: bool = True,
-) -> StructureValidationResult:
-    """Repair a preset directory by re-copying from built-in source.
-
-    Args:
-        preset_dir: Path to user preset directory to repair.
-        builtin_source: Path to built-in preset source.
-        verbose: If True, print repair progress.
-
-    Returns:
-        StructureValidationResult with repair actions taken.
-    """
-    import shutil
-
-    result = StructureValidationResult()
-
-    if not builtin_source.exists():
-        result.add_error(f"Built-in source not found: {builtin_source}")
-        return result
-
-    try:
-        # Backup existing preset if it exists
-        if preset_dir.exists():
-            backup_dir = preset_dir.parent / f"{preset_dir.name}.backup"
-            if backup_dir.exists():
-                shutil.rmtree(backup_dir)
-            shutil.move(str(preset_dir), str(backup_dir))
-            if verbose:
-                console.print(
-                    f"[yellow]Backed up existing preset to:[/yellow] {backup_dir}"
-                )
-
-        # Copy from built-in source
-        shutil.copytree(builtin_source, preset_dir, dirs_exist_ok=True)
-        result.repaired_dirs.append(preset_dir)
-
-        if verbose:
-            console.print(f"[green]+[/green] Repaired preset: {preset_dir}")
-
-        # Validate repaired preset
-        validation_result = validate_preset_integrity(preset_dir, verbose=False)
-        if not validation_result.is_valid:
-            result.add_error("Repaired preset failed validation")
-            result.errors.extend(validation_result.errors)
-        elif verbose:
-            console.print("[green][/green] Preset integrity verified")
-
-    except Exception as e:
-        result.add_error(f"Failed to repair preset: {e}")
 
     return result
 

@@ -130,3 +130,31 @@ def create_test_component(temp_component_dir: Path):
         return component_path
 
     return _create_component
+
+
+@pytest.fixture
+def mock_config_for_tui(tmp_path: Path) -> Path:
+    """Create a mock configuration for TUI testing.
+
+    Args:
+        tmp_path: Pytest temporary path fixture.
+
+    Returns:
+        Path to mock config file.
+    """
+    config_path = tmp_path / "claudefig.toml"
+    config_path.write_text(
+        """[claudefig]
+schema_version = "2.0"
+template_source = "built-in"
+
+[[file_instances]]
+id = "test-claude-md"
+type = "claude_md"
+preset = "claude_md:default"
+path = "CLAUDE.md"
+enabled = true
+""",
+        encoding="utf-8",
+    )
+    return config_path

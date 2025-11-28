@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 
 from claudefig.cli.decorators import handle_errors, with_config
+from claudefig.cli.types import FILE_TYPE
 from claudefig.error_messages import ErrorMessages, format_cli_error, format_cli_warning
 from claudefig.logging_config import get_logger
 from claudefig.models import FileType
@@ -37,6 +38,7 @@ def files_group():
 @click.option(
     "--type",
     "file_type",
+    type=FILE_TYPE,
     help="Filter by file type (e.g., claude_md, settings_json)",
 )
 @click.option(
@@ -46,7 +48,9 @@ def files_group():
 )
 @with_config()
 @handle_errors("listing file instances")
-def files_list(path, file_type, enabled_only, config_data, config_repo):
+def files_list(
+    path, file_type: FileType | None, enabled_only, config_data, config_repo
+):
     """List all configured file instances."""
 
     # Load instances from config
@@ -60,19 +64,8 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
         for error in load_errors:
             console.print(f"[yellow]Warning:[/yellow] {error}")
 
-    # Filter by file type if provided
-    filter_type = None
-    if file_type:
-        try:
-            filter_type = FileType(file_type)
-        except ValueError:
-            valid_types = [ft.value for ft in FileType]
-            console.print(
-                format_cli_error(
-                    ErrorMessages.invalid_type("file type", file_type, valid_types)
-                )
-            )
-            raise click.Abort() from None
+    # file_type is already validated by FILE_TYPE ParamType (or None if not provided)
+    filter_type = file_type
 
     # List instances with filters
     instances = file_instance_service.list_instances(
@@ -102,7 +95,7 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
 
 
 @files_group.command("add")
-@click.argument("file_type")
+@click.argument("file_type", type=FILE_TYPE)
 @click.option(
     "--preset",
     default=None,
@@ -133,7 +126,7 @@ def files_list(path, file_type, enabled_only, config_data, config_repo):
 @with_config(path_param="repo_path_arg")
 @handle_errors("adding file instance")
 def files_add(
-    file_type,
+    file_type: FileType,
     preset,
     component,
     path_target,
@@ -165,30 +158,26 @@ def files_add(
     else:
         preset_name = "default"
 
-    # Parse file type
-    try:
-        file_type_enum = FileType(file_type)
-    except ValueError:
-        console.print(f"[red]Invalid file type:[/red] {file_type}")
-        console.print(f"Valid types: {', '.join([ft.value for ft in FileType])}")
-        raise click.Abort() from None
+    # file_type is already validated by FILE_TYPE ParamType
+    file_type_enum = file_type
 
     # If component was specified, verify it exists
     if component:
         manager = FileTemplateManager()
-        components = manager.list_components("default", type=file_type)
+        components = manager.list_components("default", type=file_type_enum.value)
         component_exists = any(
-            c["name"] == component and c["type"] == file_type for c in components
+            c["name"] == component and c["type"] == file_type_enum.value
+            for c in components
         )
 
         if not component_exists:
             console.print(
                 format_cli_error(
-                    f"Component '{component}' not found for type '{file_type}'"
+                    f"Component '{component}' not found for type '{file_type_enum.value}'"
                 )
             )
             console.print(
-                f"\n[dim]Use 'claudefig components list {file_type}' to see available components[/dim]"
+                f"\n[dim]Use 'claudefig components list {file_type_enum.value}' to see available components[/dim]"
             )
             raise click.Abort()
 
@@ -235,13 +224,13 @@ def files_add(
     if not result.valid:
         console.print("[red]Validation failed:[/red]")
         for error in result.errors:
-            console.print(f"  • {error}")
+            console.print(f"  - {error}")
         raise click.Abort()
 
     if result.has_warnings:
         console.print("[yellow]Warnings:[/yellow]")
         for warning in result.warnings:
-            console.print(f"  • {warning}")
+            console.print(f"  - {warning}")
 
     # Save instances back to config
     updated_instances_data = file_instance_service.save_instances_to_config(
@@ -425,13 +414,13 @@ def files_edit(
     if preset:
         old_preset = instance.preset
         instance.preset = f"{instance.type.value}:{preset}"
-        changes.append(f"preset: {old_preset} → {instance.preset}")
+        changes.append(f"preset: {old_preset} -> {instance.preset}")
 
     # Update path if provided
     if path_target:
         old_path = instance.path
         instance.path = path_target
-        changes.append(f"path: {old_path} → {instance.path}")
+        changes.append(f"path: {old_path} -> {instance.path}")
 
     # Update enabled state if provided
     if enable is not None:
@@ -439,7 +428,7 @@ def files_edit(
         instance.enabled = enable
         status = "enabled" if enable else "disabled"
         old_status = "enabled" if old_enabled else "disabled"
-        changes.append(f"status: {old_status} → {status}")
+        changes.append(f"status: {old_status} -> {status}")
 
     if not changes:
         console.print("[yellow]No changes specified[/yellow]")
@@ -457,13 +446,13 @@ def files_edit(
     if not result.valid:
         console.print("[red]Validation failed:[/red]")
         for error in result.errors:
-            console.print(f"  • {error}")
+            console.print(f"  - {error}")
         raise click.Abort()
 
     if result.has_warnings:
         console.print("[yellow]Warnings:[/yellow]")
         for warning in result.warnings:
-            console.print(f"  • {warning}")
+            console.print(f"  - {warning}")
 
     # Save instances back to config
     updated_instances_data = file_instance_service.save_instances_to_config(

@@ -98,7 +98,12 @@ def main(ctx, verbose, quiet):
     is_flag=True,
     help="Overwrite existing configuration files",
 )
-def init(path, force):
+@click.option(
+    "--non-interactive",
+    is_flag=True,
+    help="Skip interactive prompts (for scripting/testing)",
+)
+def init(path, force, non_interactive):
     """Initialize Claude Code configuration in a repository.
 
     Creates necessary files and directory structure for Claude Code integration:
@@ -123,7 +128,9 @@ def init(path, force):
 
     try:
         initializer = Initializer()
-        success = initializer.initialize(repo_path, force=force)
+        success = initializer.initialize(
+            repo_path, force=force, skip_prompts=non_interactive
+        )
 
         if success:
             logger.info("Initialization completed successfully")
@@ -441,31 +448,31 @@ def validate(path):
         # Display results
         if total_errors:
             logger.warning(f"Validation found {len(total_errors)} error(s)")
-            console.print(f"[red]✗ Found {len(total_errors)} error(s):[/red]\n")
+            console.print(f"[red]X Found {len(total_errors)} error(s):[/red]\n")
             for error in total_errors:
-                console.print(f"  • {error}")
+                console.print(f"  - {error}")
             console.print()
 
         if total_warnings:
             logger.info(f"Validation found {len(total_warnings)} warning(s)")
             console.print(
-                f"[yellow]⚠ Found {len(total_warnings)} warning(s):[/yellow]\n"
+                f"[yellow]! Found {len(total_warnings)} warning(s):[/yellow]\n"
             )
             for warning in total_warnings:
-                console.print(f"  • {warning}")
+                console.print(f"  - {warning}")
             console.print()
 
         # Overall health
         if total_errors:
             logger.error("Validation failed with errors")
-            console.print("[red]Health: ✗ Errors detected[/red]")
+            console.print("[red]Health: X Errors detected[/red]")
             raise click.Abort()
         elif total_warnings:
             logger.info("Validation passed with warnings")
-            console.print("[yellow]Health: ⚠ Warnings detected[/yellow]")
+            console.print("[yellow]Health: ! Warnings detected[/yellow]")
         else:
             logger.info("Validation passed - all checks successful")
-            console.print("[green]Health: ✓ All validations passed[/green]")
+            console.print("[green]Health: OK All validations passed[/green]")
 
         console.print(
             f"\n[dim]Validated {len(enabled_instances)} enabled instance(s)[/dim]"

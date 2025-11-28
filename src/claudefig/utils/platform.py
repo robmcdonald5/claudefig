@@ -74,8 +74,28 @@ def is_linux() -> bool:
     return _get_system() == "Linux"
 
 
+def secure_mkdir(path: Path, mode: int = 0o700) -> None:
+    """Create directory with secure permissions on Unix, default on Windows.
+
+    On Unix systems, creates directories with the specified mode (default 0o700,
+    user-only access). On Windows, permissions are managed by the OS and the
+    mode parameter is ignored.
+
+    Args:
+        path: Directory path to create
+        mode: Unix permission mode (default 0o700, ignored on Windows)
+    """
+    if is_windows():
+        path.mkdir(parents=True, exist_ok=True)
+    else:
+        path.mkdir(parents=True, exist_ok=True, mode=mode)
+
+
 def open_file_in_editor(file_path: Path | str) -> bool:
     """Open a file in the system's default editor.
+
+    For script files (.py, .sh, .bash, etc.), explicitly uses a text editor
+    to avoid executing the script instead of editing it.
 
     Args:
         file_path: Path to the file to open
@@ -96,21 +116,73 @@ def open_file_in_editor(file_path: Path | str) -> bool:
     if not file_path.is_file():
         raise ValueError(f"Path is not a file: {file_path}")
 
+    # Script extensions that should always open in editor, not execute
+    script_extensions = {".py", ".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd"}
+    is_script = file_path.suffix.lower() in script_extensions
+
     try:
         system = _get_system()
 
         if system == "Windows":
-            os.startfile(str(file_path))
+            if is_script:
+                # For scripts, try multiple methods to open in editor (not execute)
+                # 1. Try 'edit' verb (works if registered)
+                # 2. Try VS Code 'code' command (common for developers)
+                # 3. Fall back to notepad
+                opened = False
+
+                # Try 'edit' verb first
+                try:
+                    os.startfile(str(file_path), "edit")
+                    opened = True
+                except OSError:
+                    pass
+
+                # Try VS Code if edit verb failed
+                if not opened and _command_exists("code"):
+                    try:
+                        subprocess.Popen(
+                            ["code", str(file_path)],
+                            creationflags=subprocess.DETACHED_PROCESS,
+                        )
+                        opened = True
+                    except OSError:
+                        pass
+
+                # Fall back to notepad
+                if not opened:
+                    subprocess.Popen(
+                        ["notepad.exe", str(file_path)],
+                        creationflags=subprocess.DETACHED_PROCESS,
+                    )
+            else:
+                # For other files, use default association
+                os.startfile(str(file_path))
 
         elif system == "Darwin":
-            subprocess.run(
-                ["open", str(file_path)],
-                check=False,
-                capture_output=True,
-                timeout=5,
-            )
+            if is_script:
+                # Use 'open -e' to force TextEdit, or use $EDITOR
+                editor = os.environ.get("EDITOR", os.environ.get("VISUAL"))
+                if editor:
+                    subprocess.Popen([editor, str(file_path)])
+                else:
+                    # -e flag forces TextEdit on macOS
+                    subprocess.run(
+                        ["open", "-e", str(file_path)],
+                        check=False,
+                        capture_output=True,
+                        timeout=5,
+                    )
+            else:
+                subprocess.run(
+                    ["open", str(file_path)],
+                    check=False,
+                    capture_output=True,
+                    timeout=5,
+                )
 
         else:
+            # Linux - xdg-open usually opens text files in editor
             for cmd in ["xdg-open", "gnome-open", "kde-open"]:
                 if _command_exists(cmd):
                     subprocess.run(

@@ -5,7 +5,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -20,6 +20,7 @@ from claudefig.exceptions import (
     FileWriteError,
 )
 from claudefig.repositories.base import AbstractConfigRepository
+from claudefig.utils.paths import validate_not_symlink
 
 
 class TomlConfigRepository(AbstractConfigRepository):
@@ -58,8 +59,6 @@ class TomlConfigRepository(AbstractConfigRepository):
 
         try:
             with open(self.config_path, "rb") as f:
-                from typing import cast
-
                 return cast(dict[str, Any], tomllib.load(f))
         except tomllib.TOMLDecodeError as e:
             raise ValueError(
@@ -142,6 +141,8 @@ class TomlConfigRepository(AbstractConfigRepository):
             backup_path = self.config_path.with_suffix(f".{timestamp}.bak")
 
         try:
+            # Security: Reject symlinks
+            validate_not_symlink(self.config_path, context="config backup source")
             shutil.copy2(self.config_path, backup_path)
             return backup_path
         except Exception as e:

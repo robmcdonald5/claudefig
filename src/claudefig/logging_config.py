@@ -11,6 +11,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
+from claudefig.utils.platform import is_windows, secure_mkdir
+
 # Default log directory
 DEFAULT_LOG_DIR = Path.home() / ".claudefig" / "logs"
 
@@ -91,8 +93,8 @@ class ClaudefigLogger:
             level: Log level for file output
         """
         try:
-            # Ensure log directory exists
-            self.log_dir.mkdir(parents=True, exist_ok=True)
+            # Ensure log directory exists with secure permissions (0o700 on Unix)
+            secure_mkdir(self.log_dir)
 
             # Create rotating file handler
             log_file = self.log_dir / DEFAULT_LOG_FILE
@@ -103,6 +105,13 @@ class ClaudefigLogger:
                 encoding="utf-8",
             )
             self._file_handler.setLevel(level)
+
+            # Set restrictive log file permissions on Unix (0o600)
+            if not is_windows() and log_file.exists():
+                import contextlib
+
+                with contextlib.suppress(OSError):
+                    log_file.chmod(0o600)
 
             # Set formatter
             formatter = logging.Formatter(FILE_FORMAT, datefmt=FILE_DATE_FORMAT)
