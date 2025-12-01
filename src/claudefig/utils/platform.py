@@ -133,7 +133,7 @@ def open_file_in_editor(file_path: Path | str) -> bool:
 
                 # Try 'edit' verb first
                 try:
-                    os.startfile(str(file_path), "edit")
+                    os.startfile(str(file_path), "edit")  # type: ignore[attr-defined]
                     opened = True
                 except OSError:
                     pass
@@ -143,7 +143,7 @@ def open_file_in_editor(file_path: Path | str) -> bool:
                     try:
                         subprocess.Popen(
                             ["code", str(file_path)],
-                            creationflags=subprocess.DETACHED_PROCESS,
+                            creationflags=subprocess.DETACHED_PROCESS,  # type: ignore[attr-defined]
                         )
                         opened = True
                     except OSError:
@@ -153,11 +153,11 @@ def open_file_in_editor(file_path: Path | str) -> bool:
                 if not opened:
                     subprocess.Popen(
                         ["notepad.exe", str(file_path)],
-                        creationflags=subprocess.DETACHED_PROCESS,
+                        creationflags=subprocess.DETACHED_PROCESS,  # type: ignore[attr-defined]
                     )
             else:
                 # For other files, use default association
-                os.startfile(str(file_path))
+                os.startfile(str(file_path))  # type: ignore[attr-defined]
 
         elif system == "Darwin":
             if is_script:

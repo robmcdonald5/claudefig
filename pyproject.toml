@@ -126,6 +126,10 @@ check_untyped_defs = true
 module = "tests.*"
 warn_unused_ignores = false
 
+[[tool.mypy.overrides]]
+module = "claudefig.utils.platform"
+warn_unused_ignores = false  # Platform-specific code has OS-dependent type ignores
+
 # pytest configuration
 [tool.pytest.ini_options]
 testpaths = ["tests"]
