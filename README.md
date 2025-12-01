@@ -4,6 +4,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/claudefig.svg)](https://pypi.org/project/claudefig/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Status: Beta](https://img.shields.io/badge/Status-Beta-blue.svg)](https://github.com/robmcdonald5/claudefig)
 
 Universal configuration manager for Claude Code projects with preset templates and interactive TUI.
 
@@ -25,6 +26,15 @@ Universal configuration manager for Claude Code projects with preset templates a
 - **File Instances** - Fine-grained control over which files to generate
 - **Validation** - Automatic validation with helpful error/warning messages
 - **Flexible Configuration** - Stored in `claudefig.toml` (project) or `~/.claudefig/` (global home directory)
+
+### Interface Options
+
+Both the TUI and CLI provide comprehensive functionality. Some features are interface-specific to leverage each interface's strengths:
+
+- **TUI**: Interactive component browsing, visual file selection, preset wizard
+- **CLI**: Scriptable commands, preset editing, file sync operations
+
+See [FEATURE_PARITY.md](docs/FEATURE_PARITY.md) for a detailed comparison.
 
 ### Supported File Types
 
@@ -121,6 +131,14 @@ Customized workflows using the CLI:
 [CLI Commands and Flags](docs/CLI_REFERENCE.md)
 
 All claudefig inline features can be used directly by the CLI
+
+### Upgrading from v0.x
+
+If upgrading from an earlier version, rename your config file:
+- **Old**: `.claudefig.toml` (with dot prefix)
+- **New**: `claudefig.toml` (without dot prefix)
+
+See [CHANGELOG.md](CHANGELOG.md) for full migration details.
 
 ### User Guides
 - [Getting Started with Presets](docs/PRESETS_GUIDE.md) - Learn about the preset system

@@ -17,7 +17,7 @@ Thank you for your interest in contributing to claudefig! We welcome contributio
 We welcome many types of contributions:
 
 - **Bug Reports**: Found a bug? Let us know!
-- **Platform Parity**: claudefig not working within your terminal or OS environement? Open an issue or a PR if you have the fix.
+- **Platform Parity**: claudefig not working within your terminal or OS environment? Open an issue describing the incompatability or a PR if you have the fix.
 
 ## Getting Started
 
