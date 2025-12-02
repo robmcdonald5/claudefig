@@ -132,14 +132,6 @@ Customized workflows using the CLI:
 
 All claudefig inline features can be used directly by the CLI
 
-### Upgrading from v0.x
-
-If upgrading from an earlier version, rename your config file:
-- **Old**: `.claudefig.toml` (with dot prefix)
-- **New**: `claudefig.toml` (without dot prefix)
-
-See [CHANGELOG.md](CHANGELOG.md) for full migration details.
-
 ### User Guides
 - [Getting Started with Presets](docs/PRESETS_GUIDE.md) - Learn about the preset system
 - [Customizing Your Configuration](docs/CONFIG_GUIDE.md) - All claudefig config options are defined here
