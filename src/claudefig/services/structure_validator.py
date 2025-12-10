@@ -7,6 +7,7 @@ files exist and are intact.
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -17,6 +18,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 
@@ -251,7 +253,8 @@ def create_initialization_marker(config_dir: Path) -> bool:
             encoding="utf-8",
         )
         return True
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to write initialization marker %s: %s", marker_file, e)
         return False
 
 

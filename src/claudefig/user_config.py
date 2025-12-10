@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from rich.console import Console
 from claudefig.utils.paths import validate_not_symlink
 from claudefig.utils.platform import secure_mkdir
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 
@@ -104,7 +106,8 @@ def is_initialized(auto_heal: bool = True) -> bool:
         if auto_heal:
             try:
                 secure_mkdir(config_dir)
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to create config directory %s: %s", config_dir, e)
                 return False
         else:
             return False
@@ -398,8 +401,8 @@ def _copy_default_preset_to_user(presets_dir: Path, verbose: bool = True) -> Non
                     console.print(
                         f"[green]✓[/green] Verified preset integrity ({total_variants} components)"
                     )
-                except Exception:
-                    pass  # Silent fail on verification feedback
+                except Exception as e:
+                    logger.debug("Verification feedback display failed: %s", e)
         else:
             # Copy succeeded but validation failed
             if verbose:
