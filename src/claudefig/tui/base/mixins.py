@@ -337,13 +337,11 @@ class ScrollNavigationMixin:
         # At the absolute first element - don't wrap
         if current_index == 0:
             # Scroll to the top to reveal title labels
-            try:
+            with contextlib.suppress(Exception):
                 # Get the title label and scroll it into view (at the top)
                 title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
                     title_label.scroll_visible(top=True, animate=True)
-            except Exception:
-                pass
             return
 
         # Find the target index, skipping siblings in horizontal groups
@@ -367,12 +365,10 @@ class ScrollNavigationMixin:
         # Ensure we don't go below 0
         if target_index < 0:
             # Already at top, scroll to reveal title
-            try:
+            with contextlib.suppress(Exception):
                 title_label = self.query("Label.screen-title").first()  # type: ignore[attr-defined]
                 if title_label:
                     title_label.scroll_visible(top=True, animate=True)
-            except Exception:
-                pass
             return
 
         # If the target widget is in a horizontal group, use focus memory if available
@@ -501,12 +497,10 @@ class ScrollNavigationMixin:
 
         # Scroll the VerticalScroll container to keep focused widget visible
         # This ensures proper scrolling within the container
-        try:
+        with contextlib.suppress(Exception):
             # Find the first VerticalScroll container in this screen
             scroll_container = self.query_one(VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_to_widget(event.widget, animate=True)
-        except Exception:
-            pass
 
     # =========================================================================
     # Boundary Navigation Helpers

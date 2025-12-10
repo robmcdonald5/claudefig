@@ -843,8 +843,9 @@ class TestStatePersistence:
             await pilot.press("down", "enter")
             await pilot.pause()
 
-            # The Select should have a value (default or blank)
-            _preset_select = app.query_one("#preset-select", Select)
+            # The Select should exist and have a value (default or blank)
+            preset_select = app.query_one("#preset-select", Select)
+            assert preset_select is not None, "Preset select widget should exist"
 
             # If presets exist and default is available, it should be selected
             # The reactive attribute should match

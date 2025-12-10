@@ -1,5 +1,6 @@
 """Initialize panel for project setup."""
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +97,7 @@ class InitializePanel(BaseHorizontalNavigablePanel):
             return
 
         # Get all buttons in the button row
-        try:
+        with contextlib.suppress(Exception):
             button_row = self.query_one(".button-row")
             buttons = [w for w in button_row.query("Button") if w.focusable]
 
@@ -109,30 +110,22 @@ class InitializePanel(BaseHorizontalNavigablePanel):
             if event.key == "up":
                 # At the first button - scroll container to home (absolute top)
                 if current_index == 0 or current_index == -1:
-                    try:
+                    with contextlib.suppress(Exception):
                         scroll_container = self.query_one(VerticalScroll)
                         scroll_container.scroll_home(animate=True)
                         event.prevent_default()
                         event.stop()
-                    except Exception:
-                        pass
                 return
 
             elif event.key == "down":
                 # At the last button - scroll container to end (absolute bottom)
                 if current_index == len(buttons) - 1:
-                    try:
+                    with contextlib.suppress(Exception):
                         scroll_container = self.query_one(VerticalScroll)
                         scroll_container.scroll_end(animate=True)
                         event.prevent_default()
                         event.stop()
-                    except Exception:
-                        pass
                 return
-
-        except Exception:
-            # Fallback - let normal handling continue
-            pass
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

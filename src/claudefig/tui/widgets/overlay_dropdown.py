@@ -1,5 +1,7 @@
 """Overlay dropdown widget that doesn't affect document flow."""
 
+import contextlib
+
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.reactive import reactive, var
@@ -162,12 +164,9 @@ class OverlayDropdown(Widget):
         self.set_class(expanded, "-expanded")
 
         # Update header text
-        try:
+        with contextlib.suppress(Exception):
             header = self.query_one(DropdownHeader)
             header.update(self._format_title())
-        except Exception:
-            # Widget not yet composed
-            pass
 
     def on_click(self, event) -> None:
         """Handle click events to toggle dropdown.

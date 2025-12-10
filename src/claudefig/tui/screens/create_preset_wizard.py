@@ -1,5 +1,6 @@
 """Multi-step wizard for creating presets from discovered components."""
 
+import contextlib
 from pathlib import Path
 
 from textual.app import ComposeResult
@@ -434,12 +435,12 @@ class CreatePresetWizard(BaseScreen):
                     prev_checkbox.scroll_visible(animate=False)
                 else:
                     # At first checkbox - go to remembered button and scroll to top
-                    try:
+                    with contextlib.suppress(Exception):
                         btn = self.query_one(f"#{self._last_button_id}", Button)
                         btn.focus()
-                    except Exception:
-                        if buttons:
-                            buttons[0].focus()
+                        btn = None  # Mark as handled
+                    if btn is not None and buttons:
+                        buttons[0].focus()
                     # Scroll to top of screen
                     scroll_container.scroll_home(animate=False)
                 event.prevent_default()
@@ -469,11 +470,9 @@ class CreatePresetWizard(BaseScreen):
             return
         selected = sum(1 for cb in self.component_checkboxes.values() if cb.value)
         total = self.discovery_result.total_found
-        try:
+        with contextlib.suppress(Exception):
             count_label = self.query_one("#selection-count", Static)
             count_label.update(f"Selected: {selected} of {total}")
-        except Exception:
-            pass  # Label might not exist yet
 
     def _select_all(self) -> None:
         """Select all checkboxes."""

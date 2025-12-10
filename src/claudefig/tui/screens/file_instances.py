@@ -1,5 +1,6 @@
 """File instances screen for managing multi-instance file types."""
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -455,13 +456,11 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                         self.instances_dict, existing.id
                     )
                     # Also remove the widget from the DOM
-                    try:
+                    with contextlib.suppress(Exception):
                         for item in self.query(FileInstanceItem):
                             if item.instance_id == existing.id:
                                 item.remove()
                                 break
-                    except Exception:
-                        pass
             else:
                 # For multi-instance types: check if this component has already been added
                 existing_instances = list(self.instances_dict.values())
@@ -595,11 +594,9 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
 
                 except Exception:
                     # Track current state before fallback recompose
-                    try:
+                    with contextlib.suppress(Exception):
                         tabs = self.query_one("#file-instances-tabs", TabbedContent)
                         FileInstancesScreen._last_active_tab = tabs.active
-                    except Exception:
-                        pass
                     # If dynamic mounting fails, fallback to recompose
                     self.refresh(recompose=True)
             else:
@@ -968,11 +965,9 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
                         break
             except Exception:
                 # Track current state before fallback recompose
-                try:
+                with contextlib.suppress(Exception):
                     tabs = self.query_one("#file-instances-tabs", TabbedContent)
                     FileInstancesScreen._last_active_tab = tabs.active
-                except Exception:
-                    pass
                 # If dynamic removal fails, fallback to recompose
                 self.refresh(recompose=True)
         else:
@@ -1012,15 +1007,12 @@ class FileInstancesScreen(BaseScreen, SystemUtilityMixin):
         )
 
         # Update the widget's reactive attribute - triggers watch method for smooth update
-        try:
+        with contextlib.suppress(Exception):
             # Find the specific item by checking instance_id
             for item in self.query(FileInstanceItem):
                 if item.instance_id == instance_id:
                     item.is_enabled = instance.enabled
                     break
-        except Exception:
-            # Widget not found, ignore
-            pass
 
     def _open_component_directory(self, file_type: FileType) -> None:
         """Open the component directory in the system file explorer.

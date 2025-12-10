@@ -169,15 +169,13 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
 
         # Track if a button in the button row is focused
         elif isinstance(focused, Button):
-            try:
+            with contextlib.suppress(Exception):
                 button_row = self.query_one(".button-row")
                 if focused.parent == button_row:
                     PresetsPanel._last_focused_widget_type = "button"
                     buttons = list(button_row.query("Button"))
                     with contextlib.suppress(ValueError):
                         PresetsPanel._last_focused_button_index = buttons.index(focused)
-            except Exception:
-                pass
 
     def watch_selected_preset(
         self, _old_value: str | None, new_value: str | None
@@ -399,7 +397,7 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                 event.prevent_default()
                 event.stop()
                 # Move to the last focused button in the row
-                try:
+                with contextlib.suppress(Exception):
                     button_row = self.query_one(".button-row")
                     buttons = list(button_row.query("Button"))
                     if buttons and 0 <= PresetsPanel._last_focused_button_index < len(
@@ -408,16 +406,12 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
                         buttons[PresetsPanel._last_focused_button_index].focus()
                     elif buttons:
                         buttons[0].focus()
-                except Exception:
-                    pass
                 return
             elif event.key == "up":
                 # At the Select dropdown (top of panel) - scroll container to home
-                try:
+                with contextlib.suppress(Exception):
                     scroll_container = self.query_one(VerticalScroll)
                     scroll_container.scroll_home(animate=True)
-                except Exception:
-                    pass
                 event.prevent_default()
                 event.stop()
                 return
@@ -425,44 +419,36 @@ class PresetsPanel(BaseNavigablePanel, SystemUtilityMixin):
         # When on any button, up arrow should go to Select
         if event.key == "up" and isinstance(focused, Button):
             # Check if this button is in the button-row
-            try:
+            with contextlib.suppress(Exception):
                 button_row = self.query_one(".button-row")
                 if focused.parent == button_row:
                     event.prevent_default()
                     event.stop()
                     # Remember which button we're leaving from
                     buttons = list(button_row.query("Button"))
-                    try:
+                    with contextlib.suppress(ValueError):
                         PresetsPanel._last_focused_button_index = buttons.index(focused)
-                    except ValueError:
-                        PresetsPanel._last_focused_button_index = 0
                     # Move to Select dropdown
                     select = self.query_one("#preset-select", Select)
                     select.focus()
                     return
-            except Exception:
-                pass
 
         # When on any button in the button row, prevent down from wrapping
         # and scroll to reveal content below when at the last button
         if event.key == "down" and isinstance(focused, Button):
-            try:
+            with contextlib.suppress(Exception):
                 button_row = self.query_one(".button-row")
                 if focused.parent == button_row:
                     # At the bottom of the panel
                     buttons = list(button_row.query("Button"))
-                    try:
+                    with contextlib.suppress(ValueError, Exception):
                         current_index = buttons.index(focused)
                         # If on the last button, scroll container to end
                         if current_index == len(buttons) - 1:
                             scroll_container = self.query_one(VerticalScroll)
                             scroll_container.scroll_end(animate=True)
-                    except (ValueError, Exception):
-                        pass
 
                     # Prevent wrapping to main menu
                     event.prevent_default()
                     event.stop()
                     return
-            except Exception:
-                pass
