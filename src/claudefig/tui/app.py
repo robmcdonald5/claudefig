@@ -1,5 +1,6 @@
 """Interactive TUI (Text User Interface) for claudefig."""
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -123,16 +124,14 @@ class MainScreen(App):
 
             # In menu panel - handle navigation with scroll-to-reveal logic
             if event.key == "up":
-                try:
+                with contextlib.suppress(ValueError, Exception):
                     current_index = menu_buttons.index(focused)
 
                     # At the top - scroll container to home (absolute top)
                     if current_index == 0:
-                        try:
+                        with contextlib.suppress(Exception):
                             scroll_container = menu_panel.query_one(VerticalScroll)
                             scroll_container.scroll_home(animate=True)
-                        except Exception:
-                            pass
                         event.prevent_default()
                         event.stop()
                         return
@@ -142,25 +141,22 @@ class MainScreen(App):
                     event.prevent_default()
                     event.stop()
                     return
-                except (ValueError, Exception):
-                    # Fallback to normal navigation
-                    self.action_navigate_up()
-                    event.prevent_default()
-                    event.stop()
-                    return
+                # Fallback to normal navigation
+                self.action_navigate_up()
+                event.prevent_default()
+                event.stop()
+                return
 
             elif event.key == "down":
-                try:
+                with contextlib.suppress(ValueError, Exception):
                     current_index = menu_buttons.index(focused)
                     max_index = len(menu_buttons) - 1
 
                     # At the bottom - scroll container to end (absolute bottom)
                     if current_index == max_index:
-                        try:
+                        with contextlib.suppress(Exception):
                             scroll_container = menu_panel.query_one(VerticalScroll)
                             scroll_container.scroll_end(animate=True)
-                        except Exception:
-                            pass
                         event.prevent_default()
                         event.stop()
                         return
@@ -170,12 +166,11 @@ class MainScreen(App):
                     event.prevent_default()
                     event.stop()
                     return
-                except (ValueError, Exception):
-                    # Fallback to normal navigation
-                    self.action_navigate_down()
-                    event.prevent_default()
-                    event.stop()
-                    return
+                # Fallback to normal navigation
+                self.action_navigate_down()
+                event.prevent_default()
+                event.stop()
+                return
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press events."""
@@ -219,15 +214,13 @@ class MainScreen(App):
 
     def _focus_first_in_content(self) -> None:
         """Focus the first focusable widget in the content panel."""
-        try:
+        with contextlib.suppress(Exception):
             content_panel = self.query_one("#content-panel", ContentPanel)
             focusables = [
                 w for w in content_panel.query("Button, Switch") if w.focusable
             ]
             if focusables:
                 focusables[0].focus()
-        except Exception:
-            pass
 
     def action_clear_selection(self) -> None:
         """Clear the active selection and hide content panel."""
@@ -242,9 +235,10 @@ class MainScreen(App):
 
         # FOCUS FIRST - set focus on target button
         if previously_active:
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one(f"#{previously_active}", Button).focus()
-            except Exception:
+                previously_active = None  # Mark as handled
+            if previously_active:  # Fallback if suppress didn't find button
                 self.query_one("#init", Button).focus()
         else:
             self.query_one("#init", Button).focus()
@@ -275,22 +269,18 @@ class MainScreen(App):
             return
 
         # Check if we're in a horizontal button row (side-by-side buttons)
-        try:
+        with contextlib.suppress(Exception):
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
                     # Navigate right within the horizontal button row
                     focusables = [w for w in button_row.query("Button") if w.focusable]
                     if len(focusables) > 1:
-                        try:
+                        with contextlib.suppress(ValueError):
                             current_index = focusables.index(focused)
                             if current_index < len(focusables) - 1:
                                 focusables[current_index + 1].focus()
                                 return
-                        except ValueError:
-                            pass
-        except Exception:
-            pass
 
         # Check if we're in the menu panel
         menu_panel = self.query_one("#menu-panel")
@@ -343,7 +333,7 @@ class MainScreen(App):
             return
 
         # Check if we're in settings categories
-        try:
+        with contextlib.suppress(Exception):
             settings_categories = self.query_one("#settings-categories")
             if self._is_descendant_of(focused, settings_categories):
                 # Move to settings content
@@ -353,8 +343,6 @@ class MainScreen(App):
                 ]
                 if focusables:
                     focusables[0].focus()
-        except Exception:
-            pass
 
     def action_navigate_left(self) -> None:
         """Navigate left: content → menu, or settings → categories."""
@@ -363,25 +351,21 @@ class MainScreen(App):
             return
 
         # Check if we're in a horizontal button row (side-by-side buttons)
-        try:
+        with contextlib.suppress(Exception):
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
                     # Navigate left within the horizontal button row
                     focusables = [w for w in button_row.query("Button") if w.focusable]
                     if len(focusables) > 1:
-                        try:
+                        with contextlib.suppress(ValueError):
                             current_index = focusables.index(focused)
                             if current_index > 0:
                                 focusables[current_index - 1].focus()
                                 return
-                        except ValueError:
-                            pass
-        except Exception:
-            pass
 
         # Check if we're in settings content
-        try:
+        with contextlib.suppress(Exception):
             settings_content = self.query_one("#settings-content")
             if self._is_descendant_of(focused, settings_content):
                 # Move to settings categories
@@ -392,8 +376,6 @@ class MainScreen(App):
                 if focusables:
                     focusables[0].focus()
                 return
-        except Exception:
-            pass
 
         # Check if we're in content panel
         content_panel = self.query_one("#content-panel")
@@ -413,20 +395,16 @@ class MainScreen(App):
         ]
 
         for scope_id in scope_ids:
-            try:
+            with contextlib.suppress(Exception):
                 scope = self.query_one(f"#{scope_id}")
                 if self._is_descendant_of(widget, scope) or widget == scope:
                     return scope
-            except Exception:
-                continue
 
         # Fallback to content panel for other content
-        try:
+        with contextlib.suppress(Exception):
             content_panel = self.query_one("#content-panel")
             if self._is_descendant_of(widget, content_panel):
                 return content_panel
-        except Exception:
-            pass
 
         return None
 
@@ -437,15 +415,13 @@ class MainScreen(App):
             return
 
         # Check if we're in a horizontal button row - navigate up should exit to previous element
-        try:
+        with contextlib.suppress(Exception):
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
                     # Navigate up exits the button row to the previous focusable element
                     self.screen.focus_previous()
                     return
-        except Exception:
-            pass
 
         scope = self._get_focus_scope(focused)
         if not scope:
@@ -473,15 +449,13 @@ class MainScreen(App):
             return
 
         # Check if we're in a horizontal button row - navigate down should exit to next element
-        try:
+        with contextlib.suppress(Exception):
             button_rows = self.query(".button-row")
             for button_row in button_rows:
                 if self._is_descendant_of(focused, button_row):
                     # Navigate down exits the button row to the next focusable element
                     self.screen.focus_next()
                     return
-        except Exception:
-            pass
 
         scope = self._get_focus_scope(focused)
         if not scope:
