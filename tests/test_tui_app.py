@@ -416,6 +416,8 @@ class TestContentPanelTransitions:
             # Activate init section
             await pilot.press("enter")
             await pilot.pause()
+            # Extra pause needed for focus timer (0.05s) to complete on slower systems
+            await pilot.pause()
 
             # Focus should be in content panel now
             init_btn = app.query_one("#init", Button)
