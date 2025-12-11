@@ -416,13 +416,18 @@ path = ".gitignore"
 enabled = true
 
 [[files]]
-id = "settings-1"
-type = "settings_json"
-preset = "settings_json:default"
-path = ".claude/settings.json"
+id = "commands-1"
+type = "commands"
+preset = "commands:default"
+path = ".claude/commands/example.md"
 enabled = false
 """
         config_file.write_text(config_content)
+
+        # Create mock commands component (for disabled component test)
+        commands_component = components_dir / "commands" / "default"
+        commands_component.mkdir(parents=True)
+        (commands_component / "example.md").write_text("# Example Command")
 
         # Change to project directory
         monkeypatch.chdir(project_dir)
@@ -482,13 +487,13 @@ enabled = false
         assert gitignore_comp["path"] == ".gitignore"
         assert gitignore_comp["enabled"] is True
 
-        # Verify settings_json component (disabled)
-        settings_comp = next(
-            c for c in preset_data["components"] if c["type"] == "settings_json"
+        # Verify commands component (disabled)
+        commands_comp = next(
+            c for c in preset_data["components"] if c["type"] == "commands"
         )
-        assert settings_comp["name"] == "default"
-        assert settings_comp["path"] == ".claude/settings.json"
-        assert settings_comp["enabled"] is False
+        assert commands_comp["name"] == "default"
+        assert commands_comp["path"] == ".claude/commands/example.md"
+        assert commands_comp["enabled"] is False
 
         # Verify component files were copied (both enabled and disabled)
         # Note: The loader chain prioritizes built-in preset components,
@@ -513,13 +518,13 @@ enabled = false
             "claudefig.toml" in copied_gitignore.read_text()
         )  # Verify it has gitignore content
 
-        # Verify disabled component was ALSO copied (settings_json)
-        copied_settings = (
-            preset_dir / "components" / "settings_json" / "default" / "settings.json"
+        # Verify disabled component was ALSO copied (commands)
+        copied_commands = (
+            preset_dir / "components" / "commands" / "default" / "example.md"
         )
-        assert copied_settings.exists()
-        # Just verify it's a JSON file by checking it can be read
-        assert copied_settings.read_text().strip() != ""
+        assert copied_commands.exists()
+        # Verify it has content
+        assert copied_commands.read_text().strip() != ""
 
 
 class TestCreatePresetFromDiscovery:
