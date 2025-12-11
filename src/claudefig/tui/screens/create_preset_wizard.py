@@ -435,11 +435,12 @@ class CreatePresetWizard(BaseScreen):
                     prev_checkbox.scroll_visible(animate=False)
                 else:
                     # At first checkbox - go to remembered button and scroll to top
+                    focused_button = False
                     with contextlib.suppress(Exception):
                         btn = self.query_one(f"#{self._last_button_id}", Button)
                         btn.focus()
-                        btn = None  # Mark as handled
-                    if btn is not None and buttons:
+                        focused_button = True
+                    if not focused_button and buttons:
                         buttons[0].focus()
                     # Scroll to top of screen
                     scroll_container.scroll_home(animate=False)
