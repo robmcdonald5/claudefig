@@ -1,5 +1,6 @@
 """General config editor screen."""
 
+import contextlib
 from typing import Any
 
 from textual import on
@@ -129,12 +130,10 @@ class GeneralConfigScreen(BaseScreen):
             return value_str.lower() == "true"
 
         # Parse numbers
-        try:
+        with contextlib.suppress(ValueError):
             if "." in value_str:
                 return float(value_str)
             return int(value_str)
-        except ValueError:
-            pass
 
         # Return as string
         return value_str

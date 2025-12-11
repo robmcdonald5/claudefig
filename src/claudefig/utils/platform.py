@@ -7,6 +7,7 @@ This module provides cross-platform utilities for:
 - Getting platform-specific paths and commands
 """
 
+import contextlib
 import os
 import platform
 import subprocess
@@ -132,22 +133,18 @@ def open_file_in_editor(file_path: Path | str) -> bool:
                 opened = False
 
                 # Try 'edit' verb first
-                try:
+                with contextlib.suppress(OSError):
                     os.startfile(str(file_path), "edit")  # type: ignore[attr-defined]
                     opened = True
-                except OSError:
-                    pass
 
                 # Try VS Code if edit verb failed
                 if not opened and _command_exists("code"):
-                    try:
+                    with contextlib.suppress(OSError):
                         subprocess.Popen(
                             ["code", str(file_path)],
                             creationflags=subprocess.DETACHED_PROCESS,  # type: ignore[attr-defined]
                         )
                         opened = True
-                    except OSError:
-                        pass
 
                 # Fall back to notepad
                 if not opened:
