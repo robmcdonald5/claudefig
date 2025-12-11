@@ -416,6 +416,8 @@ class TestContentPanelTransitions:
             # Activate init section
             await pilot.press("enter")
             await pilot.pause()
+            # Extra pause needed for focus timer (0.05s) to complete on slower systems
+            await pilot.pause()
 
             # Focus should be in content panel now
             init_btn = app.query_one("#init", Button)
@@ -843,8 +845,9 @@ class TestStatePersistence:
             await pilot.press("down", "enter")
             await pilot.pause()
 
-            # The Select should have a value (default or blank)
-            _preset_select = app.query_one("#preset-select", Select)
+            # The Select should exist and have a value (default or blank)
+            preset_select = app.query_one("#preset-select", Select)
+            assert preset_select is not None, "Preset select widget should exist"
 
             # If presets exist and default is available, it should be selected
             # The reactive attribute should match

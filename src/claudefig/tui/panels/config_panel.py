@@ -114,13 +114,13 @@ class ConfigPanel(BaseNavigablePanel):
 
     def restore_focus(self) -> None:
         """Restore focus to the last focused button."""
-        try:
+        with contextlib.suppress(Exception):
             last_button = self.query_one(f"#{ConfigPanel._last_focused_button}", Button)
             last_button.focus()
-        except Exception:
-            # Fallback to first button if last focused doesn't exist
-            with contextlib.suppress(Exception):
-                self.query_one("#btn-overview", Button).focus()
+            return
+        # Fallback to first button if last focused doesn't exist
+        with contextlib.suppress(Exception):
+            self.query_one("#btn-overview", Button).focus()
 
     def _navigate_grid(self, row_delta: int, col_delta: int) -> None:
         """Navigate in the grid by moving in a direction.
@@ -148,30 +148,24 @@ class ConfigPanel(BaseNavigablePanel):
         # Vertical: Stop at edges (no wrapping) and scroll to boundaries
         if row_delta < 0 and row == 0:
             # Already at top row - scroll container to home (absolute top)
-            try:
+            with contextlib.suppress(Exception):
                 scroll_container = self.query_one(VerticalScroll)
                 scroll_container.scroll_home(animate=True)
-            except Exception:
-                pass
             return
         if row_delta > 0 and row == 1:
             # Already at bottom row (row 1) - scroll container to end (absolute bottom)
-            try:
+            with contextlib.suppress(Exception):
                 scroll_container = self.query_one(VerticalScroll)
                 scroll_container.scroll_end(animate=True)
-            except Exception:
-                pass
             return
 
         # Horizontal: Escape to main menu when navigating left from leftmost column
         if col_delta < 0 and col == 0:
             # Moving left from leftmost column - go to Config button in main menu
-            try:
+            with contextlib.suppress(Exception):
                 config_button = self.app.query_one("#config", Button)
                 config_button.focus()
                 return
-            except Exception:
-                pass  # Config button not found
 
         # Horizontal: Stay at right edge when navigating right from rightmost position
         # Row 0 has buttons at col 0 and 1 (rightmost is col 1)
@@ -183,13 +177,11 @@ class ConfigPanel(BaseNavigablePanel):
         # Focus the new button within the grid
         new_button_id = self.POSITION_TO_BUTTON.get((new_row, new_col))
         if new_button_id:
-            try:
+            with contextlib.suppress(Exception):
                 new_button = self.query_one(f"#{new_button_id}", Button)
                 new_button.focus()
                 # Track this as the last focused button
                 ConfigPanel._last_focused_button = new_button_id
-            except Exception:
-                pass  # Button not found
 
     def action_navigate_up(self) -> None:
         """Navigate up in the grid."""
