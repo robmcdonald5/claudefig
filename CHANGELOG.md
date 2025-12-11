@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-12-11
+
+### Changed
+- **TUI exception handling** - Converted 31 empty `except: pass` blocks to `contextlib.suppress()` for improved code clarity and Pythonic style
+- **Default preset cleanup** - Removed example placeholder components from default preset for cleaner initial setup
+
+### Fixed
+- **Service layer logging** - Added debug-level logging to silent exception handlers in `user_config.py` and `structure_validator.py` for improved troubleshooting
+- **Test unused variable** - Converted unused variable in `test_tui_app.py` to assertion for code quality
+- **Type error** - Fixed mypy type error in `create_preset_wizard.py` button focus logic
+
+### Security
+- **CodeQL compliance** - Addressed all 42 CodeQL findings (34 empty except blocks, 1 unused variable, service layer exception handling)
+
 ## [1.0.0] - 2025-12-01
 
 ### Added
@@ -63,5 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration file templates
 - MIT License
 
+[1.0.1]: https://github.com/robmcdonald5/claudefig/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/robmcdonald5/claudefig/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/robmcdonald5/claudefig/releases/tag/v0.1.0
