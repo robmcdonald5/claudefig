@@ -9,6 +9,7 @@ Cache can be passed explicitly or a module-level default is used.
 
 from __future__ import annotations
 
+import contextlib
 from importlib.resources import files
 from pathlib import Path
 
@@ -208,12 +209,10 @@ def _scan_presets_dir(path: Path | None) -> set[str]:
         return set()
 
     presets = set()
-    try:
+    with contextlib.suppress(OSError, PermissionError):
         for item in path.iterdir():
             if item.is_dir() and (item / "claudefig.toml").exists():
                 presets.add(item.name)
-    except (OSError, PermissionError):
-        pass
 
     return presets
 
